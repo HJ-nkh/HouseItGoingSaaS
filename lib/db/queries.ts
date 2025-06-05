@@ -1,6 +1,6 @@
 import { desc, and, eq, isNull } from 'drizzle-orm';
 import { db } from './drizzle';
-import { activityLogs, teamMembers, teams, users } from './schema';
+import { activityLogs, teamMembers, teams, users, projects, drawings } from './schema';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/session';
 
@@ -127,4 +127,186 @@ export async function getTeamForUser() {
   });
 
   return result?.team || null;
+}
+
+export async function getProjectsForTeam() {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    return [];
+  }
+
+  return await db
+    .select({
+      id: projects.id,
+      title: projects.title,
+      address: projects.address,
+      createdAt: projects.createdAt,
+      updatedAt: projects.updatedAt,
+      createdBy: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      },
+    })
+    .from(projects)
+    .leftJoin(users, eq(projects.createdBy, users.id))
+    .where(eq(projects.teamId, userWithTeam.teamId))
+    .orderBy(desc(projects.createdAt));
+}
+
+export async function getProjectById(projectId: number) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    return null;
+  }
+
+  const result = await db
+    .select({
+      id: projects.id,
+      title: projects.title,
+      address: projects.address,
+      createdAt: projects.createdAt,
+      updatedAt: projects.updatedAt,
+      teamId: projects.teamId,
+      createdBy: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      },
+    })
+    .from(projects)
+    .leftJoin(users, eq(projects.createdBy, users.id))
+    .where(
+      and(
+        eq(projects.id, projectId),
+        eq(projects.teamId, userWithTeam.teamId)
+      )
+    )
+    .limit(1);
+
+  return result[0] || null;
+}
+
+export async function getDrawingsForProject(projectId: number) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  // First verify the user has access to this project
+  const project = await getProjectById(projectId);
+  if (!project) {
+    throw new Error('Project not found or access denied');
+  }
+
+  return await db
+    .select({
+      id: drawings.id,
+      title: drawings.title,
+      hasChanges: drawings.hasChanges,
+      isTemplate: drawings.isTemplate,
+      createdAt: drawings.createdAt,
+      updatedAt: drawings.updatedAt,
+      user: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      },
+    })
+    .from(drawings)
+    .leftJoin(users, eq(drawings.userId, users.id))
+    .where(eq(drawings.projectId, projectId))
+    .orderBy(desc(drawings.updatedAt));
+}
+
+export async function getDrawingById(drawingId: number) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    return null;
+  }
+
+  const result = await db
+    .select({
+      id: drawings.id,
+      title: drawings.title,
+      history: drawings.history,
+      hasChanges: drawings.hasChanges,
+      isTemplate: drawings.isTemplate,
+      createdAt: drawings.createdAt,
+      updatedAt: drawings.updatedAt,
+      userId: drawings.userId,
+      projectId: drawings.projectId,
+      user: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      },
+      project: {
+        id: projects.id,
+        title: projects.title,
+        teamId: projects.teamId,
+      },
+    })
+    .from(drawings)
+    .leftJoin(users, eq(drawings.userId, users.id))
+    .leftJoin(projects, eq(drawings.projectId, projects.id))
+    .where(
+      and(
+        eq(drawings.id, drawingId),
+        eq(projects.teamId, userWithTeam.teamId)
+      )
+    )
+    .limit(1);
+
+  return result[0] || null;
+}
+
+export async function getDrawingsForUser() {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    return [];
+  }
+
+  return await db
+    .select({
+      id: drawings.id,
+      title: drawings.title,
+      hasChanges: drawings.hasChanges,
+      isTemplate: drawings.isTemplate,
+      createdAt: drawings.createdAt,
+      updatedAt: drawings.updatedAt,
+      project: {
+        id: projects.id,
+        title: projects.title,
+      },
+    })
+    .from(drawings)
+    .leftJoin(projects, eq(drawings.projectId, projects.id))
+    .where(
+      and(
+        eq(drawings.userId, user.id),
+        eq(projects.teamId, userWithTeam.teamId)
+      )
+    )
+    .orderBy(desc(drawings.updatedAt));
 }
