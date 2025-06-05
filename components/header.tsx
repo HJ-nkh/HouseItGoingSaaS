@@ -1,9 +1,7 @@
-'use client';
-
+"use client";
 import Link from 'next/link';
-import { use, useState, Suspense } from 'react';
-import { Button } from '@/components/ui/button';
-import { CircleIcon, Home, LogOut } from 'lucide-react';
+import { Suspense, useState } from 'react';
+import { CircleIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +13,8 @@ import { signOut } from '@/app/(login)/actions';
 import { useRouter } from 'next/navigation';
 import { User } from '@/lib/db/schema';
 import useSWR from 'swr';
+import { Home, LogOut } from 'lucide-react';
+import { Button } from './ui/button';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -45,7 +45,7 @@ function UserMenu() {
     );
   }
 
-  return (
+return (
     <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
       <DropdownMenuTrigger>
         <Avatar className="cursor-pointer size-9">
@@ -78,7 +78,7 @@ function UserMenu() {
   );
 }
 
-function Header() {
+export function Header() {
   return (
     <header className="border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
@@ -93,14 +93,5 @@ function Header() {
         </div>
       </div>
     </header>
-  );
-}
-
-export default function Layout({ children }: { children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col min-h-screen">
-      <Header />
-      {children}
-    </section>
   );
 }

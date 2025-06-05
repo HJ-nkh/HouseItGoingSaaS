@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Manrope } from 'next/font/google';
 import { getUser, getTeamForUser } from '@/lib/db/queries';
 import { SWRConfig } from 'swr';
+import { Header } from '@/components/header';
 
 export const metadata: Metadata = {
   title: 'Next.js SaaS Starter',
@@ -36,7 +37,10 @@ export default function RootLayout({
             }
           }}
         >
-          {children}
+          <section className="flex flex-col min-h-screen">
+            <Header />
+            {children}
+          </section>
         </SWRConfig>
       </body>
     </html>
