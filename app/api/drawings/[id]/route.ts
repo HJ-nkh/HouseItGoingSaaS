@@ -14,10 +14,11 @@ const updateDrawingSchema = z.object({
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const drawingId = parseInt(params.id);
+    const { id } = await params;
+    const drawingId = parseInt(id);
     if (isNaN(drawingId)) {
       return NextResponse.json(
         { error: 'Invalid drawing ID' },
@@ -51,7 +52,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getUser();
@@ -70,7 +71,8 @@ export async function PUT(
       );
     }
 
-    const drawingId = parseInt(params.id);
+    const { id } = await params;
+    const drawingId = parseInt(id);
     if (isNaN(drawingId)) {
       return NextResponse.json(
         { error: 'Invalid drawing ID' },
@@ -137,7 +139,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getUser();
@@ -156,7 +158,8 @@ export async function DELETE(
       );
     }
 
-    const drawingId = parseInt(params.id);
+    const { id } = await params;
+    const drawingId = parseInt(id);
     if (isNaN(drawingId)) {
       return NextResponse.json(
         { error: 'Invalid drawing ID' },

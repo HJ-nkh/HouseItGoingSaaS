@@ -3,10 +3,11 @@ import { getDrawingsForProject } from '@/lib/db/queries';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const projectId = parseInt(params.id);
+    const { id } = await params;
+    const projectId = parseInt(id);
     if (isNaN(projectId)) {
       return NextResponse.json(
         { error: 'Invalid project ID' },

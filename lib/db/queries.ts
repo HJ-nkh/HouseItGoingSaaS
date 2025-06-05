@@ -1,6 +1,6 @@
 import { desc, and, eq, isNull } from 'drizzle-orm';
 import { db } from './drizzle';
-import { activityLogs, teamMembers, teams, users, projects, drawings } from './schema';
+import { activityLogs, teamMembers, teams, users, projects, drawings, simulations } from './schema';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/session';
 
@@ -309,4 +309,175 @@ export async function getDrawingsForUser() {
       )
     )
     .orderBy(desc(drawings.updatedAt));
+}
+
+export async function getSimulationsForProject(projectId: number) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  // First verify the user has access to this project
+  const project = await getProjectById(projectId);
+  if (!project) {
+    throw new Error('Project not found or access denied');
+  }
+
+  return await db
+    .select({
+      id: simulations.id,
+      status: simulations.status,
+      startTime: simulations.startTime,
+      endTime: simulations.endTime,
+      error: simulations.error,
+      inputHash: simulations.inputHash,
+      createdAt: simulations.createdAt,
+      updatedAt: simulations.updatedAt,
+      user: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      },
+      drawing: {
+        id: drawings.id,
+        title: drawings.title,
+      },
+    })
+    .from(simulations)
+    .leftJoin(users, eq(simulations.userId, users.id))
+    .leftJoin(drawings, eq(simulations.drawingId, drawings.id))
+    .where(eq(simulations.projectId, projectId))
+    .orderBy(desc(simulations.createdAt));
+}
+
+export async function getSimulationsForDrawing(drawingId: number) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  // First verify the user has access to this drawing
+  const drawing = await getDrawingById(drawingId);
+  if (!drawing) {
+    throw new Error('Drawing not found or access denied');
+  }
+
+  return await db
+    .select({
+      id: simulations.id,
+      status: simulations.status,
+      startTime: simulations.startTime,
+      endTime: simulations.endTime,
+      error: simulations.error,
+      inputHash: simulations.inputHash,
+      createdAt: simulations.createdAt,
+      updatedAt: simulations.updatedAt,
+      user: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      },
+    })
+    .from(simulations)
+    .leftJoin(users, eq(simulations.userId, users.id))
+    .where(eq(simulations.drawingId, drawingId))
+    .orderBy(desc(simulations.createdAt));
+}
+
+export async function getSimulationById(simulationId: number) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    return null;
+  }
+
+  const result = await db
+    .select({
+      id: simulations.id,
+      status: simulations.status,
+      startTime: simulations.startTime,
+      endTime: simulations.endTime,
+      error: simulations.error,
+      entities: simulations.entities,
+      inputHash: simulations.inputHash,
+      result: simulations.result,
+      createdAt: simulations.createdAt,
+      updatedAt: simulations.updatedAt,
+      userId: simulations.userId,
+      projectId: simulations.projectId,
+      drawingId: simulations.drawingId,
+      user: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      },
+      project: {
+        id: projects.id,
+        title: projects.title,
+        teamId: projects.teamId,
+      },
+      drawing: {
+        id: drawings.id,
+        title: drawings.title,
+      },
+    })
+    .from(simulations)
+    .leftJoin(users, eq(simulations.userId, users.id))
+    .leftJoin(projects, eq(simulations.projectId, projects.id))
+    .leftJoin(drawings, eq(simulations.drawingId, drawings.id))
+    .where(
+      and(
+        eq(simulations.id, simulationId),
+        eq(projects.teamId, userWithTeam.teamId)
+      )
+    )
+    .limit(1);
+
+  return result[0] || null;
+}
+
+export async function getSimulationsForUser() {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    return [];
+  }
+
+  return await db
+    .select({
+      id: simulations.id,
+      status: simulations.status,
+      startTime: simulations.startTime,
+      endTime: simulations.endTime,
+      error: simulations.error,
+      inputHash: simulations.inputHash,
+      createdAt: simulations.createdAt,
+      updatedAt: simulations.updatedAt,
+      project: {
+        id: projects.id,
+        title: projects.title,
+      },
+      drawing: {
+        id: drawings.id,
+        title: drawings.title,
+      },
+    })
+    .from(simulations)
+    .leftJoin(projects, eq(simulations.projectId, projects.id))
+    .leftJoin(drawings, eq(simulations.drawingId, drawings.id))
+    .where(
+      and(
+        eq(simulations.userId, user.id),
+        eq(projects.teamId, userWithTeam.teamId)
+      )
+    )
+    .orderBy(desc(simulations.createdAt));
 }

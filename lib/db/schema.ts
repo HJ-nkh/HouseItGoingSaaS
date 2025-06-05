@@ -5,10 +5,18 @@ import {
   text,
   timestamp,
   integer,
-  json,
+  jsonb,
   boolean,
+  pgEnum,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+
+export const simulationStatusEnum = pgEnum('simulation_status', [
+  'pending',
+  'running',
+  'completed',
+  'failed'
+]);
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -93,9 +101,31 @@ export const drawings = pgTable('drawings', {
     .notNull()
     .references(() => projects.id),
   title: text('title').notNull(),
-  history: json('history').notNull(),
+  history: jsonb('history').notNull(),
   hasChanges: boolean('has_changes').notNull().default(false),
   isTemplate: boolean('is_template').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const simulations = pgTable('simulations', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  projectId: integer('project_id')
+    .notNull()
+    .references(() => projects.id),
+  drawingId: integer('drawing_id')
+    .notNull()
+    .references(() => drawings.id),
+  status: simulationStatusEnum('status').notNull().default('pending'),
+  startTime: timestamp('start_time'),
+  endTime: timestamp('end_time'),
+  error: text('error'),
+  entities: jsonb('entities'),
+  inputHash: text('input_hash').notNull(),
+  result: jsonb('result'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -112,6 +142,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   invitationsSent: many(invitations),
   createdProjects: many(projects),
   drawings: many(drawings),
+  simulations: many(simulations),
 }));
 
 export const invitationsRelations = relations(invitations, ({ one }) => ({
@@ -157,9 +188,10 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     references: [users.id],
   }),
   drawings: many(drawings),
+  simulations: many(simulations),
 }));
 
-export const drawingsRelations = relations(drawings, ({ one }) => ({
+export const drawingsRelations = relations(drawings, ({ one, many }) => ({
   user: one(users, {
     fields: [drawings.userId],
     references: [users.id],
@@ -167,6 +199,22 @@ export const drawingsRelations = relations(drawings, ({ one }) => ({
   project: one(projects, {
     fields: [drawings.projectId],
     references: [projects.id],
+  }),
+  simulations: many(simulations),
+}));
+
+export const simulationsRelations = relations(simulations, ({ one }) => ({
+  user: one(users, {
+    fields: [simulations.userId],
+    references: [users.id],
+  }),
+  project: one(projects, {
+    fields: [simulations.projectId],
+    references: [projects.id],
+  }),
+  drawing: one(drawings, {
+    fields: [simulations.drawingId],
+    references: [drawings.id],
   }),
 }));
 
@@ -184,11 +232,20 @@ export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
 export type Drawing = typeof drawings.$inferSelect;
 export type NewDrawing = typeof drawings.$inferInsert;
+export type Simulation = typeof simulations.$inferSelect;
+export type NewSimulation = typeof simulations.$inferInsert;
 export type TeamDataWithMembers = Team & {
   teamMembers: (TeamMember & {
     user: Pick<User, 'id' | 'name' | 'email'>;
   })[];
 };
+
+export enum SimulationStatus {
+  PENDING = 'pending',
+  RUNNING = 'running',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
 
 export enum ActivityType {
   SIGN_UP = 'SIGN_UP',
@@ -207,4 +264,10 @@ export enum ActivityType {
   CREATE_DRAWING = 'CREATE_DRAWING',
   UPDATE_DRAWING = 'UPDATE_DRAWING',
   DELETE_DRAWING = 'DELETE_DRAWING',
+  CREATE_SIMULATION = 'CREATE_SIMULATION',
+  UPDATE_SIMULATION = 'UPDATE_SIMULATION',
+  DELETE_SIMULATION = 'DELETE_SIMULATION',
+  START_SIMULATION = 'START_SIMULATION',
+  COMPLETE_SIMULATION = 'COMPLETE_SIMULATION',
+  FAIL_SIMULATION = 'FAIL_SIMULATION',
 }
