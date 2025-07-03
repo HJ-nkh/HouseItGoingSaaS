@@ -1,0 +1,46 @@
+import React from "react";
+import classNames from "classnames";
+import { Analysis } from "@/types"; // Import Analysis type if needed
+
+type ScaleSimulationCardProps = {
+  scale: number;
+  setScale: (scale: number) => void;
+  analysis: Analysis; // Add this line
+  className?: string;
+};
+
+const ScaleSimulationCard: React.FC<ScaleSimulationCardProps> = ({ scale, setScale, analysis, className }) => {
+  const handleScaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setScale(Number(e.target.value));
+  };
+
+  // Adjust min, max, and step based on analysis
+  const inputProps =
+    analysis === "Ve"
+      ? { min: "0.0", max: "1000", step: "1" }
+      : { min: "0", max: "0.005", step: "0.000001" };
+
+  return (
+    <div
+      className={classNames(
+        "bg-white border rounded flex items-center gap-2 px-3 py-1 text-gray-500 w-full",
+        className
+      )}
+      style={{ height: '48px' }} // Ensure consistent height
+    >
+      <label htmlFor="scale" className="p-2">
+        Skalér:
+      </label>
+      <input
+        type="range"
+        id="scale"
+        value={scale}
+        onChange={handleScaleChange}
+        className="flex-grow h-8"
+        {...inputProps} // Spread the inputProps
+      />
+    </div>
+  );
+};
+
+export default ScaleSimulationCard;
