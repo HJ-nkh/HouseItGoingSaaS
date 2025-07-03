@@ -1,4 +1,4 @@
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/select";
 import { ConstraintType } from "../../lib/types";
 import AngleInput from "./angle-input";
 import NumberInput from "@/components/number-input";

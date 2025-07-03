@@ -1,37 +1,34 @@
 import { useState } from "react";
-import { Drawing } from "@/types";
+import { Drawing } from "@/lib/types";
 import { DrawingState } from "./lib/types";
-import { useParams } from "@/router";
 import Input from "../input";
-import { RxArchive, RxTrash, RxVercelLogo } from "react-icons/rx";
 import { EntitySet } from "./lib/reduce-history";
-import { useCreateSimulation } from "@/api/simulations";
 import { Button } from "../ui/button";
 import WithConfirmation from "../with-confirmation";
 import { isValidDrawing } from "./lib/validate-drawing";
 import { flipYAxisOnResolvedEntities } from "./lib/flip-y-axis";
-import { useQueryClient } from "react-query";
-import { BiDownload } from "react-icons/bi"; // new import added
-import { useCreateReport, useSimulationReport } from "@/api/reports";
-import API from "@/api";
+// import { useCreateReport, useSimulationReport } from "@/lib/api/reports";
 import { downloadFile } from "@/lib/utils";
+import { useReportMutations, useReports, useSimulationMutations } from "@/lib/api";
+import { useParams } from "next/navigation";
+import { Download, Triangle, Archive, Trash2 } from "lucide-react";
 
 const downloadReport = async (reportId: string) => {
-  const res = API.get({
-    apiName: import.meta.env.VITE_API_NAME,
-    path: `/reports/${reportId}/download-url`,
-  });
-  const response = await res.response;
-  if (response.body.status >= 300) {
-    const payload = await response.body.json();
-    throw new Error(payload.detail ?? response.body.statusText);
-  }
-  const url = await response.body.json();
-  downloadFile(url, `report-${reportId}.docx`);
+  // const res = API.get({
+  //   apiName: import.meta.env.VITE_API_NAME,
+  //   path: `/reports/${reportId}/download-url`,
+  // });
+  // const response = await res.response;
+  // if (response.body.status >= 300) {
+  //   const payload = await response.body.json();
+  //   throw new Error(payload.detail ?? response.body.statusText);
+  // }
+  // const url = await response.body.json();
+  // downloadFile(url, `report-${reportId}.docx`);
 };
 
 type TopBarProps = {
-  drawing?: Drawing;
+  drawing?: Drawing | null;
   onSave: (drawing: Partial<Drawing>) => void;
   onDelete?: () => void;
   entitySet: EntitySet;
@@ -49,22 +46,14 @@ const TopBar: React.FC<TopBarProps> = ({
   simulationId,
   showDownload = false, // new prop added
 }) => {
-  const { projectId } = useParams("/projects/:projectId/draw/:drawingId");
+  const params = useParams();
+  const projectId = params.id as string;
   const [title, setTitle] = useState(drawing?.title ?? "Min fusion-model");
-  const queryClient = useQueryClient();
 
-  const { mutate: createSimulation, isLoading: isCreatingSimulation } = useCreateSimulation({
-    onSuccess: () =>
-      queryClient.refetchQueries(`latestSimulation/${drawing?.id}`),
-  });
-  
-  const { data: reportData } = useSimulationReport(simulationId);
+  const simulationMutations = useSimulationMutations();
+  const reportMutations = useReportMutations();
 
-  const { mutate: createReport, isLoading: isCreatingReport } = useCreateReport({
-    onSuccess: (reportData) => {
-      downloadReport(reportData.id);
-    },
-  })
+  const { reports } = useReports({}, { simulationId });
   
   const validation = isValidDrawing(entitySet);
 
@@ -83,31 +72,33 @@ const TopBar: React.FC<TopBarProps> = ({
               <Button
                 variant="default"
                 className="w-24 bg-blue-700" // updated to a darker blue
-                disabled={isCreatingSimulation || isCreatingReport || !title || !validation.ok}
+                disabled={simulationMutations.loading || reportMutations.loading || !title || !validation.ok}
                 onClick={async () => {
-                  if (reportData) {
-                    downloadReport(reportData.id);
+                  const report = reports[0];
+                  if (report) {
+                    downloadReport(report.id);
+                    return;
                   }
 
-                  createReport({
+                  reportMutations.createReport({
                       simulationId
                   });
                 }}
               >
-                <BiDownload className="mr-1 text-2xl" /> Dok
+                <Download className="mr-1 text-2xl" /> Dok
               </Button>
             )}
             <Button
               variant="default"
               className="w-24 bg-emerald-600"
-              disabled={isCreatingSimulation || !title || !validation.ok}              onClick={() => {
+              disabled={simulationMutations.loading || !title || !validation.ok}              onClick={() => {
                 if (!drawing) {
                   return;
                 }
 
                 onSave({ title, history: state.history, projectId, hasChanges: false });
 
-                createSimulation({
+                simulationMutations.createSimulation({
                   projectId,
                   drawingId: drawing?.id,
                   entities: flipYAxisOnResolvedEntities(entitySet),
@@ -115,7 +106,7 @@ const TopBar: React.FC<TopBarProps> = ({
                 
               }}
             >
-              <RxVercelLogo className="transform rotate-90 mr-1" /> Kør
+              <Triangle className="transform rotate-90 mr-1" /> Kør
             </Button>
           </>
         )}
@@ -131,7 +122,7 @@ const TopBar: React.FC<TopBarProps> = ({
             })
           }
         >
-          <RxArchive className="mr-1" /> Gem
+          <Archive className="mr-1" /> Gem
         </Button>
         {onDelete && (
           <WithConfirmation>
@@ -140,7 +131,7 @@ const TopBar: React.FC<TopBarProps> = ({
               className="w-24 border-red-500 text-red-500"
               onClick={() => onDelete()}
             >
-              <RxTrash className="mr-1 h-4 w-4" /> Slet
+              <Trash2 className="mr-1 h-4 w-4" /> Slet
             </Button>
           </WithConfirmation>
         )}

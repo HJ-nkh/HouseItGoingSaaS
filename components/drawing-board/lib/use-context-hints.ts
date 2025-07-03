@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { DrawingState, Tool } from "./types";
-import { Analysis } from "@/types";
+import { Analysis } from "@/lib/types";
 
 type HintConfig = {
   message: string;

@@ -1,5 +1,5 @@
 import { ConstraintType, Constraint } from "../../lib/types";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/select";
 import NumberInput from "@/components/number-input";
 import { structuralToScreenY, screenToStructuralY } from "../../lib/coordinate-conversion";
 

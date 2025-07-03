@@ -2,10 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useDrawingMutations, type Drawing } from '@/lib/api/use-drawings';
+import { useDrawingMutations } from '@/lib/api/use-drawings';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreVertical } from 'lucide-react';
+import { Drawing } from '@/lib/types';
 
 type DrawingCardProps = {
   drawing: Drawing;

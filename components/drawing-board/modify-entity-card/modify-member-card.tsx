@@ -5,11 +5,11 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import CardActionButtons from "../../card-action-buttons";
+import CardActionButtons from "@/components/card-action-buttons";
 import { MaterialType, Member, SteelProfile } from "../lib/types";
-import NumberInput from "../../number-input";
-import Input from "../../input";
-import { Select } from "@/components/ui/select";
+import NumberInput from "@/components/number-input";
+import Input from "@/components/input";
+import { Select } from "@/components/select";
 
 const ModifyMemberCard: React.FC<{
   member: Member;

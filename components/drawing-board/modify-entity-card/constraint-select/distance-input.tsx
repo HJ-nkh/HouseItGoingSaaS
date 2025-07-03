@@ -1,4 +1,4 @@
-import { Select, SelectOption } from "@/components/ui/select";
+import { Select, SelectOption } from "@/components/select";
 import NumberInput from "@/components/number-input";
 
 type DistanceInputProps = {

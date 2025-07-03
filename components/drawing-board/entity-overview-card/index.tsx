@@ -4,7 +4,7 @@ import { DrawingState, Entity } from "../lib/types";
 import classNames from "classnames";
 import NodeList from "./node-list";
 import MemberList from "./member-list";
-import { RxDoubleArrowLeft } from "react-icons/rx";
+import { ChevronLeft } from "lucide-react";
 import { EntitySet } from "../lib/reduce-history";
 import PointLoadList from "./point-load-list";
 import DistributedLoadList from "./distributed-load-list";
@@ -179,7 +179,7 @@ const EntityOverviewCard: React.FC<EntityOverviewCardProps> = ({
               onClick={() => setSelectedEntity(undefined)}
               className="absolute top-0.5 right-0.5 hover:bg-gray-100 rounded-sm"
             >
-              <RxDoubleArrowLeft className="h-4 w-4 p-0.5" />
+              <ChevronLeft className="h-4 w-4 p-0.5" />
             </button>
             <View
               entity={selectedEntity}

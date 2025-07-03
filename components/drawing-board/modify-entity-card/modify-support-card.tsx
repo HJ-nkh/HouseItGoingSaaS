@@ -4,10 +4,10 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/select";
 import { Support, SupportType } from "../lib/types";
-import CardActionButtons from "../../card-action-buttons";
-import NumberInput from "../../number-input";
+import CardActionButtons from "@/components/card-action-buttons";
+import NumberInput from "@/components/number-input";
 import { useState, useEffect } from "react";
 import { Constraint, ConstraintType } from "../lib/types";
 import XYConstraintSelect from "./constraint-select/xy-only-select";

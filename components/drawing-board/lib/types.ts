@@ -1,4 +1,4 @@
-import { MemberUR } from "@/types";
+import { MemberUR } from "@/lib/types";
 
 export enum Tool {
   Select = "Select",

@@ -1,6 +1,6 @@
 import React from "react";
-import classNames from "classnames";
-import { Analysis } from "@/types"; // Import Analysis type if needed
+import { cn } from "@/lib/utils";
+import { Analysis } from "@/lib/types";
 
 type ScaleSimulationCardProps = {
   scale: number;
@@ -22,7 +22,7 @@ const ScaleSimulationCard: React.FC<ScaleSimulationCardProps> = ({ scale, setSca
 
   return (
     <div
-      className={classNames(
+      className={cn(
         "bg-white border rounded flex items-center gap-2 px-3 py-1 text-gray-500 w-full",
         className
       )}

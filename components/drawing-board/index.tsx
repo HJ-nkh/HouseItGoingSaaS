@@ -1,11 +1,13 @@
+'use client';
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import RenderedNode from "./rendered-entities/node";
 import RenderedMember from "./rendered-entities/member";
 import { Action } from "./lib/types";
-import { HEADER_HEIGHT } from "@/constants/layout";
+import { HEADER_HEIGHT } from "@/lib/constants/layout";
 import Grid from "./grid";
-import Toolbar from "../toolbar";
-import classNames from "classnames";
+import Toolbar from "./toolbar";
+import { cn } from "@/lib/utils";
 // import EntityOverviewCard from "./entity-overview-card";
 import { getToolSvgElements } from "./lib/tool-svg-elements";
 import { InputEventType, handleInputEvent, InputEvent } from "./lib/events";
@@ -28,7 +30,7 @@ import { aboveOrBelowLine, offsetPointFromLine } from "./lib/geometry";
 import RightAngle from "./right-angle";
 import AddEntityCard from "./add-entity-card";
 import DisplayOptionsCard from "./display-options-card";
-import { Analysis, Drawing, LimitState, Simulation } from "@/types";
+import { Analysis, Drawing, LimitState, Simulation, SimulationStatus } from "@/lib/types";
 import {
   defaultDrawingState,
   makeDrawingState,
@@ -36,21 +38,20 @@ import {
 import TopBar from "./top-bar";
 import { toMemberSimulations } from "@/lib/to-member-simulations";
 import ForceLine, { VeForceLine, Reactions } from "./rendered-entities/force-line";
-import SimulationsSidebar from "../simulations-sidebar";
+import SimulationsSidebar from "./simulations-sidebar";
 import URMatrix from "./ur-matrix";
 import { hideAllEntities, showAllEntities } from "./lib/show-entities";
 import SimulationCard from "./simulation-card";
 import ScaleSimulationCard from "./scale-simulation-card";
 import GlobalLocalDefCard from "./global-local-def-card";
 import { getShowLoadByIds } from "./lib/show-loads-by-id";
-import { SimulationStatus } from "@/types";
 import PendingIndicator from "./pending-indicator";
 import ContextHint from "./context-hint";
 import { useContextHints } from "./lib/use-context-hints";
 import { calculateCardPosition, getCardTypeFromEntity } from "./lib/card-positioning";
 
 type DrawingBoardProps = {
-  drawing?: Drawing;
+  drawing?: Drawing | null;
   simulation?: Simulation;
   onSave: (drawing: Partial<Drawing>) => void;
   onDelete?: () => void;
@@ -212,7 +213,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     : null;
 
   const selectedMemberSimulation = memberSimulations?.find(
-    (m) => m.id === state.selectedIds[0]
+    (m: any) => m.id === state.selectedIds[0]
   );
 
   // Mount hotkey event listener on window
@@ -312,7 +313,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
         drawing={drawing}
         onDelete={onDelete}
         entitySet={entitySet}
-        simulationId={simulation?.id}
+        simulationId={simulation?.id?.toString()}
         showDownload={simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim}
       />
       <div className="h-full flex">
@@ -351,7 +352,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
             <div className="flex flex-col items-center gap-4 w-full max-w-md">
               <div className="w-full">
                 <DisplayOptionsCard state={state} setState={setState} />
-              </div>              {analysis && ["F1", "F2", "M", "Ve", "R0"].includes(analysis) && (
+              </div>              {analysis && ["F1", "F2", "M", "Ve", "R0"].includes(analysis as string) && (
                 <div className="w-full">
                   <ScaleSimulationCard
                     scale={
@@ -472,7 +473,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
             ref={svgRef}
             width="100%"
             height="100%"
-            className={classNames("absolute z-10")}
+            className={cn("absolute z-10")}
             viewBox={viewBoxStr}
             onClick={(e) => {
               // If mouse was dragged, don't trigger click event
@@ -639,7 +640,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                   onMouseLeave={() => setHoveringId(null)}
                   isSectionForceAnalysis={analysis === "F1" || analysis === "F2" || analysis === "M"}
                   globalLocal={selectedGlobalLocal}
-                  memberSimulations={memberSimulations?.find((m) => m.id === member.id)}
+                  memberSimulations={memberSimulations?.find((m: any) => m.id === member.id)}
                   scaleVe={scaleVe}
                   selectedLC={selectedLC}
                 />
@@ -799,11 +800,11 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
               showSimulation &&
               selectedLC && (
                 <>                  {/* Member simulations */}
-                  {memberSimulations?.map((memberSim) => {
+                  {memberSimulations?.map((memberSim: any) => {
                 const { id, nodes, elements } = memberSim;
                 // Show elements?
                 const FENodes = showFE
-                  ? nodes.map(({ x, y }, i) => (
+                  ? nodes.map(({ x, y }: any, i: number) => (
                       <circle
                         key={`FENode-${id}-${i}`}
                         cx={x}
@@ -818,7 +819,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
                 if (!member) {
                   return null;
-                }                const FEElements = elements.map((element, i) => {
+                }                const FEElements = elements.map((element: any, i: number) => {
                   if (analysis === "UR") {
                     return null;
                   }
@@ -864,7 +865,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
             {analysis === "UR" &&
               selectedLC &&
               selectedLimitState &&
-              memberSimulations?.map((sim) => {
+              memberSimulations?.map((sim: any) => {
                 const fontSize = state.viewBox[3] / 70;
                 const rectWidth = fontSize * 4; // Scale width with fontSize
                 const rectHeight = fontSize * 2; // Scale height with fontSize
@@ -875,7 +876,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                 if (selectedLC === "Maksimale udnyttelser, samlet") {
                   const matrix = sim.UR?.[`UR_loadcomb_mat_${selectedLimitState}`];
                   if (!matrix) return null;
-                  const rowMaxes = matrix.map((row) => Math.max(...row));
+                  const rowMaxes = matrix.map((row: any) => Math.max(...row));
                   const maxURValue = Math.max(...rowMaxes);
                   // const loadCombName = sim.UR?.[`LoadCombnames_${selectedLimitState}`]?.[colIndex];
                   // const ucCheck = sim.UR?.[`URnames_${selectedLimitState}`]?.[maxRowIndex];
@@ -934,12 +935,12 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
                 const selectedLCIndex =
                   sim.UR?.[`LoadCombnames_${selectedLimitState}`]?.findIndex(
-                    (lc) => lc === selectedLC
+                    (lc: any) => lc === selectedLC
                   ) ?? 0;
 
                 const ratios =
                   sim.UR?.[`UR_loadcomb_mat_${selectedLimitState}`]?.map(
-                    (row) => row[selectedLCIndex]
+                    (row: any) => row[selectedLCIndex]
                   ) ?? [];
 
                 const maxURValue = Math.max(...ratios);
@@ -998,13 +999,13 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
           </svg>
         </div>
         <div className="h-full">
-          <SimulationsSidebar            onSelect={(analysis) => {
+          <SimulationsSidebar            onSelect={(analysis: Analysis) => {
               setAnalysis(analysis);
               // Reset reaction selection when switching analysis
               setSelectedReactionIndex(null);
-              if (["M", "F1", "F2"].includes(analysis)) {
+              if (analysis && ["M", "F1", "F2"].includes(analysis)) {
                 setState((s) => ({ ...s, showEntities: hideAllEntities }));
-              } else if (["Ve", "UR"].includes(analysis)) { // Add this condition
+              } else if (analysis && ["Ve", "UR"].includes(analysis)) { // Add this condition
                 setState((s) => ({ ...s, showEntities: showAllEntities }));
               }
             }}

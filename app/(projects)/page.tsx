@@ -1,6 +1,6 @@
 'use client';
 
-import { useProjectsWithMutations, type Project } from '@/lib/api/use-projects';
+import { useProjectsWithMutations } from '@/lib/api/use-projects';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreVertical, Plus } from 'lucide-react';
+import { Project } from '@/lib/types';
 
 type MenuItemProps = {
   project: Project;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 };
 
 const MenuItem: React.FC<MenuItemProps> = ({ project, onDelete }) => {
@@ -66,7 +67,7 @@ export default function ProjectsPage() {
     }
   };
 
-  const handleDeleteProject = async (id: number) => {
+  const handleDeleteProject = async (id: string) => {
     try {
       await deleteProject(id);
     } catch (error) {

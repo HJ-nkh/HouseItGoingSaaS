@@ -6,9 +6,9 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { EntitySet } from "../lib/reduce-history";
-import NumberInput from "../../number-input";
-import CardActionButtons from "../../card-action-buttons";
-import { Select } from "@/components/ui/select";
+import NumberInput from "@/components/number-input";
+import CardActionButtons from "@/components/card-action-buttons";
+import { Select } from "@/components/select";
 import ConstraintSelect from "./constraint-select/xy-only-select";
 import { getDisabledConstraintTypes } from "../lib/validate-side-mounted-node";
 import { resolveDistributedLoadPosition } from "../lib/reduce-history/resolve-position";

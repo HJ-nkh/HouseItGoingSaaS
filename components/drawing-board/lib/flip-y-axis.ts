@@ -1,6 +1,6 @@
 import clone from "clone";
 import { EntitySet } from "./reduce-history";
-import { Simulation } from "@/types";
+import { Simulation } from "@/lib/types";
 
 export const flipYAxisOnResolvedEntities = (
   entitySet: EntitySet

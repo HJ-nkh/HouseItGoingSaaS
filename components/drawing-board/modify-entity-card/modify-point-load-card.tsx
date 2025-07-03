@@ -6,9 +6,9 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { EntitySet } from "../lib/reduce-history";
-import NumberInput from "../../number-input";
-import { Select } from "@/components/ui/select";
-import CardActionButtons from "../../card-action-buttons";
+import NumberInput from "@/components/number-input";
+import { Select } from "@/components/select";
+import CardActionButtons from "@/components/card-action-buttons";
 import { useState, useEffect } from "react";
 import { Constraint, ConstraintType } from "../lib/types";
 import XYConstraintSelect from "./constraint-select/xy-only-select";

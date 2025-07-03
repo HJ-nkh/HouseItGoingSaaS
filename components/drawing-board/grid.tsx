@@ -1,3 +1,5 @@
+import { JSX } from "react";
+
 type GridProps = {
   gridSize: number;
   viewBox: [number, number, number, number];

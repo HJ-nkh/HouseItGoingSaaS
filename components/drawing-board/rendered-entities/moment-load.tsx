@@ -1,6 +1,6 @@
 import { ResolvedMomentLoad } from "../lib/types";
 import { InputEventPayload } from "../lib/events";
-import { loadTypeColors } from "@/constants/colors";
+import { loadTypeColors } from "@/lib/constants/colors";
 
 type MomentLoadProps = {
   load: ResolvedMomentLoad;

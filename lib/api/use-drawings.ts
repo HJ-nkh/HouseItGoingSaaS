@@ -2,19 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiCache, fetchWithCache, UseEntityConfig } from './cache';
-
-// Types for the drawing entity
-export interface Drawing {
-  id: number;
-  userId: number;
-  projectId: number;
-  title: string;
-  history: any; // JSON data representing drawing history
-  hasChanges: boolean;
-  isTemplate: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { Drawing } from '../types';
 
 export interface CreateDrawingData {
   projectId: number;
@@ -94,7 +82,7 @@ export function useDrawings(config: UseDrawingsConfig = {}, queryParams?: { proj
 }
 
 // Single drawing hook
-export function useDrawing(id: number | null, config: UseDrawingsConfig = {}) {
+export function useDrawing(id: string | null, config: UseDrawingsConfig = {}) {
   const [drawing, setDrawing] = useState<Drawing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +148,7 @@ export function useDrawingMutations() {
     }
   };
 
-  const updateDrawing = async (id: number, data: UpdateDrawingData): Promise<Drawing> => {
+  const updateDrawing = async (id: string, data: UpdateDrawingData): Promise<Drawing> => {
     try {
       setLoading(true);
       setError(null);
@@ -184,7 +172,7 @@ export function useDrawingMutations() {
     }
   };
 
-  const deleteDrawing = async (id: number): Promise<void> => {
+  const deleteDrawing = async (id: string): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
@@ -225,13 +213,13 @@ export function useDrawingsWithMutations(config: UseDrawingsConfig = {}, queryPa
     return result;
   };
 
-  const updateDrawing = async (id: number, data: UpdateDrawingData): Promise<Drawing> => {
+  const updateDrawing = async (id: string, data: UpdateDrawingData): Promise<Drawing> => {
     const result = await mutations.updateDrawing(id, data);
     refetch(); // Refresh the list
     return result;
   };
 
-  const deleteDrawing = async (id: number): Promise<void> => {
+  const deleteDrawing = async (id: string): Promise<void> => {
     await mutations.deleteDrawing(id);
     refetch(); // Refresh the list
   };

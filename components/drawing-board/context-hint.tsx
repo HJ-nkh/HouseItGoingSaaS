@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { RxCross1, RxCheck } from "react-icons/rx";
-import classNames from "classnames";
+import { X, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type ContextHintProps = {
   message: string | null;
@@ -37,7 +37,7 @@ const ContextHint: React.FC<ContextHintProps> = ({
   }
 
   return (
-    <div      className={classNames(
+    <div      className={cn(
         "fixed bottom-4 right-4 z-50 max-w-xs transition-all duration-300 ease-in-out",
         {
           "opacity-100 translate-y-0": isVisible,
@@ -58,7 +58,7 @@ const ContextHint: React.FC<ContextHintProps> = ({
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                   title="OK"
                 >
-                  <RxCheck className="w-4 h-4" />
+                  <Check className="w-4 h-4" />
                 </button>
               )}
               <button
@@ -66,7 +66,7 @@ const ContextHint: React.FC<ContextHintProps> = ({
                 className="text-gray-400 hover:text-gray-600 transition-colors"
                 title="Vis ikke igen"
               >
-                <RxCross1 className="w-3 h-3" />
+                <X className="w-3 h-3" />
               </button>
             </div>
           )}

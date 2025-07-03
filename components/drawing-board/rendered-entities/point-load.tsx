@@ -1,7 +1,7 @@
 import { InputEventPayload } from "../lib/events/types";
 import { ResolvedPointLoad } from "../lib/types";
 import classNames from "classnames";
-import { loadTypeColors } from "@/constants/colors";
+import { loadTypeColors } from "@/lib/constants/colors";
 
 type PointLoadProps = {
   load: ResolvedPointLoad;

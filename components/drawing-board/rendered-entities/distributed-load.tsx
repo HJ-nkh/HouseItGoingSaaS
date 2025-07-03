@@ -3,7 +3,7 @@ import { InputEventPayload } from "../lib/events";
 import { distanceBetween, getLineAngle } from "../lib/geometry";
 import { PointLoad, ResolvedDistributedLoad } from "../lib/types";
 import RenderedPointLoad from "./point-load";
-import { loadTypeColors } from "@/constants/colors";
+import { loadTypeColors } from "@/lib/constants/colors";
 import { LoadType } from "../lib/types";
 
 type DistributedLoadProps = {

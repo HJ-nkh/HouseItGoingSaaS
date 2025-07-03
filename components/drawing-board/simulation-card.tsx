@@ -1,6 +1,6 @@
-import { Analysis, LimitState } from "@/types";
+import { Analysis, LimitState } from "@/lib/types";
 //import LoadCombinationCard from "../load-combination-card";
-import URLoadCombinationsCard from "../ur-load-combinations-card";
+import URLoadCombinationsCard from "./ur-load-combinations-card";
 
 type SimulationCardProps = {
 	analysis: Analysis;
@@ -17,12 +17,12 @@ const SimulationCard: React.FC<SimulationCardProps> = ({ selectedLC, setSelected
             <URLoadCombinationsCard
               selectedLimitState={selectedLimitState}
               selectedLC={selectedLC}
-              onLCSelect={(lc) => setSelectedLC(lc)}
-              onLimitStateSelect={(ls) => {
+              onLCSelect={(lc: string) => setSelectedLC(lc)}
+              onLimitStateSelect={(ls: LimitState) => {
                 setSelectedLimitState(ls);
-                setSelectedLC(loadCombinationsUR[ls][0] ?? null);
+                setSelectedLC(loadCombinationsUR[ls]?.[0] ?? null);
               }}
-              loadCombinations={loadCombinationsUR[selectedLimitState]}
+              loadCombinations={loadCombinationsUR[selectedLimitState] || []}
               analysis={analysis}
             />
           )

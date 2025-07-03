@@ -1,4 +1,4 @@
-import { IconType } from "react-icons";
+import React from "react";
 import {
   MemberIcon,
   NodeIcon,
@@ -7,11 +7,11 @@ import {
   DistributedLoadIcon,
   MomentLoadIcon,
   SupportIcon,
-} from "@/constants/icons";
+} from "@/lib/constants/icons";
 import { Tool } from "./types";
 import { renderToString } from "react-dom/server";
 
-export const toolIcons: Record<Tool, IconType> = {
+export const toolIcons: Record<Tool, React.ComponentType> = {
   Select: SelectIcon,
   Node: NodeIcon,
   Member: MemberIcon,

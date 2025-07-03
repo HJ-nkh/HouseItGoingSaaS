@@ -1,4 +1,4 @@
-import { Drawing } from "@/types";
+import { Drawing } from "@/lib/types";
 import reduceHistory from "./reduce-history";
 import { LoadType, DrawingState, Tool } from "./types";
 

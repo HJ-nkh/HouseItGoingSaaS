@@ -1,4 +1,4 @@
-import { LimitState } from "@/types";
+import { LimitState } from "@/lib/types";
 
 export const getShowLoadByIds = (
   selectedLC: string,

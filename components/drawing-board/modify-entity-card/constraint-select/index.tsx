@@ -1,6 +1,6 @@
 import { ConstraintType, Constraint } from "../../lib/types";
 import { EntitySet } from "../../lib/reduce-history";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/select";
 import ValueInput from "./value-input";
 
 const constraintTypeOptions = [

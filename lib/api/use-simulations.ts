@@ -2,28 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiCache, fetchWithCache, UseEntityConfig } from './cache';
-
-// Types for the simulation entity
-export interface Simulation {
-  id: number;
-  userId: number;
-  projectId: number;
-  drawingId: number;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  startTime: string | null;
-  endTime: string | null;
-  error: string | null;
-  entities: any; // EntitySet in TypeScript
-  inputHash: string;
-  result: any | null;
-  encodedS: any | null; // Binary data
-  createdAt: string;
-  updatedAt: string;
-}
+import { Simulation } from '../types';
 
 export interface CreateSimulationData {
-  projectId: number;
-  drawingId: number;
+  projectId: string;
+  drawingId: string;
   entities: any;
 }
 
@@ -38,7 +21,7 @@ export interface UpdateSimulationData {
 export interface UseSimulationsConfig extends UseEntityConfig {}
 
 // Main simulations hook with enhanced caching
-export function useSimulations(config: UseSimulationsConfig = {}, queryParams?: { projectId?: number; drawingId?: number; limit?: number }) {
+export function useSimulations(config: UseSimulationsConfig = {}, queryParams?: { projectId?: string; drawingId?: string; limit?: number }) {
   const [simulations, setSimulations] = useState<Simulation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -221,7 +204,7 @@ export function useSimulationMutations() {
 }
 
 // Combined hook for convenience
-export function useSimulationsWithMutations(config: UseSimulationsConfig = {}, queryParams?: { projectId?: number; drawingId?: number; limit?: number }) {
+export function useSimulationsWithMutations(config: UseSimulationsConfig = {}, queryParams?: { projectId?: string; drawingId?: string; limit?: number }) {
   const { simulations, loading, error, refetch, invalidateCache } = useSimulations(config, queryParams);
   const mutations = useSimulationMutations();
 

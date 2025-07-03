@@ -2,22 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiCache, fetchWithCache, UseEntityConfig } from './cache';
-
-// Types for the report entity
-export interface Report {
-  id: string; // String ID as defined in schema
-  userId: number;
-  projectId: number;
-  drawingId: number;
-  simulationId: number;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { Report } from '../types';
 
 export interface CreateReportData {
-  simulationId: number;
-  title: string;
+  simulationId: string;
 }
 
 export interface UpdateReportData {
@@ -27,7 +15,7 @@ export interface UpdateReportData {
 export interface UseReportsConfig extends UseEntityConfig {}
 
 // Main reports hook with enhanced caching
-export function useReports(config: UseReportsConfig = {}, queryParams?: { projectId?: number; drawingId?: number; simulationId?: number }) {
+export function useReports(config: UseReportsConfig = {}, queryParams?: { projectId?: string; drawingId?: string; simulationId?: string }) {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -231,7 +219,7 @@ export function useReportMutations() {
 }
 
 // Combined hook for convenience
-export function useReportsWithMutations(config: UseReportsConfig = {}, queryParams?: { projectId?: number; drawingId?: number; simulationId?: number }) {
+export function useReportsWithMutations(config: UseReportsConfig = {}, queryParams?: { projectId?: string; drawingId?: string; simulationId?: string }) {
   const { reports, loading, error, refetch, invalidateCache } = useReports(config, queryParams);
   const mutations = useReportMutations();
 

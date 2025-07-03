@@ -2,17 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiCache, fetchWithCache, UseEntityConfig } from './cache';
-
-// Types for the project entity
-export interface Project {
-  id: number;
-  title: string;
-  address: string | null;
-  teamId: number;
-  createdBy: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import { Project } from '../types';
 
 export interface CreateProjectData {
   title: string;
@@ -149,7 +139,7 @@ export function useProjectMutations() {
     }
   };
 
-  const updateProject = async (id: number, data: UpdateProjectData): Promise<Project> => {
+  const updateProject = async (id: string, data: UpdateProjectData): Promise<Project> => {
     try {
       setLoading(true);
       setError(null);
@@ -173,7 +163,7 @@ export function useProjectMutations() {
     }
   };
 
-  const deleteProject = async (id: number): Promise<void> => {
+  const deleteProject = async (id: string): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
@@ -214,13 +204,13 @@ export function useProjectsWithMutations(config: UseProjectsConfig = {}) {
     return result;
   };
 
-  const updateProject = async (id: number, data: UpdateProjectData): Promise<Project> => {
+  const updateProject = async (id: string, data: UpdateProjectData): Promise<Project> => {
     const result = await mutations.updateProject(id, data);
     refetch(); // Refresh the list
     return result;
   };
 
-  const deleteProject = async (id: number): Promise<void> => {
+  const deleteProject = async (id: string): Promise<void> => {
     await mutations.deleteProject(id);
     refetch(); // Refresh the list
   };
