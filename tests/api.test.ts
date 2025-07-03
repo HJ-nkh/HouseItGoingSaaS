@@ -574,6 +574,158 @@ describe('API Endpoints Integration Tests', () => {
       expect(reportResponse.data.simulationId).toBe(testData.simulationId)
     })
   })
+
+  describe('Project-specific Drawings API', () => {
+    test('GET /api/projects/[id]/drawings should return drawings for a specific project', async () => {
+      if (!authCookie || !testData.projectId) return
+
+      const { status, data } = await apiRequest(`/projects/${testData.projectId}/drawings`)
+      expect(status).toBe(200)
+      expect(Array.isArray(data)).toBe(true)
+      
+      // Should include our test drawing
+      if (data.length > 0) {
+        expect(data.every((drawing: any) => drawing.projectId === testData.projectId)).toBe(true)
+        const testDrawing = data.find((drawing: any) => drawing.id === testData.drawingId)
+        expect(testDrawing).toBeDefined()
+      }
+    })
+
+    test('GET /api/projects/[id]/drawings should return 400 for invalid project ID', async () => {
+      if (!authCookie) return
+
+      const { status, data } = await apiRequest('/projects/invalid/drawings')
+      expect(status).toBe(400)
+      expect(data.error).toBe('Invalid project ID')
+    })
+
+    test('GET /api/projects/[id]/drawings should return 404 for non-existent project', async () => {
+      if (!authCookie) return
+
+      const { status, data } = await apiRequest('/projects/99999/drawings')
+      expect(status).toBe(404)
+      expect(data.error).toBe('Project not found or access denied')
+    })
+
+    test('GET /api/projects/[id]/drawings should require authentication', async () => {
+      const response = await fetch(`${baseUrl}/projects/1/drawings`)
+      expect(response.status).toBe(401)
+    })
+  })
+
+  describe('Stripe Checkout API', () => {
+    test('GET /api/stripe/checkout should redirect to pricing when no session_id provided', async () => {
+      const response = await fetch(`${baseUrl}/stripe/checkout`, {
+        redirect: 'manual' // Don't follow redirects automatically
+      })
+      
+      // Should be a redirect response
+      expect([301, 302, 307, 308]).toContain(response.status)
+      
+      const location = response.headers.get('location')
+      expect(location).toContain('/pricing')
+    })
+
+    test('GET /api/stripe/checkout should handle invalid session_id', async () => {
+      const response = await fetch(`${baseUrl}/stripe/checkout?session_id=invalid_session`, {
+        redirect: 'manual'
+      })
+      
+      // Should redirect to error page for invalid session
+      expect([301, 302, 307, 308]).toContain(response.status)
+      
+      const location = response.headers.get('location')
+      expect(location).toContain('/error')
+    })
+
+    // Note: Testing successful checkout requires a valid Stripe session ID
+    // which would need to be created through Stripe's API in a real scenario
+    test('GET /api/stripe/checkout should handle missing session gracefully', async () => {
+      const response = await fetch(`${baseUrl}/stripe/checkout?session_id=cs_test_nonexistent`, {
+        redirect: 'manual'
+      })
+      
+      // Should redirect to error page when session doesn't exist
+      expect([301, 302, 307, 308]).toContain(response.status)
+    })
+  })
+
+  describe('Stripe Webhook API', () => {
+    test('POST /api/stripe/webhook should require valid signature', async () => {
+      const { status, data } = await apiRequest('/stripe/webhook', {
+        method: 'POST',
+        headers: {
+          'stripe-signature': 'invalid_signature'
+        },
+        body: JSON.stringify({ test: 'data' })
+      })
+      
+      expect(status).toBe(400)
+      expect(data.error).toBe('Webhook signature verification failed.')
+    })
+
+    test('POST /api/stripe/webhook should require stripe-signature header', async () => {
+      const { status, data } = await apiRequest('/stripe/webhook', {
+        method: 'POST',
+        body: JSON.stringify({ test: 'data' })
+      })
+      
+      expect(status).toBe(400)
+      expect(data.error).toBe('Webhook signature verification failed.')
+    })
+
+    // Note: Testing successful webhook processing requires generating a valid
+    // Stripe webhook signature with the actual webhook secret, which is
+    // complex to set up in unit tests. In practice, this would be tested
+    // with Stripe's webhook testing tools or in integration tests.
+  })
+
+  describe('Query Parameter Testing', () => {
+    test('GET /api/simulations should filter by projectId', async () => {
+      if (!authCookie || !testData.projectId) return
+      
+      const { status, data } = await apiRequest(`/simulations?projectId=${testData.projectId}`)
+      expect(status).toBe(200)
+      expect(Array.isArray(data)).toBe(true)
+      
+      if (data.length > 0) {
+        expect(data.every((sim: any) => sim.projectId === testData.projectId)).toBe(true)
+      }
+    })
+
+    test('GET /api/simulations should respect limit parameter', async () => {
+      if (!authCookie) return
+      
+      const { status, data } = await apiRequest('/simulations?limit=1')
+      expect(status).toBe(200)
+      expect(Array.isArray(data)).toBe(true)
+      expect(data.length).toBeLessThanOrEqual(1)
+    })
+
+    test('GET /api/drawings should filter by projectId', async () => {
+      if (!authCookie || !testData.projectId) return
+      
+      const { status, data } = await apiRequest(`/drawings?projectId=${testData.projectId}`)
+      expect(status).toBe(200)
+      expect(Array.isArray(data)).toBe(true)
+      
+      if (data.length > 0) {
+        expect(data.every((drawing: any) => drawing.projectId === testData.projectId)).toBe(true)
+      }
+    })
+
+    test('GET /api/reports should filter by projectId', async () => {
+      if (!authCookie || !testData.projectId) return
+      
+      const { status, data } = await apiRequest(`/reports?projectId=${testData.projectId}`)
+      expect(status).toBe(200)
+      expect(Array.isArray(data)).toBe(true)
+      
+      if (data.length > 0) {
+        expect(data.every((report: any) => report.projectId === testData.projectId)).toBe(true)
+      }
+    })
+  })
 })
 
 /**
