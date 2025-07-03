@@ -16,31 +16,6 @@ import { describe, test, expect, beforeAll, afterAll } from 'vitest'
 describe('API Endpoints Integration Tests', () => {
   const baseUrl = 'http://localhost:3000/api'
 
-// Helper function to safely check data properties
-function expectDataToHaveProperty(data: any, property: string, context = 'response') {
-  if (data && typeof data === 'object') {
-    expect(data).toHaveProperty(property)
-    return true
-  } else {
-    console.log(`⚠️  ${context} data is null/undefined - expected property '${property}' not checkable`)
-    expect(data).toBeDefined()
-    expect(data).not.toBeNull()
-    return false
-  }
-}
-
-// Helper function to safely access data properties
-function expectDataProperty(data: any, property: string, value: any, context = 'response') {
-  if (data && typeof data === 'object') {
-    expect(data[property]).toBe(value)
-    return true
-  } else {
-    console.log(`⚠️  ${context} data is null/undefined - expected ${property} = ${value} not checkable`)
-    expect(data).toBeDefined()
-    expect(data).not.toBeNull()
-    return false
-  }
-}
   let authCookie = ''
   let testData: {
     userId?: string
