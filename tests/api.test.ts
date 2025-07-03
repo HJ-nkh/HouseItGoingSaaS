@@ -12,7 +12,7 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from 'vitest'
-import { createTestUser, cleanupTestUser } from './test-setup'
+import { createTestUser } from './test-setup'
 import { createTestSessionCookie } from './auth-helper'
 
 describe('API Endpoints Integration Tests', () => {
