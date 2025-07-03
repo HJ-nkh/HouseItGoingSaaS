@@ -87,7 +87,7 @@ export async function DELETE(
       ipAddress: undefined,
     });
 
-    return NextResponse.json({ message: 'Report deleted successfully' }, { status: 204 });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('Error deleting report:', error);
     return NextResponse.json(

@@ -8,6 +8,7 @@ import { z } from 'zod';
 const updateSimulationSchema = z.object({
   status: z.nativeEnum(SimulationStatus).optional(),
   result: z.any().optional(),
+  entities: z.any().optional(),
 });
 
 export async function GET(
@@ -105,7 +106,7 @@ export async function DELETE(
       ipAddress: undefined,
     });
 
-    return NextResponse.json({ message: 'Simulation deleted successfully' }, { status: 204 });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('Error deleting simulation:', error);
     return NextResponse.json(
@@ -174,6 +175,9 @@ export async function PUT(
     }
     if (validatedData.result !== undefined) {
       updateData.result = validatedData.result;
+    }
+    if (validatedData.entities !== undefined) {
+      updateData.entities = validatedData.entities;
     }
 
     const [updatedSimulation] = await db

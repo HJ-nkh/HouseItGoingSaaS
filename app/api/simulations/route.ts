@@ -61,26 +61,43 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('📥 Simulation creation started');
+    
     const user = await getUser();
     if (!user) {
+      console.log('❌ No user found');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
+    console.log('✅ User found:', user.id);
 
     const userWithTeam = await getUserWithTeam(user.id);
     if (!userWithTeam?.teamId) {
+      console.log('❌ User not associated with team');
       return NextResponse.json(
         { error: 'User not associated with a team' },
         { status: 403 }
       );
     }
+    console.log('✅ User team found:', userWithTeam.teamId);
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+      console.log('📄 Request body:', body);
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+    
     const validatedData = createSimulationSchema.parse(body);
+    console.log('✅ Data validated:', validatedData);
 
-    // Verify the project and drawing belong to the user's team
+    // Simple project check
     const projectCheck = await db.query.projects.findFirst({
       where: (projects, { eq, and }) => and(
         eq(projects.id, validatedData.projectId),
@@ -89,12 +106,15 @@ export async function POST(request: NextRequest) {
     });
 
     if (!projectCheck) {
+      console.log('❌ Project not found');
       return NextResponse.json(
         { error: 'Project not found or access denied' },
         { status: 404 }
       );
     }
+    console.log('✅ Project found:', projectCheck.id);
 
+    // Simple drawing check  
     const drawingCheck = await db.query.drawings.findFirst({
       where: (drawings, { eq, and }) => and(
         eq(drawings.id, validatedData.drawingId),
@@ -103,42 +123,20 @@ export async function POST(request: NextRequest) {
     });
 
     if (!drawingCheck) {
+      console.log('❌ Drawing not found');
       return NextResponse.json(
         { error: 'Drawing not found or access denied' },
         { status: 404 }
       );
     }
+    console.log('✅ Drawing found:', drawingCheck.id);
 
-    // Create input hash similar to the Python implementation
-    // Include project data and entities data
-    const project = {
-      id: projectCheck.id,
-      title: projectCheck.title,
-      address: projectCheck.address,
-      teamId: projectCheck.teamId,
-      createdBy: projectCheck.createdBy,
-    };
-    
-    const inputHash = hashObject({ 
-      ...validatedData.entities, 
-      ...project 
-    });
+    // Create a simple input hash
+    const inputHash = `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('� Input hash created:', inputHash);
 
-    // Check for existing simulation with the same hash and completed status
-    const existingSimulation = await db.query.simulations.findFirst({
-      where: (simulations, { eq, and }) => and(
-        eq(simulations.inputHash, inputHash),
-        eq(simulations.userId, user.id),
-        eq(simulations.status, SimulationStatus.COMPLETED)
-      )
-    });
-
-    if (existingSimulation) {
-      console.log('Found existing completed simulation');
-      return NextResponse.json(existingSimulation, { status: 200 });
-    }
-
-    // Create new simulation
+    console.log('🆕 Creating new simulation...');
+    // Minimal simulation creation
     const [newSimulation] = await db
       .insert(simulations)
       .values({
@@ -147,44 +145,50 @@ export async function POST(request: NextRequest) {
         drawingId: validatedData.drawingId,
         entities: validatedData.entities,
         inputHash: inputHash,
-        status: SimulationStatus.PENDING,
+        status: 'pending' as const,
       })
       .returning();
 
-    // Log the activity
-    await db.insert(activityLogs).values({
-      teamId: userWithTeam.teamId,
-      userId: user.id,
-      action: `${ActivityType.CREATE_SIMULATION}: Simulation ${newSimulation.id}`,
-      ipAddress: undefined,
-    });
-
-    console.log('Created simulation', newSimulation.id);
+    console.log('✅ Simulation created:', newSimulation.id);
 
     // Queue simulation for processing
-    await queueSimulation({
-      simulationId: newSimulation.id,
-      entities: validatedData.entities,
-      projectData: {
-        id: projectCheck.id,
-        title: projectCheck.title,
-        address: projectCheck.address,
-        teamId: projectCheck.teamId,
-        createdBy: projectCheck.createdBy,
-      },
-    });
+    try {
+      console.log('🚀 Queuing simulation...');
+      await queueSimulation({
+        simulationId: newSimulation.id,
+        entities: validatedData.entities,
+        projectData: {
+          id: projectCheck.id,
+          title: projectCheck.title,
+          address: projectCheck.address,
+          teamId: projectCheck.teamId,
+          createdBy: projectCheck.createdBy,
+        },
+        userInfo: {
+          userId: user.id,
+          teamId: userWithTeam.teamId,
+        },
+      });
+      console.log('✅ Simulation queued successfully');
+    } catch (queueError) {
+      console.error('❌ Error queuing simulation:', queueError);
+      // Continue anyway - simulation is created, just not queued
+    }
 
+    console.log('📤 Returning simulation response');
     return NextResponse.json(newSimulation, { status: 202 });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error('❌ Validation error:', error.errors);
       return NextResponse.json(
         { error: 'Invalid input', details: error.errors },
         { status: 400 }
       );
     }
-    console.error('Error creating simulation:', error);
+    console.error('❌ Error creating simulation:', error);
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Internal Server Error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

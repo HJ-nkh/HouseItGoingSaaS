@@ -54,8 +54,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { simulationId } = body;
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+    
+    const { simulationId, title } = body;
 
     if (!simulationId || typeof simulationId !== 'number') {
       return NextResponse.json(
@@ -64,18 +73,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Implement report generation logic
-    // This would typically:
-    // 1. Verify the simulation exists and belongs to the user
-    // 2. Call an external service or queue a job to generate the report
-    // 3. Create a report record in the database
-    // 4. Return the report information
+    // Import db and schema components
+    const { db } = await import('@/lib/db/drizzle');
+    const { reports, activityLogs, ActivityType } = await import('@/lib/db/schema');
 
-    // For now, return a placeholder response
-    return NextResponse.json(
-      { error: 'Report generation not implemented yet' },
-      { status: 501 }
-    );
+    // Verify the simulation exists and belongs to the user
+    const simulation = await db.query.simulations.findFirst({
+      where: (simulations, { eq, and }) => and(
+        eq(simulations.id, simulationId),
+        eq(simulations.userId, user.id)
+      )
+    });
+
+    if (!simulation) {
+      return NextResponse.json(
+        { error: 'Simulation not found or access denied' },
+        { status: 404 }
+      );
+    }
+
+    // Generate a simple report ID
+    const reportId = `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create report record
+    const [newReport] = await db
+      .insert(reports)
+      .values({
+        id: reportId,
+        userId: user.id,
+        projectId: simulation.projectId,
+        drawingId: simulation.drawingId,
+        simulationId: simulationId,
+        title: title || `Report for Simulation ${simulationId}`,
+      })
+      .returning();
+
+    // Log the activity
+    await db.insert(activityLogs).values({
+      teamId: userWithTeam.teamId,
+      userId: user.id,
+      action: `${ActivityType.CREATE_REPORT}: ${newReport.title}`,
+      ipAddress: undefined,
+    });
+
+    return NextResponse.json(newReport, { status: 201 });
 
   } catch (error) {
     console.error('Error creating report:', error);

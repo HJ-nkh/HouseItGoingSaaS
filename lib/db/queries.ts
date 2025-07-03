@@ -212,6 +212,7 @@ export async function getDrawingsForProject(projectId: number) {
   return await db
     .select({
       id: drawings.id,
+      projectId: drawings.projectId,
       title: drawings.title,
       hasChanges: drawings.hasChanges,
       isTemplate: drawings.isTemplate,
@@ -290,6 +291,7 @@ export async function getDrawingsForUser() {
   return await db
     .select({
       id: drawings.id,
+      projectId: drawings.projectId,
       title: drawings.title,
       hasChanges: drawings.hasChanges,
       isTemplate: drawings.isTemplate,
@@ -326,6 +328,8 @@ export async function getSimulationsForProject(projectId: number) {
   return await db
     .select({
       id: simulations.id,
+      projectId: simulations.projectId,
+      drawingId: simulations.drawingId,
       status: simulations.status,
       startTime: simulations.startTime,
       endTime: simulations.endTime,
@@ -454,6 +458,8 @@ export async function getSimulationsForUser() {
   return await db
     .select({
       id: simulations.id,
+      projectId: simulations.projectId,
+      drawingId: simulations.drawingId,
       status: simulations.status,
       startTime: simulations.startTime,
       endTime: simulations.endTime,
@@ -496,6 +502,9 @@ export async function getReportsForUser() {
   return await db
     .select({
       id: reports.id,
+      projectId: reports.projectId,
+      drawingId: reports.drawingId,
+      simulationId: reports.simulationId,
       title: reports.title,
       createdAt: reports.createdAt,
       updatedAt: reports.updatedAt,
@@ -540,6 +549,7 @@ export async function getReportsForProject(projectId: number) {
   return await db
     .select({
       id: reports.id,
+      projectId: reports.projectId,
       title: reports.title,
       createdAt: reports.createdAt,
       updatedAt: reports.updatedAt,

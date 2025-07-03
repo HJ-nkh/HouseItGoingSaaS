@@ -1,7 +1,6 @@
 import { db } from '@/lib/db/drizzle';
 import { simulations, activityLogs, ActivityType, SimulationStatus } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { getUserWithTeam } from '@/lib/db/queries';
 
 export interface SimulationInput {
   simulationId: number;
@@ -12,6 +11,10 @@ export interface SimulationInput {
     address: string | null;
     teamId: number;
     createdBy: number;
+  };
+  userInfo: {
+    userId: number;
+    teamId: number;
   };
 }
 
@@ -35,13 +38,13 @@ export interface SimulationResult {
  * - Run simulation logic in a separate process
  */
 export async function processSimulation(input: SimulationInput): Promise<void> {
-  const { simulationId, entities, projectData } = input;
+  const { simulationId, entities, projectData, userInfo } = input;
   
   try {
     // Update simulation status to RUNNING
     await updateSimulationStatus(simulationId, SimulationStatus.RUNNING, {
       startTime: new Date(),
-    });
+    }, userInfo);
 
     console.log(`Starting simulation ${simulationId} for project ${projectData.title}`);
 
@@ -55,7 +58,7 @@ export async function processSimulation(input: SimulationInput): Promise<void> {
     // 4. Store results in the database
     
     // For now, simulate processing with a delay
-    await new Promise(resolve => setTimeout(resolve, 5000)); // 5 second delay
+    await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay for testing
     
     const endTime = Date.now();
     const processingTime = endTime - startTime;
@@ -80,7 +83,7 @@ export async function processSimulation(input: SimulationInput): Promise<void> {
     await updateSimulationStatus(simulationId, SimulationStatus.COMPLETED, {
       endTime: new Date(),
       result: mockResult,
-    });
+    }, userInfo);
 
     console.log(`Completed simulation ${simulationId} in ${processingTime}ms`);
 
@@ -91,7 +94,7 @@ export async function processSimulation(input: SimulationInput): Promise<void> {
     await updateSimulationStatus(simulationId, SimulationStatus.FAILED, {
       endTime: new Date(),
       error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    }, userInfo);
   }
 }
 
@@ -106,7 +109,8 @@ async function updateSimulationStatus(
     endTime: Date;
     result: any;
     error: string;
-  }> = {}
+  }> = {},
+  userInfo?: { userId: number; teamId: number }
 ): Promise<void> {
   // Update the simulation in the database
   const updateData: any = {
@@ -125,9 +129,8 @@ async function updateSimulationStatus(
     throw new Error(`Simulation ${simulationId} not found`);
   }
 
-  // Get user and team info for activity logging
-  const userWithTeam = await getUserWithTeam(updatedSimulation.userId);
-  if (userWithTeam?.teamId) {
+  // Log activity if user info is provided
+  if (userInfo?.teamId) {
     // Determine activity type based on status
     let activityType = ActivityType.UPDATE_SIMULATION;
     if (status === SimulationStatus.RUNNING) {
@@ -138,13 +141,18 @@ async function updateSimulationStatus(
       activityType = ActivityType.FAIL_SIMULATION;
     }
 
-    // Log the activity
-    await db.insert(activityLogs).values({
-      teamId: userWithTeam.teamId,
-      userId: updatedSimulation.userId,
-      action: `${activityType}: Simulation ${simulationId}`,
-      ipAddress: undefined,
-    });
+    try {
+      // Log the activity
+      await db.insert(activityLogs).values({
+        teamId: userInfo.teamId,
+        userId: userInfo.userId,
+        action: `${activityType}: Simulation ${simulationId}`,
+        ipAddress: undefined,
+      });
+    } catch (logError) {
+      console.error('Error logging simulation activity:', logError);
+      // Don't throw - logging is not critical
+    }
   }
 }
 

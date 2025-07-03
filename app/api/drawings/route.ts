@@ -12,8 +12,26 @@ const createDrawingSchema = z.object({
   isTemplate: z.boolean().optional().default(false),
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const projectIdParam = searchParams.get('projectId');
+    
+    if (projectIdParam) {
+      const projectId = parseInt(projectIdParam);
+      if (isNaN(projectId)) {
+        return NextResponse.json(
+          { error: 'Invalid project ID parameter' },
+          { status: 400 }
+        );
+      }
+      
+      // Use the existing getDrawingsForProject function
+      const { getDrawingsForProject } = await import('@/lib/db/queries');
+      const drawingsList = await getDrawingsForProject(projectId);
+      return NextResponse.json(drawingsList);
+    }
+    
     const drawingsList = await getDrawingsForUser();
     return NextResponse.json(drawingsList);
   } catch (error) {
@@ -49,7 +67,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+    
     const validatedData = createDrawingSchema.parse(body);
 
     // Verify the project belongs to the user's team
