@@ -26,10 +26,11 @@ async function logActivity(
 // GET /api/projects/[id] - Get a specific project
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const projectId = parseInt(params.id);
+    const { id } = await params;
+    const projectId = parseInt(id);
     if (isNaN(projectId)) {
       return NextResponse.json(
         { error: 'Invalid project ID' },
@@ -58,7 +59,7 @@ export async function GET(
 // PUT /api/projects/[id] - Update a specific project
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getUser();
@@ -77,7 +78,8 @@ export async function PUT(
       );
     }
 
-    const projectId = parseInt(params.id);
+    const { id } = await params;
+    const projectId = parseInt(id);
     if (isNaN(projectId)) {
       return NextResponse.json(
         { error: 'Invalid project ID' },
@@ -146,7 +148,7 @@ export async function PUT(
 // DELETE /api/projects/[id] - Delete a specific project
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getUser();
@@ -165,7 +167,8 @@ export async function DELETE(
       );
     }
 
-    const projectId = parseInt(params.id);
+    const { id } = await params;
+    const projectId = parseInt(id);
     if (isNaN(projectId)) {
       return NextResponse.json(
         { error: 'Invalid project ID' },

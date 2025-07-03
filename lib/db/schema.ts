@@ -8,8 +8,22 @@ import {
   jsonb,
   boolean,
   pgEnum,
+  customType,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+
+// Custom bytea type for storing binary data (pickle-serialized Python objects)
+const bytea = customType<{ data: Buffer; notNull: false; default: false }>({
+  dataType() {
+    return 'bytea';
+  },
+  toDriver(value: Buffer): Buffer {
+    return value;
+  },
+  fromDriver(value: unknown): Buffer {
+    return value as Buffer;
+  },
+});
 
 export const simulationStatusEnum = pgEnum('simulation_status', [
   'pending',
@@ -126,6 +140,26 @@ export const simulations = pgTable('simulations', {
   entities: jsonb('entities'),
   inputHash: text('input_hash').notNull(),
   result: jsonb('result'),
+  encodedS: bytea('encoded_s'), // Pickle-serialized Python S class object stored as binary data
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const reports = pgTable('reports', {
+  id: varchar('id', { length: 255 }).primaryKey(), // String ID as in Python version
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  projectId: integer('project_id')
+    .notNull()
+    .references(() => projects.id),
+  drawingId: integer('drawing_id')
+    .notNull()
+    .references(() => drawings.id),
+  simulationId: integer('simulation_id')
+    .notNull()
+    .references(() => simulations.id),
+  title: text('title').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -189,6 +223,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   }),
   drawings: many(drawings),
   simulations: many(simulations),
+  reports: many(reports),
 }));
 
 export const drawingsRelations = relations(drawings, ({ one, many }) => ({
@@ -201,9 +236,10 @@ export const drawingsRelations = relations(drawings, ({ one, many }) => ({
     references: [projects.id],
   }),
   simulations: many(simulations),
+  reports: many(reports),
 }));
 
-export const simulationsRelations = relations(simulations, ({ one }) => ({
+export const simulationsRelations = relations(simulations, ({ one, many }) => ({
   user: one(users, {
     fields: [simulations.userId],
     references: [users.id],
@@ -215,6 +251,26 @@ export const simulationsRelations = relations(simulations, ({ one }) => ({
   drawing: one(drawings, {
     fields: [simulations.drawingId],
     references: [drawings.id],
+  }),
+  reports: many(reports),
+}));
+
+export const reportsRelations = relations(reports, ({ one }) => ({
+  user: one(users, {
+    fields: [reports.userId],
+    references: [users.id],
+  }),
+  project: one(projects, {
+    fields: [reports.projectId],
+    references: [projects.id],
+  }),
+  drawing: one(drawings, {
+    fields: [reports.drawingId],
+    references: [drawings.id],
+  }),
+  simulation: one(simulations, {
+    fields: [reports.simulationId],
+    references: [simulations.id],
   }),
 }));
 
@@ -234,6 +290,8 @@ export type Drawing = typeof drawings.$inferSelect;
 export type NewDrawing = typeof drawings.$inferInsert;
 export type Simulation = typeof simulations.$inferSelect;
 export type NewSimulation = typeof simulations.$inferInsert;
+export type Report = typeof reports.$inferSelect;
+export type NewReport = typeof reports.$inferInsert;
 export type TeamDataWithMembers = Team & {
   teamMembers: (TeamMember & {
     user: Pick<User, 'id' | 'name' | 'email'>;
@@ -270,4 +328,7 @@ export enum ActivityType {
   START_SIMULATION = 'START_SIMULATION',
   COMPLETE_SIMULATION = 'COMPLETE_SIMULATION',
   FAIL_SIMULATION = 'FAIL_SIMULATION',
+  CREATE_REPORT = 'CREATE_REPORT',
+  DELETE_REPORT = 'DELETE_REPORT',
+  DOWNLOAD_REPORT = 'DOWNLOAD_REPORT',
 }
