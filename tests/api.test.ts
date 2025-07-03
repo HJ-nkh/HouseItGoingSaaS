@@ -865,6 +865,7 @@ describe('API Endpoints Integration Tests', () => {
  * Usage Instructions:
  * 
  * 1. Start your development server:
+			docker-compose up
  *    pnpm dev
  * 
  * 2. Ensure database is set up:
