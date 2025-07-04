@@ -4,11 +4,12 @@ import { useDrawing, useDrawingMutations } from "@/lib/api/use-drawings";
 import DrawingBoard from "@/components/drawing-board";
 import { useEffect } from "react";
 import { SimulationStatus } from "@/lib/types";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useSimulations } from "@/lib/api";
 
 const DrawingPage: React.FC = () => {
-  const { drawingId }: { drawingId: string, projectId: string } = useParams();
+  const { drawingId, projectId }: { drawingId: string, projectId: string } = useParams();
+  const router = useRouter();
 
   const { drawing, loading, refetch } = useDrawing(drawingId);
   const { simulations } = useSimulations({}, { drawingId, limit: 1});
@@ -38,7 +39,9 @@ const DrawingPage: React.FC = () => {
       drawing={drawing}
       simulation={simulation}
       onSave={(drawing) => updateDrawing(drawingId, drawing)}
-      onDelete={() => deleteDrawing(drawingId)}
+      onDelete={async () => {
+        await deleteDrawing(drawingId);
+        router.push(`/projects/${projectId}`) }}
     />
   );
 };
