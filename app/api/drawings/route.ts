@@ -5,7 +5,7 @@ import { drawings, activityLogs, ActivityType } from '@/lib/db/schema';
 import { z } from 'zod';
 
 const createDrawingSchema = z.object({
-  projectId: z.number(),
+  projectId: z.coerce.number(),
   title: z.string().min(1).max(255),
   history: z.any(),
   hasChanges: z.boolean().optional().default(false),
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     const validatedData = createDrawingSchema.parse(body);
 
     // Verify the project belongs to the user's team

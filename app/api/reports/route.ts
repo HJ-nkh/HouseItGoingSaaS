@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUser, getUserWithTeam, getReportsForUser, getReportsForProject, getReportsForDrawing, getReportsForSimulation } from '@/lib/db/queries';
+import { z } from 'zod';
+
+const createReportSchema = z.object({
+  simulationId: z.coerce.number(),
+  title: z.string().optional(),
+});
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,14 +70,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const { simulationId, title } = body;
-
-    if (!simulationId || typeof simulationId !== 'number') {
-      return NextResponse.json(
-        { error: 'Simulation ID is required' },
-        { status: 400 }
-      );
-    }
+    const validatedData = createReportSchema.parse(body);
 
     // Import db and schema components
     const { db } = await import('@/lib/db/drizzle');
@@ -80,7 +79,7 @@ export async function POST(request: NextRequest) {
     // Verify the simulation exists and belongs to the user
     const simulation = await db.query.simulations.findFirst({
       where: (simulations, { eq, and }) => and(
-        eq(simulations.id, simulationId),
+        eq(simulations.id, validatedData.simulationId),
         eq(simulations.userId, user.id)
       )
     });
@@ -103,8 +102,8 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         projectId: simulation.projectId,
         drawingId: simulation.drawingId,
-        simulationId: simulationId,
-        title: title || `Report for Simulation ${simulationId}`,
+        simulationId: validatedData.simulationId,
+        title: validatedData.title || `Report for Simulation ${validatedData.simulationId}`,
       })
       .returning();
 
@@ -119,6 +118,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newReport, { status: 201 });
 
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: error.errors },
+        { status: 400 }
+      );
+    }
     console.error('Error creating report:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },

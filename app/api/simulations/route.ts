@@ -7,8 +7,8 @@ import crypto from 'crypto';
 import { queueSimulation } from '@/lib/services/simulation';
 
 const createSimulationSchema = z.object({
-  projectId: z.number(),
-  drawingId: z.number(),
+  projectId: z.coerce.number(),
+  drawingId: z.coerce.number(),
   entities: z.any(), // This would be the EntitySet in TypeScript
 });
 

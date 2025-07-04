@@ -5,7 +5,7 @@ import { apiCache, fetchWithCache, UseEntityConfig } from './cache';
 import { Drawing } from '../types';
 
 export interface CreateDrawingData {
-  projectId: number;
+  projectId: string;
   title: string;
   history: any;
   hasChanges?: boolean;

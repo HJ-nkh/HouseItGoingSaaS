@@ -1,6 +1,6 @@
 'use client';
 
-import { CreateDrawingData, useDrawingMutations } from "@/lib/api/use-drawings";
+import { useDrawingMutations } from "@/lib/api/use-drawings";
 import dynamic from "next/dynamic";
 
 const DrawingBoard = dynamic(() => import("@/components/drawing-board"), { 
@@ -18,7 +18,7 @@ const DrawingPage: React.FC = () => {
   return (
     <DrawingBoard
       key={`drawing-board-new`}
-      onSave={(drawing) => createDrawing(drawing as unknown as CreateDrawingData)}
+      onSave={(drawing) => createDrawing(drawing)}
     />
   );
 };

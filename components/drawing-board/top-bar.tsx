@@ -9,7 +9,7 @@ import { isValidDrawing } from "./lib/validate-drawing";
 import { flipYAxisOnResolvedEntities } from "./lib/flip-y-axis";
 // import { useCreateReport, useSimulationReport } from "@/lib/api/reports";
 import { downloadFile } from "@/lib/utils";
-import { useReportMutations, useReports, useSimulationMutations } from "@/lib/api";
+import { CreateDrawingData, useReportMutations, useReports, useSimulationMutations } from "@/lib/api";
 import { useParams } from "next/navigation";
 import { Download, Triangle, Archive, Trash2 } from "lucide-react";
 
@@ -29,7 +29,7 @@ const downloadReport = async (reportId: string) => {
 
 type TopBarProps = {
   drawing?: Drawing | null;
-  onSave: (drawing: Partial<Drawing>) => void;
+  onSave: (drawing: CreateDrawingData) => void;
   onDelete?: () => void;
   entitySet: EntitySet;
   state: DrawingState;

@@ -49,11 +49,12 @@ import PendingIndicator from "./pending-indicator";
 import ContextHint from "./context-hint";
 import { useContextHints } from "./lib/use-context-hints";
 import { calculateCardPosition, getCardTypeFromEntity } from "./lib/card-positioning";
+import { CreateDrawingData } from "@/lib/api";
 
 type DrawingBoardProps = {
   drawing?: Drawing | null;
   simulation?: Simulation;
-  onSave: (drawing: Partial<Drawing>) => void;
+  onSave: (drawing: CreateDrawingData) => void;
   onDelete?: () => void;
 };
 
