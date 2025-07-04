@@ -16,7 +16,7 @@ type ToolButtonProps = {
 const toolSelectedClassName = "bg-gray-100";
 const disabledClassName = "bg-transparent";
 
-const toolClassName = "p-2 rounded block mb-1";
+const toolClassName = "cursor-pointer p-2 rounded block mb-1";
 
 // Danish tooltips for each tool
 const toolTooltips: Record<Tool, string> = {

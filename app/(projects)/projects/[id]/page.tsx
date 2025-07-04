@@ -18,7 +18,7 @@ export default function ProjectPage() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div>Loading project...</div>
+        <div>Henter projekt...</div>
       </div>
     );
   }
@@ -26,7 +26,7 @@ export default function ProjectPage() {
   if (error) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-red-600">Error: {error}</div>
+        <div className="text-red-600">Fejl: {error}</div>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export default function ProjectPage() {
   if (!project) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div>Project not found</div>
+        <div>Projekt ikke fundet</div>
       </div>
     );
   }
@@ -48,17 +48,17 @@ export default function ProjectPage() {
             <Link href="/">
               <Button variant="ghost" className="flex items-center gap-2">
                 <ArrowLeft className="h-4 w-4" />
-                Back to Projects
+                Tilbage til projekter
               </Button>
             </Link>
             <div className="flex gap-2">
               <Button variant="outline" size="sm">
                 <Edit className="h-4 w-4 mr-2" />
-                Edit
+                Opdater
               </Button>
               <Button variant="destructive" size="sm">
                 <Trash2 className="h-4 w-4 mr-2" />
-                Delete
+                Slet
               </Button>
             </div>
           </div>
@@ -74,10 +74,10 @@ export default function ProjectPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Project Overview</h2>
+              <h2 className="text-xl font-semibold mb-4">Projekt</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Created</label>
+                  <label className="text-sm font-medium text-gray-500">Oprettet</label>
                   <p className="text-sm text-gray-900">
                     {new Date(project.createdAt).toLocaleDateString('da-DK', {
                       year: 'numeric',
@@ -89,7 +89,7 @@ export default function ProjectPage() {
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Last Updated</label>
+                  <label className="text-sm font-medium text-gray-500">Sidst opdateret</label>
                   <p className="text-sm text-gray-900">
                     {new Date(project.updatedAt).toLocaleDateString('da-DK', {
                       year: 'numeric',
@@ -106,16 +106,16 @@ export default function ProjectPage() {
             {/* Drawings Section */}
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Drawings</h2>
+                <h2 className="text-xl font-semibold">Modeller</h2>
                 <Link href={`/projects/${projectId}/draw/new`}>
                   <Button variant="outline" size="sm">
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Drawing
+                    Opret model
                   </Button>
                 </Link>
               </div>
               {drawingsLoading ? (
-                <p className="text-gray-500">Loading drawings...</p>
+                <p className="text-gray-500">Henter modeller...</p>
               ) : drawings && drawings.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {drawings.map((drawing) => (
@@ -127,13 +127,13 @@ export default function ProjectPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500">No drawings uploaded yet.</p>
+                <p className="text-gray-500">Ingen modeller</p>
               )}
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Reports</h2>
-              <p className="text-gray-500">No reports generated yet.</p>
+              <h2 className="text-xl font-semibold mb-4">Rapporter</h2>
+              <p className="text-gray-500">Ingen rapporter</p>
             </div>
           </div>
 
