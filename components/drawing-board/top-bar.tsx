@@ -10,8 +10,9 @@ import { flipYAxisOnResolvedEntities } from "./lib/flip-y-axis";
 // import { useCreateReport, useSimulationReport } from "@/lib/api/reports";
 import { downloadFile } from "@/lib/utils";
 import { CreateDrawingData, useReportMutations, useReports, useSimulationMutations } from "@/lib/api";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Download, Triangle, Archive, Trash2 } from "lucide-react";
+import { RxChevronLeft } from "react-icons/rx";
 
 type TopBarProps = {
   drawing?: Drawing | null;
@@ -36,6 +37,8 @@ const TopBar: React.FC<TopBarProps> = ({
   const projectId = params.id as string;
   const [title, setTitle] = useState(drawing?.title ?? "Min fusion-model");
 
+  const router = useRouter();
+
   const simulationMutations = useSimulationMutations();
   const reportMutations = useReportMutations();
 
@@ -50,8 +53,13 @@ const downloadReport = async (reportId: string) => {
 
   return (
     <div className="w-full flex items-center justify-between p-2 border-b bg-white">
-      <div>
-        <Input value={title} onChange={setTitle} />
+      <div className="flex items-center gap-2">
+        <div className="rounded hover:bg-gray-100 p-1 cursor-pointer" onClick={() => router.back()}>
+          <RxChevronLeft className="text-2xl" />
+        </div>
+        <div>
+          <Input value={title} onChange={setTitle} />
+        </div>
       </div>
       <div className="flex items-center gap-2">
         {!validation.ok && (
