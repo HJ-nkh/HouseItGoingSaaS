@@ -1,6 +1,6 @@
 import classNames from "classnames";
 import { LoadType, DrawingState } from "./lib/types";
-import { Eye, EyeOff } from "lucide-react";
+import { RxEyeOpen, RxEyeNone } from "react-icons/rx";
 import {
   DeadIcon,
   LiveIcon,
@@ -121,7 +121,7 @@ const DisplayOptionsCard: React.FC<DisplayOptionsCardProps> = ({
       style={{ height: '48px' }} // Ensure consistent height
     >      <DisplayButton
         isSelected={anyEntitiesShown}
-        Icon={anyEntitiesShown ? Eye : EyeOff}
+        Icon={anyEntitiesShown ? RxEyeOpen : RxEyeNone}
         onClick={anyEntitiesShown ? hideAll : showAll}
         tooltip="Vis/skjul alt"
       />

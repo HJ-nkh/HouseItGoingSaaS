@@ -1,22 +1,22 @@
 import {
-  ArrowDown,
-  Square,
-  Circle,
-  RotateCcw,
-  Snowflake,
-  Wind,
-  Weight,
-  Hand,
-  Accessibility,
-} from "lucide-react";
+  RxArrowDown,
+  RxBorderSolid,
+  RxDotFilled,
+  RxReload,
+} from "react-icons/rx";
+import { BsSnow } from "react-icons/bs";
+import { PiWindLight } from "react-icons/pi";
+import { LiaWeightHangingSolid } from "react-icons/lia";
+import { BsUniversalAccess } from "react-icons/bs";
+import { TbHandFinger } from "react-icons/tb";
 
-export const SelectIcon = Hand;
+export const SelectIcon = TbHandFinger;
 
-export const NodeIcon = Circle;
+export const NodeIcon = RxDotFilled;
 
-export const MemberIcon = Square;
+export const MemberIcon = RxBorderSolid;
 
-export const PointLoadIcon = ArrowDown;
+export const PointLoadIcon = RxArrowDown;
 
 export const DistributedLoadIcon = () => (
   <svg
@@ -40,7 +40,7 @@ export const DistributedLoadIcon = () => (
 );
 
 export const MomentLoadIcon = () => (
-  <RotateCcw style={{ transform: "scaleX(-1)" }} />
+  <RxReload style={{ transform: "scaleX(-1)" }} />
 );
 
 export const SupportIcon = () => (
@@ -75,11 +75,11 @@ export const SupportIcon = () => (
   </svg>
 );
 
-export const SnowIcon = Snowflake;
+export const SnowIcon = BsSnow;
 
-export const WindIcon = Wind;
+export const WindIcon = PiWindLight;
 
-export const LiveIcon = Accessibility;
+export const LiveIcon = BsUniversalAccess;
 
 export const StandardIconDK = () => {
   return (
@@ -121,4 +121,4 @@ export const StandardIconDK = () => {
   );
 };
 
-export const DeadIcon = Weight;
+export const DeadIcon = LiaWeightHangingSolid;
