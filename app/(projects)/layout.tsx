@@ -13,6 +13,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: '/', icon: Users, label: 'Projects' },
   ];
 
+  if (pathname.includes('/draw')) {
+    return (
+     <section className="flex flex-col" style={{ height: 'calc(100vh - 52px)' }}>
+      <div className="flex flex-1 overflow-hidden h-full">
+        <main className="flex-1 overflow-y-auto p-0">{children}</main>
+      </div>
+    </section> 
+    )
+  }
+
   return (
     <section className="flex flex-col min-h-screen">
       <div className="flex flex-1 overflow-hidden h-full">
