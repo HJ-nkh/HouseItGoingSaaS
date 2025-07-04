@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUser, getUserWithTeam, getReportById } from '@/lib/db/queries';
 import { db } from '@/lib/db/drizzle';
 import { activityLogs, ActivityType } from '@/lib/db/schema';
+import { generatePresignedUrl, generateReportKey } from '@/lib/services/s3';
 
 export async function GET(
   request: NextRequest,
@@ -45,11 +46,18 @@ export async function GET(
       );
     }
 
-    // TODO: Implement S3 presigned URL generation
-    // This would typically:
-    // 1. Generate a presigned URL for the report file in S3
-    // 2. The filename format would be: `${user.id}/${report.projectId}/${report.id}.docx`
-    // 3. Use AWS SDK to generate presigned URL with expiration
+    // Generate S3 presigned URL
+    const bucketName = process.env.REPORTS_BUCKET_NAME;
+    if (!bucketName) {
+      console.error('REPORTS_BUCKET_NAME environment variable is not set');
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    const reportKey = generateReportKey(user.id, report.projectId, report.id);
+    const downloadUrl = await generatePresignedUrl(bucketName, reportKey, 3600); // 1 hour expiration
     
     // Log the download activity
     await db.insert(activityLogs).values({
@@ -58,9 +66,6 @@ export async function GET(
       action: `${ActivityType.DOWNLOAD_REPORT}: ${report.title}`,
       ipAddress: undefined,
     });
-
-    // Placeholder URL - replace with actual S3 presigned URL generation
-    const downloadUrl = `https://example.com/reports/${user.id}/${report.projectId}/${report.id}.docx`;
 
     return NextResponse.json({ downloadUrl });
   } catch (error) {
