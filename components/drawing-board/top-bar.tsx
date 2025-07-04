@@ -54,7 +54,7 @@ const downloadReport = async (reportId: string) => {
   return (
     <div className="w-full flex items-center justify-between p-2 border-b bg-white">
       <div className="flex items-center gap-2">
-        <div className="rounded hover:bg-gray-100 p-1 cursor-pointer" onClick={() => router.back()}>
+        <div className="rounded hover:bg-gray-100 p-1 cursor-pointer" onClick={() => router.push(`/projects/${projectId}`)}>
           <RxChevronLeft className="text-2xl" />
         </div>
         <div>
