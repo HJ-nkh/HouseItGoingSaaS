@@ -35,7 +35,7 @@ const DrawingCard: React.FC<DrawingCardProps> = ({
     <div>
       <div
         key={drawing.id}
-        className="w-52 h-52 rounded border bg-white hover:bg-gray-50 cursor-pointer"
+        className="w-52 h-52 rounded-md border bg-white hover:bg-gray-50 cursor-pointer"
       >
         <div className="flex justify-between items-center">
           <Link
