@@ -80,7 +80,7 @@ export default function ProjectPage() {
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold mb-4">Projekt</h2>
-              <div className="space-y-4">
+              <div className="flex space-x-8">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Oprettet</label>
                   <p className="text-sm text-gray-900">
