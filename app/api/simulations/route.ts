@@ -89,7 +89,6 @@ export async function POST(request: NextRequest) {
     }
     
     const validatedData = createSimulationSchema.parse(body);
-    console.log('✅ Data validated:', validatedData);
 
     // Simple project check
     const projectCheck = await db.query.projects.findFirst({
@@ -106,8 +105,6 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
-    console.log('✅ Project found:', projectCheck.id);
-
     // Simple drawing check  
     const drawingCheck = await db.query.drawings.findFirst({
       where: (drawings, { eq, and }) => and(
@@ -123,10 +120,15 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
-    console.log('✅ Drawing found:', drawingCheck.id);
 
-    // Create a simple input hash
-    const inputHash = `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Create a deterministic hash from the input data
+    const hashableData = {
+      projectId: validatedData.projectId,
+      drawingId: validatedData.drawingId,
+      entities: validatedData.entities,
+    };
+    const jsonString = JSON.stringify(hashableData, Object.keys(hashableData).sort());
+    const inputHash = crypto.createHash('sha256').update(jsonString).digest('hex');
     console.log('� Input hash created:', inputHash);
 
     console.log('🆕 Creating new simulation...');
@@ -145,9 +147,16 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Simulation created:', newSimulation.id);
 
+    // Log the activity
+    await db.insert(activityLogs).values({
+      teamId: userWithTeam.teamId,
+      userId: user.id,
+      action: ActivityType.CREATE_SIMULATION,
+      ipAddress: request.headers.get('x-forwarded-for') || undefined,
+    });
+
     // Queue simulation for processing
     try {
-      console.log('🚀 Queuing simulation...');
       await queueSimulation({
         simulationId: newSimulation.id,
         entities: validatedData.entities,
