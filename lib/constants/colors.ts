@@ -3,11 +3,11 @@ import { LoadType } from "@/components/drawing-board/lib/types";
 export const loadTypeColors = {
   backgroundLoadsButton: "bg-gray-300",
   background: {
-    [LoadType.Standard]: "bg-gray-400",
-    [LoadType.Snow]: "bg-blue-600",
-    [LoadType.Wind]: "bg-red-400",
-    [LoadType.Dead]: "bg-green-600",
-    [LoadType.Live]: "bg-yellow-300",
+    [LoadType.Standard]: "bg-gray-400/30",
+    [LoadType.Snow]: "bg-blue-600/30",
+    [LoadType.Wind]: "bg-red-400/30",
+    [LoadType.Dead]: "bg-green-600/30",
+    [LoadType.Live]: "bg-yellow-300/30",
   },
   fill: {
     [LoadType.Standard]: "fill-gray-400",

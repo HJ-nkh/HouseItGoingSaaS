@@ -79,10 +79,7 @@ const DisplayOptionsCard: React.FC<DisplayOptionsCardProps> = ({
         isSelected={isSelected}
         Icon={Icon}
         tooltip={tooltip}
-        selectedClassName={classNames(
-          loadTypeColors.background[type],
-          "bg-opacity-30"
-        )}
+        selectedClassName={loadTypeColors.background[type]}
         onClick={() =>
           setState((s) => ({
             ...s,
