@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUser, getUserWithTeam, getReportById } from '@/lib/db/queries';
+import { getUser, getUserWithTeam, getReportById, softDeleteReport } from '@/lib/db/queries';
 import { db } from '@/lib/db/drizzle';
 import { reports, activityLogs, ActivityType } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -77,7 +77,7 @@ export async function DELETE(
       );
     }
 
-    await db.delete(reports).where(eq(reports.id, reportId));
+    await softDeleteReport(reportId);
 
     // Log the activity
     await db.insert(activityLogs).values({

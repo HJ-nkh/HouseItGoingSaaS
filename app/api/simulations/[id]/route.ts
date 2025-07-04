@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUser, getUserWithTeam, getSimulationById } from '@/lib/db/queries';
+import { getUser, getUserWithTeam, getSimulationById, softDeleteSimulation } from '@/lib/db/queries';
 import { db } from '@/lib/db/drizzle';
 import { simulations, activityLogs, ActivityType, SimulationStatus } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -96,7 +96,7 @@ export async function DELETE(
       );
     }
 
-    await db.delete(simulations).where(eq(simulations.id, simulationId));
+    await softDeleteSimulation(simulationId);
 
     // Log the activity
     await db.insert(activityLogs).values({

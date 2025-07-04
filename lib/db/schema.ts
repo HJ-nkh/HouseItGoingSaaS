@@ -104,6 +104,7 @@ export const projects = pgTable('projects', {
     .references(() => users.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at'),
 });
 
 export const drawings = pgTable('drawings', {
@@ -120,6 +121,7 @@ export const drawings = pgTable('drawings', {
   isTemplate: boolean('is_template').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at'),
 });
 
 export const simulations = pgTable('simulations', {
@@ -143,6 +145,7 @@ export const simulations = pgTable('simulations', {
   encodedS: bytea('encoded_s'), // Pickle-serialized Python S class object stored as binary data
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at'),
 });
 
 export const reports = pgTable('reports', {
@@ -162,6 +165,7 @@ export const reports = pgTable('reports', {
   title: text('title').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at'),
 });
 
 export const teamsRelations = relations(teams, ({ many }) => ({

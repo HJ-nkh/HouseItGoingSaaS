@@ -15,6 +15,13 @@
       "when": 1751541790460,
       "tag": "0001_jittery_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1751636153522,
+      "tag": "0002_talented_synch",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUser, getUserWithTeam, getDrawingById } from '@/lib/db/queries';
+import { getUser, getUserWithTeam, getDrawingById, softDeleteDrawing } from '@/lib/db/queries';
 import { db } from '@/lib/db/drizzle';
 import { drawings, activityLogs, ActivityType } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -175,7 +175,7 @@ export async function DELETE(
       );
     }
 
-    await db.delete(drawings).where(eq(drawings.id, drawingId));
+    await softDeleteDrawing(drawingId);
 
     await db.insert(activityLogs).values({
       teamId: userWithTeam.teamId,

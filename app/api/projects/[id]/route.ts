@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { projects, ActivityType, activityLogs } from '@/lib/db/schema';
-import { getUser, getUserWithTeam, getProjectById } from '@/lib/db/queries';
+import { getUser, getUserWithTeam, getProjectById, softDeleteProject } from '@/lib/db/queries';
 import { eq, and } from 'drizzle-orm';
 
 // Activity logging function
@@ -185,14 +185,7 @@ export async function DELETE(
       );
     }
 
-    await db
-      .delete(projects)
-      .where(
-        and(
-          eq(projects.id, projectId),
-          eq(projects.teamId, userWithTeam.teamId)
-        )
-      );
+    await softDeleteProject(projectId);
 
     await logActivity(
       userWithTeam.teamId,

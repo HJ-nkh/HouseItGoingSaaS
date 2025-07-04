@@ -155,7 +155,7 @@ export async function getProjectsForTeam() {
     })
     .from(projects)
     .leftJoin(users, eq(projects.createdBy, users.id))
-    .where(eq(projects.teamId, userWithTeam.teamId))
+    .where(and(eq(projects.teamId, userWithTeam.teamId), isNull(projects.deletedAt)))
     .orderBy(desc(projects.createdAt));
 }
 
@@ -189,7 +189,8 @@ export async function getProjectById(projectId: number) {
     .where(
       and(
         eq(projects.id, projectId),
-        eq(projects.teamId, userWithTeam.teamId)
+        eq(projects.teamId, userWithTeam.teamId),
+        isNull(projects.deletedAt)
       )
     )
     .limit(1);
@@ -227,7 +228,7 @@ export async function getDrawingsForProject(projectId: number) {
     })
     .from(drawings)
     .leftJoin(users, eq(drawings.userId, users.id))
-    .where(eq(drawings.projectId, projectId))
+    .where(and(eq(drawings.projectId, projectId), isNull(drawings.deletedAt)))
     .orderBy(desc(drawings.updatedAt));
 }
 
@@ -270,7 +271,9 @@ export async function getDrawingById(drawingId: number) {
     .where(
       and(
         eq(drawings.id, drawingId),
-        eq(projects.teamId, userWithTeam.teamId)
+        eq(projects.teamId, userWithTeam.teamId),
+        isNull(drawings.deletedAt),
+        isNull(projects.deletedAt)
       )
     )
     .limit(1);
@@ -308,7 +311,9 @@ export async function getDrawingsForUser() {
     .where(
       and(
         eq(drawings.userId, user.id),
-        eq(projects.teamId, userWithTeam.teamId)
+        eq(projects.teamId, userWithTeam.teamId),
+        isNull(drawings.deletedAt),
+        isNull(projects.deletedAt)
       )
     )
     .orderBy(desc(drawings.updatedAt));
@@ -351,7 +356,7 @@ export async function getSimulationsForProject(projectId: number) {
     .from(simulations)
     .leftJoin(users, eq(simulations.userId, users.id))
     .leftJoin(drawings, eq(simulations.drawingId, drawings.id))
-    .where(eq(simulations.projectId, projectId))
+    .where(and(eq(simulations.projectId, projectId), isNull(simulations.deletedAt), isNull(drawings.deletedAt)))
     .orderBy(desc(simulations.createdAt));
 }
 
@@ -385,7 +390,7 @@ export async function getSimulationsForDrawing(drawingId: number) {
     })
     .from(simulations)
     .leftJoin(users, eq(simulations.userId, users.id))
-    .where(eq(simulations.drawingId, drawingId))
+    .where(and(eq(simulations.drawingId, drawingId), isNull(simulations.deletedAt)))
     .orderBy(desc(simulations.createdAt));
 }
 
@@ -437,7 +442,10 @@ export async function getSimulationById(simulationId: number) {
     .where(
       and(
         eq(simulations.id, simulationId),
-        eq(projects.teamId, userWithTeam.teamId)
+        eq(projects.teamId, userWithTeam.teamId),
+        isNull(simulations.deletedAt),
+        isNull(projects.deletedAt),
+        isNull(drawings.deletedAt)
       )
     )
     .limit(1);
@@ -483,7 +491,10 @@ export async function getSimulationsForUser() {
     .where(
       and(
         eq(simulations.userId, user.id),
-        eq(projects.teamId, userWithTeam.teamId)
+        eq(projects.teamId, userWithTeam.teamId),
+        isNull(simulations.deletedAt),
+        isNull(projects.deletedAt),
+        isNull(drawings.deletedAt)
       )
     )
     .orderBy(desc(simulations.createdAt));
@@ -529,7 +540,11 @@ export async function getReportsForUser() {
     .where(
       and(
         eq(reports.userId, user.id),
-        eq(projects.teamId, userWithTeam.teamId)
+        eq(projects.teamId, userWithTeam.teamId),
+        isNull(reports.deletedAt),
+        isNull(projects.deletedAt),
+        isNull(drawings.deletedAt),
+        isNull(simulations.deletedAt)
       )
     )
     .orderBy(desc(reports.createdAt));
@@ -566,7 +581,7 @@ export async function getReportsForProject(projectId: number) {
     .from(reports)
     .leftJoin(drawings, eq(reports.drawingId, drawings.id))
     .leftJoin(simulations, eq(reports.simulationId, simulations.id))
-    .where(eq(reports.projectId, projectId))
+    .where(and(eq(reports.projectId, projectId), isNull(reports.deletedAt), isNull(drawings.deletedAt), isNull(simulations.deletedAt)))
     .orderBy(desc(reports.createdAt));
 }
 
@@ -595,7 +610,7 @@ export async function getReportsForDrawing(drawingId: number) {
     })
     .from(reports)
     .leftJoin(simulations, eq(reports.simulationId, simulations.id))
-    .where(eq(reports.drawingId, drawingId))
+    .where(and(eq(reports.drawingId, drawingId), isNull(reports.deletedAt), isNull(simulations.deletedAt)))
     .orderBy(desc(reports.createdAt));
 }
 
@@ -619,7 +634,7 @@ export async function getReportsForSimulation(simulationId: number) {
       updatedAt: reports.updatedAt,
     })
     .from(reports)
-    .where(eq(reports.simulationId, simulationId))
+    .where(and(eq(reports.simulationId, simulationId), isNull(reports.deletedAt)))
     .orderBy(desc(reports.createdAt));
 }
 
@@ -665,10 +680,189 @@ export async function getReportById(reportId: string) {
     .where(
       and(
         eq(reports.id, reportId),
-        eq(projects.teamId, userWithTeam.teamId)
+        eq(projects.teamId, userWithTeam.teamId),
+        isNull(reports.deletedAt),
+        isNull(projects.deletedAt),
+        isNull(drawings.deletedAt),
+        isNull(simulations.deletedAt)
       )
     )
     .limit(1);
 
   return result[0] || null;
+}
+
+// Utility functions for soft delete operations
+export async function softDeleteProject(projectId: number) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    throw new Error('User not associated with a team');
+  }
+
+  return await db
+    .update(projects)
+    .set({
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(projects.id, projectId),
+        eq(projects.teamId, userWithTeam.teamId),
+        isNull(projects.deletedAt)
+      )
+    );
+}
+
+export async function softDeleteDrawing(drawingId: number) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    throw new Error('User not associated with a team');
+  }
+
+  return await db
+    .update(drawings)
+    .set({
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(drawings.id, drawingId),
+        isNull(drawings.deletedAt)
+      )
+    );
+}
+
+export async function softDeleteSimulation(simulationId: number) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  return await db
+    .update(simulations)
+    .set({
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(simulations.id, simulationId),
+        eq(simulations.userId, user.id),
+        isNull(simulations.deletedAt)
+      )
+    );
+}
+
+export async function softDeleteReport(reportId: string) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  return await db
+    .update(reports)
+    .set({
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(reports.id, reportId),
+        eq(reports.userId, user.id),
+        isNull(reports.deletedAt)
+      )
+    );
+}
+
+// Restore functions (for potential future use)
+export async function restoreProject(projectId: number) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    throw new Error('User not associated with a team');
+  }
+
+  return await db
+    .update(projects)
+    .set({
+      deletedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(projects.id, projectId),
+        eq(projects.teamId, userWithTeam.teamId)
+      )
+    );
+}
+
+export async function restoreDrawing(drawingId: number) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  return await db
+    .update(drawings)
+    .set({
+      deletedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(drawings.id, drawingId));
+}
+
+export async function restoreSimulation(simulationId: number) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  return await db
+    .update(simulations)
+    .set({
+      deletedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(simulations.id, simulationId),
+        eq(simulations.userId, user.id)
+      )
+    );
+}
+
+export async function restoreReport(reportId: string) {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  return await db
+    .update(reports)
+    .set({
+      deletedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(reports.id, reportId),
+        eq(reports.userId, user.id)
+      )
+    );
 }
