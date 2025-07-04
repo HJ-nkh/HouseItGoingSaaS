@@ -11,6 +11,8 @@ const DrawingPage: React.FC = () => {
 	 const router = useRouter();
   const { drawingId, projectId }: { drawingId: string, projectId: string } = useParams();
 
+  console.log('render');
+
   const { drawing, loading, refetch } = useDrawing(drawingId);
   const { simulations } = useSimulations({}, { drawingId, limit: 1});
 
