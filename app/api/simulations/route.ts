@@ -12,12 +12,6 @@ const createSimulationSchema = z.object({
   entities: z.any(), // This would be the EntitySet in TypeScript
 });
 
-// Helper function to create a hash from an object (similar to hash_dict in Python)
-function hashObject(obj: any): string {
-  const str = JSON.stringify(obj, Object.keys(obj).sort());
-  return crypto.createHash('sha256').update(str).digest('hex');
-}
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

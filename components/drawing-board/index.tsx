@@ -8,7 +8,6 @@ import { HEADER_HEIGHT } from "@/lib/constants/layout";
 import Grid from "./grid";
 import Toolbar from "./toolbar";
 import { cn } from "@/lib/utils";
-// import EntityOverviewCard from "./entity-overview-card";
 import { getToolSvgElements } from "./lib/tool-svg-elements";
 import { InputEventType, handleInputEvent, InputEvent } from "./lib/events";
 import RenderedPointLoad from "./rendered-entities/point-load";
@@ -314,7 +313,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
         drawing={drawing}
         onDelete={onDelete}
         entitySet={entitySet}
-        simulationId={simulation?.id?.toString()}
+        simulationId={simulation?.status !== 'pending' ? simulation?.id : undefined}
         showDownload={simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim}
       />
       <div className="h-full flex">
@@ -396,14 +395,6 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
               )}
             </div>
           </div>
-
-          {/* <div className="absolute z-40 bottom-2 left-2">
-            <EntityOverviewCard
-              entitySet={entitySet}
-              state={state}
-              setState={setState}
-            />
-          </div> */}
 
           {/* ADDING ENTITY CARD */}
           {!showSimulation &&

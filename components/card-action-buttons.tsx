@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import { Check, Cross, Trash } from "lucide-react";
+import { RxCheck, RxCross2, RxTrash } from "react-icons/rx";
 
 type CardActionButtonsProps = {
   onSubmit: () => void | undefined;
@@ -20,9 +20,9 @@ const CardActionButtons: React.FC<CardActionButtonsProps> = ({
     <div className="mt-2 flex justify-between items-center w-full">
       {onDelete ? (
         <div>
-          <button onClick={onDelete} disabled={deleteDisabled}>
-            <Trash
-              className={classNames({
+          <button className="cursor-pointer" onClick={onDelete} disabled={deleteDisabled}>
+            <RxTrash
+              className={classNames("text-xl", {
                 "text-red-600": !deleteDisabled,
                 "text-gray-400": deleteDisabled,
               })}
@@ -34,12 +34,12 @@ const CardActionButtons: React.FC<CardActionButtonsProps> = ({
       )}
       <div className="flex items-center gap-4">
         {onClose && (
-          <button onClick={onClose}>
-            <Cross className="text-red-600 text-lg" />
+          <button className="cursor-pointer" onClick={onClose}>
+            <RxCross2 className="text-red-600 text-xl" />
           </button>
         )}
-        <button onClick={onSubmit} disabled={submitDisabled}>
-          <Check
+        <button className="cursor-pointer" onClick={onSubmit} disabled={submitDisabled}>
+          <RxCheck
             className={classNames("text-2xl", {
               "text-green-600": !submitDisabled,
               "text-gray-400": submitDisabled,

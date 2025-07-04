@@ -13,20 +13,6 @@ import { CreateDrawingData, useReportMutations, useReports, useSimulationMutatio
 import { useParams } from "next/navigation";
 import { Download, Triangle, Archive, Trash2 } from "lucide-react";
 
-const downloadReport = async (reportId: string) => {
-  // const res = API.get({
-  //   apiName: import.meta.env.VITE_API_NAME,
-  //   path: `/reports/${reportId}/download-url`,
-  // });
-  // const response = await res.response;
-  // if (response.body.status >= 300) {
-  //   const payload = await response.body.json();
-  //   throw new Error(payload.detail ?? response.body.statusText);
-  // }
-  // const url = await response.body.json();
-  // downloadFile(url, `report-${reportId}.docx`);
-};
-
 type TopBarProps = {
   drawing?: Drawing | null;
   onSave: (drawing: CreateDrawingData) => void;
@@ -34,7 +20,7 @@ type TopBarProps = {
   entitySet: EntitySet;
   state: DrawingState;
   simulationId?: string;
-  showDownload?: boolean; // new prop added
+  showDownload?: boolean;
 };
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -44,7 +30,7 @@ const TopBar: React.FC<TopBarProps> = ({
   entitySet,
   state,
   simulationId,
-  showDownload = false, // new prop added
+  showDownload = false,
 }) => {
   const params = useParams();
   const projectId = params.id as string;
@@ -52,6 +38,11 @@ const TopBar: React.FC<TopBarProps> = ({
 
   const simulationMutations = useSimulationMutations();
   const reportMutations = useReportMutations();
+
+const downloadReport = async (reportId: string) => {
+  const { downloadUrl } = await reportMutations.getDownloadUrl(reportId);
+  downloadFile(downloadUrl, `report-${reportId}.docx`);
+};
 
   const { reports } = useReports({}, { simulationId });
   
