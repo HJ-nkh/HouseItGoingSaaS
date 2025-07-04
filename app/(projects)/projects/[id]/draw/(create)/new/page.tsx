@@ -2,6 +2,7 @@
 
 import { useDrawingMutations } from "@/lib/api/use-drawings";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 
 const DrawingBoard = dynamic(() => import("@/components/drawing-board"), { 
   ssr: false,
@@ -13,12 +14,16 @@ const DrawingBoard = dynamic(() => import("@/components/drawing-board"), {
 });
 
 const DrawingPage: React.FC = () => {
+  const router = useRouter();
   const { createDrawing } = useDrawingMutations();
 
   return (
     <DrawingBoard
       key={`drawing-board-new`}
-      onSave={(drawing) => createDrawing(drawing)}
+      onSave={async (drawing) => {
+        const data = await createDrawing(drawing);
+        router.push(`/projects/${data.projectId}/draw/${data.id}`);
+      }}
     />
   );
 };
