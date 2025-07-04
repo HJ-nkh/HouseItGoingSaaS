@@ -214,6 +214,7 @@ export async function getDrawingsForProject(projectId: number) {
       id: drawings.id,
       projectId: drawings.projectId,
       title: drawings.title,
+      history: drawings.history,
       hasChanges: drawings.hasChanges,
       isTemplate: drawings.isTemplate,
       createdAt: drawings.createdAt,

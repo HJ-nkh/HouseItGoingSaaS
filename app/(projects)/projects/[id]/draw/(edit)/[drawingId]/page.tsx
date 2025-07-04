@@ -4,14 +4,11 @@ import { useDrawing, useDrawingMutations } from "@/lib/api/use-drawings";
 import DrawingBoard from "@/components/drawing-board";
 import { useEffect } from "react";
 import { SimulationStatus } from "@/lib/types";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useSimulations } from "@/lib/api";
 
 const DrawingPage: React.FC = () => {
-	 const router = useRouter();
-  const { drawingId, projectId }: { drawingId: string, projectId: string } = useParams();
-
-  console.log('render');
+  const { drawingId }: { drawingId: string, projectId: string } = useParams();
 
   const { drawing, loading, refetch } = useDrawing(drawingId);
   const { simulations } = useSimulations({}, { drawingId, limit: 1});

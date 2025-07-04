@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreVertical } from 'lucide-react';
 import { Drawing } from '@/lib/types';
+import DrawingThumbnail from './drawing-thumbnail';
 
 type DrawingCardProps = {
   drawing: Drawing;
@@ -34,7 +35,7 @@ const DrawingCard: React.FC<DrawingCardProps> = ({
     <div>
       <div
         key={drawing.id}
-        className="w-52 h-52 shadow rounded border bg-white hover:bg-gray-50 cursor-pointer"
+        className="w-52 h-52 rounded border bg-white hover:bg-gray-50 cursor-pointer"
       >
         <div className="flex justify-between items-center">
           <Link
@@ -61,7 +62,7 @@ const DrawingCard: React.FC<DrawingCardProps> = ({
           href={`/projects/${drawing.projectId}/draw/${drawing.id}`}
         >
           <div className="w-full h-40 bg-gray-100 rounded flex items-center justify-center">
-            {/* <DrawingThumbnail drawing={drawing} /> */}
+            <DrawingThumbnail drawing={drawing} />
           </div>
         </Link>
       </div>
