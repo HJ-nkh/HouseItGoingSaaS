@@ -34,7 +34,7 @@ const TopBar: React.FC<TopBarProps> = ({
   showDownload = false,
 }) => {
   const params = useParams();
-  const projectId = params.id as string;
+  const projectId = params.projectId as string;
   const [title, setTitle] = useState(drawing?.title ?? "Min fusion-model");
 
   const router = useRouter();
@@ -124,11 +124,10 @@ const downloadReport = async (reportId: string) => {
           <Archive className="mr-1" /> Gem
         </Button>
         {onDelete && (
-          <WithConfirmation>
+          <WithConfirmation onConfirm={() => onDelete()}>
             <Button
               variant="outline"
               className="w-24 border-red-500 text-red-500"
-              onClick={() => onDelete()}
             >
               <Trash2 className="mr-1 h-4 w-4" /> Slet
             </Button>

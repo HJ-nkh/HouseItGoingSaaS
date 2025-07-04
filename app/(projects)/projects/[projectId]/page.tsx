@@ -1,19 +1,22 @@
 'use client';
 
-import { useProject } from '@/lib/api/use-projects';
+import { useProject, useProjectMutations } from '@/lib/api/use-projects';
 import { useDrawings } from '@/lib/api/use-drawings';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit, Trash2, Plus } from 'lucide-react';
 import DrawingCard from '@/components/drawing-card';
+import WithConfirmation from '@/components/with-confirmation';
 
 export default function ProjectPage() {
   const params = useParams();
-  const projectId = params.id ? parseInt(params.id as string, 10) : null;
+  const projectId = params.projectId ? parseInt(params.projectId as string, 10) : null;
   
   const { project, loading, error } = useProject(projectId);
   const { drawings, loading: drawingsLoading, refetch: refetchDrawings } = useDrawings({}, { projectId: projectId || undefined });
+
+  const projectMutations = useProjectMutations();
 
   if (loading) {
     return (
@@ -56,10 +59,12 @@ export default function ProjectPage() {
                 <Edit className="h-4 w-4 mr-2" />
                 Opdater
               </Button>
-              <Button variant="destructive" size="sm">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Slet
-              </Button>
+              <WithConfirmation onConfirm={() => projectMutations.deleteProject(project.id)}>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Slet
+                </Button>
+              </WithConfirmation>
             </div>
           </div>
           
