@@ -25,13 +25,15 @@ const MenuItem: React.FC<MenuItemProps> = ({ project, onDelete }) => {
   return (
     <div
       key={project.id}
-      className="mb-2 pl-4 pr-2 py-1 shadow rounded border bg-white hover:bg-gray-50 cursor-pointer flex justify-between items-center"
+      className="mb-4 pr-1 shadow-sm rounded-md bg-white hover:bg-gray-50 cursor-pointer flex justify-between items-center"
     >
       <Link
         className="block flex-1"
         href={`/projects/${project.id}`}
       >
-        {project.title}{project.address && project.address !== "" ? `, ${project.address}` : ""}
+        <div className="px-5 py-3">
+          {project.title}{project.address && project.address !== "" ? `, ${project.address}` : ""}
+        </div>
       </Link>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
