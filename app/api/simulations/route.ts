@@ -128,7 +128,20 @@ export async function POST(request: NextRequest) {
     };
     const jsonString = JSON.stringify(hashableData, Object.keys(hashableData).sort());
     const inputHash = crypto.createHash('sha256').update(jsonString).digest('hex');
-    console.log('� Input hash created:', inputHash);
+    console.log('🔍 Input hash created:', inputHash);
+
+    // Check if a simulation with the same input hash already exists
+    const existingSimulation = await db.query.simulations.findFirst({
+      where: (simulations, { eq, and }) => and(
+        eq(simulations.inputHash, inputHash),
+        eq(simulations.userId, user.id)
+      )
+    });
+
+    if (existingSimulation) {
+      console.log('♻️  Found existing simulation with same input hash:', existingSimulation.id);
+      return NextResponse.json(existingSimulation, { status: 200 });
+    }
 
     console.log('🆕 Creating new simulation...');
     // Minimal simulation creation
@@ -153,6 +166,12 @@ export async function POST(request: NextRequest) {
       action: ActivityType.CREATE_SIMULATION,
       ipAddress: request.headers.get('x-forwarded-for') || undefined,
     });
+
+    // Skip lambda invocation in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 Development mode: Skipping lambda invocation');
+      return NextResponse.json(newSimulation, { status: 202 });
+    }
 
     const lambdaUrl = process.env.RUN_SIMULATION_LAMBDA_URL;
     const lambdaApiKey = process.env.LAMBDA_API_KEY;
