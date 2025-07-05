@@ -66,8 +66,20 @@ def handler(event, context):
             'body': json.dumps({'error': 'Unauthorized'})
         }
 
-    user_id = event.get("user_id")
-    simulation_id = event.get("simulation_id")
+    # Parse request body if it exists
+    body = {}
+    if 'body' in event:
+        try:
+            body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
+        except json.JSONDecodeError:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': 'Invalid JSON in request body'})
+            }
+    
+    # Extract simulation parameters from body or direct event
+    simulation_id = body.get('simulation_id') or event.get('simulation_id')
+    user_id = body.get('user_id') or event.get('user_id')
 
     # TODO: Validate against team_id
     simulation_query = select(simulations_table).where(simulations_table.c.user_id == user_id).where(simulations_table.c.id == simulation_id)
