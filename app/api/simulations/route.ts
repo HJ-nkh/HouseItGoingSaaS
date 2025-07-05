@@ -128,20 +128,6 @@ export async function POST(request: NextRequest) {
     };
     const jsonString = JSON.stringify(hashableData, Object.keys(hashableData).sort());
     const inputHash = crypto.createHash('sha256').update(jsonString).digest('hex');
-    console.log('🔍 Input hash created:', inputHash);
-
-    // Check if a simulation with the same input hash already exists
-    const existingSimulation = await db.query.simulations.findFirst({
-      where: (simulations, { eq, and }) => and(
-        eq(simulations.inputHash, inputHash),
-        eq(simulations.userId, user.id)
-      )
-    });
-
-    if (existingSimulation) {
-      console.log('♻️  Found existing simulation with same input hash:', existingSimulation.id);
-      return NextResponse.json(existingSimulation, { status: 200 });
-    }
 
     console.log('🆕 Creating new simulation...');
     // Minimal simulation creation
