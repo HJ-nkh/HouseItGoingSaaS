@@ -9,7 +9,7 @@ import { isValidDrawing } from "./lib/validate-drawing";
 import { flipYAxisOnResolvedEntities } from "./lib/flip-y-axis";
 // import { useCreateReport, useSimulationReport } from "@/lib/api/reports";
 import { downloadFile } from "@/lib/utils";
-import { CreateDrawingData, useReportMutations, useReports, useSimulationMutations } from "@/lib/api";
+import { CreateDrawingData, useReportMutations, useReports, useSimulationsWithMutations } from "@/lib/api";
 import { useParams, useRouter } from "next/navigation";
 import { Download, Triangle, Archive, Trash2 } from "lucide-react";
 import { RxChevronLeft } from "react-icons/rx";
@@ -39,7 +39,7 @@ const TopBar: React.FC<TopBarProps> = ({
 
   const router = useRouter();
 
-  const simulationMutations = useSimulationMutations();
+  const simulationMutations = useSimulationsWithMutations();
   const reportMutations = useReportMutations();
 
 const downloadReport = async (reportId: string) => {
@@ -93,19 +93,21 @@ const downloadReport = async (reportId: string) => {
             <Button
               variant="default"
               className="w-24 bg-emerald-600"
-              disabled={simulationMutations.loading || !title || !validation.ok}              onClick={() => {
+              disabled={simulationMutations.loading || !title || !validation.ok}
+              onClick={async () => {
                 if (!drawing) {
                   return;
                 }
 
                 onSave({ title, history: state.history, projectId, hasChanges: false });
 
-                simulationMutations.createSimulation({
+                await simulationMutations.createSimulation({
                   projectId,
                   drawingId: drawing?.id,
                   entities: flipYAxisOnResolvedEntities(entitySet),
                 });
                 
+                simulationMutations.refetch();
               }}
             >
               <Triangle className="transform rotate-90 mr-1" /> Kør
