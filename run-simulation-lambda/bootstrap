@@ -1,0 +1,13 @@
+#!/bin/sh
+# Add debug logging
+echo "Bootstrap starting" >&2
+echo "AWS_LAMBDA_RUNTIME_API=${AWS_LAMBDA_RUNTIME_API}" >&2
+echo "Handler argument: $1" >&2
+
+if [ -z "${AWS_LAMBDA_RUNTIME_API}" ]; then
+    echo "Starting with RIE" >&2
+    exec /usr/bin/aws-lambda-rie /usr/local/bin/python3 -m awslambdaric "$1"
+else
+    echo "Starting without RIE" >&2
+    exec /usr/local/bin/python3 -m awslambdaric "$1"
+fi
