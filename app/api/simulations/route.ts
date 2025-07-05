@@ -154,7 +154,8 @@ export async function POST(request: NextRequest) {
       ipAddress: request.headers.get('x-forwarded-for') || undefined,
     });
 
-    const lambdaUrl = process.env.RUN_SIMULATION_LAMBDA_URL;
+    // const lambdaUrl = process.env.RUN_SIMULATION_LAMBDA_URL;
+    const lambdaUrl = '';
     const lambdaApiKey = process.env.LAMBDA_API_KEY;
 
     console.log(Object.keys(process.env));
@@ -163,7 +164,12 @@ export async function POST(request: NextRequest) {
       console.log('lambda url:', lambdaUrl);
       
       if (!lambdaUrl) {
-        throw new Error('RUN_SIMULATION_LAMBDA_URL environment variable is not set');
+        // throw new Error('RUN_SIMULATION_LAMBDA_URL environment variable is not set');
+        console.error('This is a different error');
+        return NextResponse.json(
+          { error: 'Lambda URL is not configured' },
+          { status: 500 }
+        );
       }
       
       if (!lambdaApiKey) {
