@@ -247,16 +247,15 @@ def handler(event, context):
         # Update simulation status and start time
         FEMModel = { "members": members, "X": s.X_discr, "T": s.T_discr, "R0_coor": s.R0_coordinates, "R0_types": s.R0_type }
         pickled_data = pickle.dumps(s)
-        encoded_s = base64.b64encode(pickled_data).decode('ascii')
+        encoded_s = base64.b64encode(pickled_data)
         result = serialize_instance({
             "FEMModel": FEMModel,
             "forces": s.loadCombinationsFE_discr,
             "UR": s.sectionResults,
-            "encodedS": encoded_s
         })
 
         update_query = update(simulations_table).where(simulations_table.c.id == simulation_id).values(
-            status="completed", end_time=func.now(), result=json.dumps(result, default=default_handler))
+            status="completed", end_time=func.now(), result=json.dumps(result, default=default_handler), encoded_s=encoded_s)
         session.execute(update_query)
         session.commit()
         session.close()
@@ -291,4 +290,4 @@ def handler(event, context):
             })
         }
 
-# handler({"body": {"user_id": 1, "simulation_id": 13 }, "headers": { "X-API-Key": "your-secure-api-key-here" } }, {})
+# handler({"body": {"user_id": 1, "simulation_id": 15 }, "headers": { "X-API-Key": "your-secure-api-key-here" } }, {})
