@@ -74,14 +74,17 @@ const downloadReport = async (reportId: string) => {
                 disabled={simulationMutations.loading || reportMutations.loading || !title || !validation.ok}
                 onClick={async () => {
                   const report = reports[0];
-                  if (report) {
-                    downloadReport(report.id);
-                    return;
+                  let reportId = report?.id;
+
+                  if (!reportId) {
+                    const res = await reportMutations.createReport({
+                      simulationId
+                    });
+
+                    reportId = res.id;
                   }
 
-                  reportMutations.createReport({
-                      simulationId
-                  });
+                  downloadReport(reportId);
                 }}
               >
                 <Download className="mr-1 text-2xl" /> Dok
