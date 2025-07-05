@@ -7,5 +7,5 @@ export const getShowLoadByIds = (
   loadCombinationsFactorMatIds: Record<LimitState, string[]>
 ): string[] => {
   const factors = loadCombinationsFactorMat[selectedLimitState]?.[selectedLC] || [];
-  return loadCombinationsFactorMatIds[selectedLimitState].filter((_, index) => factors[index] !== 0);
+  return loadCombinationsFactorMatIds[selectedLimitState]?.filter((_, index) => factors[index] !== 0);
 };
