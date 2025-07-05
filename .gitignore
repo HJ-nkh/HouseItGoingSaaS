@@ -1,3 +1,17 @@
 node_modules
 .env
 .next
+run-simulation-lambda/src/Moon2Mars/__pycache__/__init__.cpython-312.pyc
+run-simulation-lambda/src/Moon2Mars/__pycache__/EC3.cpython-312.pyc
+run-simulation-lambda/src/Moon2Mars/__pycache__/EC5.cpython-312.pyc
+run-simulation-lambda/src/Moon2Mars/__pycache__/EC6.cpython-312.pyc
+run-simulation-lambda/src/Moon2Mars/__pycache__/Frame_FEM.cpython-312.pyc
+run-simulation-lambda/src/Moon2Mars/__pycache__/MurProp.cpython-312.pyc
+run-simulation-lambda/src/Moon2Mars/__pycache__/Project.cpython-312.pyc
+run-simulation-lambda/src/Moon2Mars/__pycache__/S.cpython-312.pyc
+run-simulation-lambda/src/Moon2Mars/__pycache__/Steel_beams.cpython-312.pyc
+run-simulation-lambda/src/Moon2Mars/__pycache__/Steel_parameters.cpython-312.pyc
+run-simulation-lambda/src/Moon2Mars/__pycache__/Wood_parameters.cpython-312.pyc
+run-simulation-lambda/src/lib/__pycache__/serialization.cpython-312.pyc
+run-simulation-lambda/src/__pycache__/main.cpython-312.pyc
+run-simulation-lambda/src/Moon2Mars/__pycache__/__init__.cpython-312.pyc
