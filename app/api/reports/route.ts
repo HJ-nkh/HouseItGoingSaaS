@@ -91,21 +91,89 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate a simple report ID
-    const reportId = `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Get the Lambda function URL from environment variables
+    const lambdaUrl = process.env.GENERATE_REPORT_LAMBDA_URL;
+    const apiKey = process.env.LAMBDA_API_KEY;
+    
+    if (!lambdaUrl) {
+      return NextResponse.json(
+        { error: 'Report generation service not configured' },
+        { status: 500 }
+      );
+    }
 
-    // Create report record
-    const [newReport] = await db
-      .insert(reports)
-      .values({
-        id: reportId,
-        userId: user.id,
-        projectId: simulation.projectId,
-        drawingId: simulation.drawingId,
-        simulationId: validatedData.simulationId,
-        title: validatedData.title || `Report for Simulation ${validatedData.simulationId}`,
-      })
-      .returning();
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'API key not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Prepare the payload for the Lambda function
+    // This matches the Python Lambda function's expected input format
+    const lambdaPayload = {
+      user_id: user.id,
+      simulation_id: validatedData.simulationId
+    };
+
+    // Invoke the Lambda function via HTTP Function URL
+    // The Lambda function will:
+    // 1. Validate the API key
+    // 2. Create the report document and upload to S3
+    // 3. Insert the report record into the database
+    // 4. Return the report_id
+    let lambdaResponse;
+    try {
+      const response = await fetch(lambdaUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey
+        },
+        body: JSON.stringify(lambdaPayload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Lambda function error:', errorText);
+        return NextResponse.json(
+          { error: 'Failed to generate report' },
+          { status: 500 }
+        );
+      }
+
+      lambdaResponse = await response.json();
+    } catch (error) {
+      console.error('Error invoking Lambda function:', error);
+      return NextResponse.json(
+        { error: 'Failed to invoke report generation service' },
+        { status: 500 }
+      );
+    }
+
+    // Extract the report ID from the Lambda response
+    const reportId = lambdaResponse.report_id;
+    if (!reportId) {
+      console.error('Lambda response missing report_id:', lambdaResponse);
+      return NextResponse.json(
+        { error: 'Invalid response from report generation service' },
+        { status: 500 }
+      );
+    }
+
+    // The Lambda function has already created the report in the database,
+    // so we need to fetch it to return to the client
+    const newReport = await db.query.reports.findFirst({
+      where: (reports, { eq }) => eq(reports.id, reportId)
+    });
+
+    if (!newReport) {
+      console.error('Report not found in database after Lambda execution:', reportId);
+      return NextResponse.json(
+        { error: 'Report creation failed' },
+        { status: 500 }
+      );
+    }
 
     // Log the activity
     await db.insert(activityLogs).values({
