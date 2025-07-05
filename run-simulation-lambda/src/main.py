@@ -48,7 +48,7 @@ def handler(event, context):
             'statusCode': 500,
             'body': json.dumps({'error': 'Server configuration error'})
         }
-    
+
     if not api_key or api_key != expected_api_key:
         print("Invalid or missing API key")
         return {
@@ -134,7 +134,10 @@ def handler(event, context):
     project.addDeformationCriteriaWood(400, 250)
 
     # TODO: Add beams, walls, supports, loads from simulation entities
-    entity_set = json.loads(simulation.entities)
+    if isinstance(simulation.entities, dict):
+        entity_set = simulation.entities
+    else:
+        entity_set = json.loads(simulation.entities)
 
     # Add members
     model.addMembers(entity_set)
@@ -287,3 +290,5 @@ def handler(event, context):
                 'simulation_id': simulation_id
             })
         }
+
+# handler({"body": {"user_id": 1, "simulation_id": 13 }, "headers": { "X-API-Key": "your-secure-api-key-here" } }, {})
