@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUser, getUserWithTeam, getSimulationsForUser, getSimulationsForProject, getSimulationsForDrawing } from '@/lib/db/queries';
 import { db } from '@/lib/db/drizzle';
-import { simulations, activityLogs, ActivityType, SimulationStatus } from '@/lib/db/schema';
+import { simulations, activityLogs, ActivityType } from '@/lib/db/schema';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -157,6 +157,8 @@ export async function POST(request: NextRequest) {
     try {
       const lambdaUrl = process.env.RUN_SIMULATION_LAMBDA_URL;
       const lambdaApiKey = process.env.LAMBDA_API_KEY;
+
+      console.log('lambda url:', lambdaUrl);
       
       if (!lambdaUrl) {
         throw new Error('RUN_SIMULATION_LAMBDA_URL environment variable is not set');
