@@ -154,12 +154,12 @@ export async function POST(request: NextRequest) {
       ipAddress: request.headers.get('x-forwarded-for') || undefined,
     });
 
-    console.log('node env:', process.env.NODE_ENV);
+    const lambdaUrl = process.env.RUN_SIMULATION_LAMBDA_URL;
+    const lambdaApiKey = process.env.LAMBDA_API_KEY;
+
+    console.log(Object.keys(process.env));
 
     try {
-      const lambdaUrl = process.env.RUN_SIMULATION_LAMBDA_URL;
-      const lambdaApiKey = process.env.LAMBDA_API_KEY;
-
       console.log('lambda url:', lambdaUrl);
       
       if (!lambdaUrl) {
