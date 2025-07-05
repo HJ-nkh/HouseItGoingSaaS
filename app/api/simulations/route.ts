@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
       console.log('✅ Lambda invocation response:', responseData);
       
     } catch (lambdaError) {
-      console.error('❌ Error invoking Lambda function:', lambdaError);
+      console.error('❌ UPDATED ERROR MESSAGE:', lambdaError);
       // Continue anyway - simulation is created, just not processed
       // You might want to update simulation status to 'failed' here
     }
