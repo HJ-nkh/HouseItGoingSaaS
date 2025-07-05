@@ -342,8 +342,8 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
               </div>
             )}
 
-          {simulation?.status !== undefined && simulation.status === SimulationStatus.Pending && (
-            <div className="absolute inset-0 flex items-center justify-center z-40">
+          {simulation?.status && simulation.status === SimulationStatus.Pending && (
+            <div className="absolute h-full w-full flex justify-center items-center z-40 bg-gray-100/60">
               <PendingIndicator />
             </div>
           )}

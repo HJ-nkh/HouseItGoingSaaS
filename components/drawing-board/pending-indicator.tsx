@@ -4,20 +4,16 @@ const PendingIndicator: React.FC = () => {
   return (
     <div
       style={{
-        width: "160px",
-        height: "160px",
+        width: "120px",
+        height: "120px",
         borderStyle: "solid",
-        borderWidth: "6px",
+        borderWidth: "5px",
         borderColor: "transparent",
         borderRadius: "50%",
         borderTopStyle: "solid",
-        borderTopWidth: "6px",
-        borderTopColor: "#3498db",
+        borderTopWidth: "5px",
+        borderTopColor: "steelblue",
         animation: "spin 1s linear infinite",
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
       }}
     >
       <style>
