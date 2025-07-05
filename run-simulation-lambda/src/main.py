@@ -102,7 +102,7 @@ def handler(event, context):
             'body': json.dumps({'error': 'Simulation is not in pending status'})
         }
 
-    project_query = select(projects_table).where(projects_table.c.user_id == user_id).where(projects_table.c.id == simulation.project_id)
+    project_query = select(projects_table).where(projects_table.c.id == simulation.project_id)
     project = session.execute(project_query).first()
 
     if (project == None):
