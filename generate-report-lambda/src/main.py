@@ -69,16 +69,16 @@ def handler(event, context):
     user_id = event.get("user_id")
     simulation_id = event.get("simulation_id")
 
-    simulation_query = select(simulations_table).where(simulations_table.c.user_id == 
-        user_id).where(simulations_table.c.id == simulation_id)
+    # TODO: Validate against team_id
+    simulation_query = select(simulations_table).where(simulations_table.c.user_id == user_id).where(simulations_table.c.id == simulation_id)
     simulation = session.execute(simulation_query).first()
 
     if simulation is None:
         print(f"Simulation {simulation_id} not found")
         return
 
-    project_query = select(projects_table).where(projects_table.c.user_id == 
-        user_id).where(projects_table.c.id == simulation.project_id)
+    # TODO: Validate against team_id
+    project_query = select(projects_table).where(projects_table.c.id == simulation.project_id)
     project = session.execute(project_query).first()
 
     print(f"Found project: {project.id}")
@@ -92,6 +92,7 @@ def handler(event, context):
     title = "Sample report"
 
     # Create the report in the database
+    # TODO: Add team_id as well
     insert_query = insert(reports_table).values(
         simulation_id=simulation_id, id=report_id, title=title, user_id=user_id,
         project_id=simulation.project_id, drawing_id=simulation.drawing_id
