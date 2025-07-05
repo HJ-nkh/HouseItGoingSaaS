@@ -91,6 +91,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Skip lambda invocation in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 Development mode: Skipping report generation lambda invocation');
+      return NextResponse.json(
+        { error: 'Report generation not available in development mode' },
+        { status: 501 }
+      );
+    }
+
     // Get the Lambda function URL from environment variables
     const lambdaUrl = process.env.GENERATE_REPORT_LAMBDA_URL;
     const apiKey = process.env.LAMBDA_API_KEY;
