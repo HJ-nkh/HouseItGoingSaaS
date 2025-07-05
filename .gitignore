@@ -15,3 +15,4 @@ run-simulation-lambda/src/Moon2Mars/__pycache__/Wood_parameters.cpython-312.pyc
 run-simulation-lambda/src/lib/__pycache__/serialization.cpython-312.pyc
 run-simulation-lambda/src/__pycache__/main.cpython-312.pyc
 run-simulation-lambda/src/Moon2Mars/__pycache__/__init__.cpython-312.pyc
+run-simulation-lambda/test_lambda.py
