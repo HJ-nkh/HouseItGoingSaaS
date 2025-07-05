@@ -129,7 +129,7 @@ const RenderedMember: React.FC<LineProps> = ({
         strokeWidth={strokeWidth}
         className={stroke}
         pointerEvents="none"
-        stroke-dasharray={isVeAnalysis ? "0.1, 0.1" : ""}
+        strokeDasharray={isVeAnalysis ? "0.1, 0.1" : ""}
       />
       {/* OFFSET LINE */}
       {isSectionForceAnalysis && (
@@ -141,7 +141,7 @@ const RenderedMember: React.FC<LineProps> = ({
           strokeWidth={strokeWidth * 0.6}
           className={stroke}
           pointerEvents="none"
-          stroke-dasharray={isSectionForceAnalysis ? "0.05, 0.05" : ""}
+          strokeDasharray={isSectionForceAnalysis ? "0.05, 0.05" : ""}
         />
       )}
     </g>
