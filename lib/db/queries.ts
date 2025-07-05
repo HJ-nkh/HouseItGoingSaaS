@@ -341,6 +341,7 @@ export async function getSimulationsForProject(projectId: number) {
       endTime: simulations.endTime,
       error: simulations.error,
       inputHash: simulations.inputHash,
+      result: simulations.result,
       createdAt: simulations.createdAt,
       updatedAt: simulations.updatedAt,
       user: {
@@ -380,6 +381,7 @@ export async function getSimulationsForDrawing(drawingId: number) {
       endTime: simulations.endTime,
       error: simulations.error,
       inputHash: simulations.inputHash,
+      result: simulations.result,
       createdAt: simulations.createdAt,
       updatedAt: simulations.updatedAt,
       user: {
@@ -474,6 +476,7 @@ export async function getSimulationsForUser() {
       endTime: simulations.endTime,
       error: simulations.error,
       inputHash: simulations.inputHash,
+      result: simulations.result,
       createdAt: simulations.createdAt,
       updatedAt: simulations.updatedAt,
       project: {
