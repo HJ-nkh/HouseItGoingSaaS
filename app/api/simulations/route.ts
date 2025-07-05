@@ -4,7 +4,6 @@ import { db } from '@/lib/db/drizzle';
 import { simulations, activityLogs, ActivityType, SimulationStatus } from '@/lib/db/schema';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { queueSimulation } from '@/lib/services/simulation';
 
 const createSimulationSchema = z.object({
   projectId: z.coerce.number(),
@@ -155,27 +154,43 @@ export async function POST(request: NextRequest) {
       ipAddress: request.headers.get('x-forwarded-for') || undefined,
     });
 
-    // Queue simulation for processing
     try {
-      await queueSimulation({
-        simulationId: newSimulation.id,
-        entities: validatedData.entities,
-        projectData: {
-          id: projectCheck.id,
-          title: projectCheck.title,
-          address: projectCheck.address,
-          teamId: projectCheck.teamId,
-          createdBy: projectCheck.createdBy,
+      const lambdaUrl = process.env.RUN_SIMULATION_LAMBDA_URL;
+      const lambdaApiKey = process.env.LAMBDA_API_KEY;
+      
+      if (!lambdaUrl) {
+        throw new Error('RUN_SIMULATION_LAMBDA_URL environment variable is not set');
+      }
+      
+      if (!lambdaApiKey) {
+        throw new Error('LAMBDA_API_KEY environment variable is not set');
+      }
+      
+      const lambdaResponse = await fetch(lambdaUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': lambdaApiKey,
         },
-        userInfo: {
-          userId: user.id,
-          teamId: userWithTeam.teamId,
-        },
+        body: JSON.stringify({
+          simulation_id: newSimulation.id,
+          user_id: user.id,
+        }),
       });
-      console.log('✅ Simulation queued successfully');
-    } catch (queueError) {
-      console.error('❌ Error queuing simulation:', queueError);
-      // Continue anyway - simulation is created, just not queued
+
+      console.log('📡 Invoked lambda function:', lambdaUrl);
+      
+      if (!lambdaResponse.ok) {
+        throw new Error(`Lambda invocation failed: ${lambdaResponse.status} ${lambdaResponse.statusText}`);
+      }
+      
+      const responseData = await lambdaResponse.text();
+      console.log('✅ Lambda invocation response:', responseData);
+      
+    } catch (lambdaError) {
+      console.error('❌ Error invoking Lambda function:', lambdaError);
+      // Continue anyway - simulation is created, just not processed
+      // You might want to update simulation status to 'failed' here
     }
 
     console.log('📤 Returning simulation response');
