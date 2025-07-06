@@ -92,13 +92,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Skip lambda invocation in development mode
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔧 Development mode: Skipping report generation lambda invocation');
-      return NextResponse.json(
-        { error: 'Report generation not available in development mode' },
-        { status: 501 }
-      );
-    }
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log('🔧 Development mode: Skipping report generation lambda invocation');
+    //   return NextResponse.json(
+    //     { error: 'Report generation not available in development mode' },
+    //     { status: 501 }
+    //   );
+    // }
 
     // Get the Lambda function URL from environment variables
     const lambdaUrl = process.env.GENERATE_REPORT_LAMBDA_URL;
@@ -122,7 +122,8 @@ export async function POST(request: NextRequest) {
     // This matches the Python Lambda function's expected input format
     const lambdaPayload = {
       user_id: user.id,
-      simulation_id: validatedData.simulationId
+      simulation_id: validatedData.simulationId,
+      team_id: userWithTeam.teamId
     };
 
     // Invoke the Lambda function via HTTP Function URL

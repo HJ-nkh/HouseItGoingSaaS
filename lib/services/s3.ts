@@ -41,11 +41,11 @@ export async function generatePresignedUrl(
 
 /**
  * Generate the S3 key (file path) for a report
- * @param userId - The user ID
+ * @param teamId - The team ID
  * @param projectId - The project ID
  * @param reportId - The report ID
  * @returns string - The S3 key
  */
-export function generateReportKey(userId: number, projectId: number, reportId: string): string {
-  return `${userId}/${projectId}/${reportId}.docx`;
+export function generateReportKey(teamId: number, projectId: number, reportId: string): string {
+  return `${teamId}/${projectId}/${reportId}.docx`;
 }

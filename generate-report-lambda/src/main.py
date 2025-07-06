@@ -20,7 +20,8 @@ is_development = os.environ.get('API_ENV') == 'development'
 
 DATABASE_URL = 'postgresql://' + os.environ.get('POSTGRES_USER') + \
     ':' + os.environ.get('POSTGRES_PASSWORD') + \
-    '@' + os.environ.get('POSTGRES_HOST') + ':5432/' + \
+    '@' + os.environ.get('POSTGRES_HOST') + \
+    ':' + os.environ.get('POSTGRES_PORT') + '/' + \
     os.environ.get('POSTGRES_DB')
 
 Base = declarative_base()
@@ -51,7 +52,10 @@ def handler(event, context):
     headers = event.get('headers', {})
     api_key = headers.get('x-api-key') or headers.get('X-API-Key')
     expected_api_key = os.environ.get('API_KEY')
-    
+
+    print("API Key:", api_key)
+    print("Expected API Key:", expected_api_key)
+
     if not expected_api_key:
         print("API_KEY environment variable not set")
         return {
@@ -82,23 +86,23 @@ def handler(event, context):
     # Extract simulation parameters from body or direct event
     simulation_id = body.get('simulation_id') or event.get('simulation_id')
     user_id = body.get('user_id') or event.get('user_id')
+    team_id = body.get('team_id') or event.get('team_id')
 
     # TODO: Validate against team_id
-    simulation_query = select(simulations_table).where(simulations_table.c.user_id == user_id).where(simulations_table.c.id == simulation_id)
+    simulation_query = select(simulations_table).where(simulations_table.c.id == simulation_id)
     simulation = session.execute(simulation_query).first()
 
     if simulation is None:
         print(f"Simulation {simulation_id} not found")
-        throw ValueError(f"Simulation {simulation_id} not found")
+        raise ValueError(f"Simulation {simulation_id} not found")
 
-    # TODO: Validate against team_id
-    project_query = select(projects_table).where(projects_table.c.id == simulation.project_id)
+    project_query = select(projects_table).where(projects_table.c.team_id == team_id).where(projects_table.c.id == simulation.project_id)
     project = session.execute(project_query).first()
 
     print(f"Found project: {project.id}")
 
     # Create the report and get the id
-    report_id = create_report(user_id, project.id)
+    report_id = create_report(team_id, project.id)
 
     print(f"report_id: {report_id}")
 
@@ -117,5 +121,4 @@ def handler(event, context):
     return {"report_id": report_id}
 
 
-# if __name__ == "__main__" and is_development:
-#     handler({"user_id": "dev-sub", "simulation_id": 1}, {})
+handler({ "body": { "team_id": 1, "user_id": 1, "simulation_id": 1 }, "headers": { "x-api-key": os.environ.get('API_KEY') } }, {})

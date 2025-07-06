@@ -42,13 +42,13 @@ const TopBar: React.FC<TopBarProps> = ({
   const simulationMutations = useSimulationsWithMutations();
   const reportMutations = useReportMutations();
 
-const downloadReport = async (reportId: string) => {
-  const { downloadUrl } = await reportMutations.getDownloadUrl(reportId);
-  downloadFile(downloadUrl, `report-${reportId}.docx`);
-};
+  const downloadReport = async (reportId: string) => {
+    const { downloadUrl } = await reportMutations.getDownloadUrl(reportId);
+    downloadFile(downloadUrl, `report-${reportId}.docx`);
+  };
 
   const { reports } = useReports({}, { simulationId });
-  
+
   const validation = isValidDrawing(entitySet);
 
   return (
@@ -81,7 +81,9 @@ const downloadReport = async (reportId: string) => {
                       simulationId
                     });
 
-                    reportId = res.id;
+                    console.log('res', res);
+
+                    reportId = res.report_id;
                   }
 
                   downloadReport(reportId);
