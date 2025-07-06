@@ -160,6 +160,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('Lambda response:', lambdaResponse);
+
     // Extract the report ID from the Lambda response
     const reportId = lambdaResponse.report_id;
     if (!reportId) {

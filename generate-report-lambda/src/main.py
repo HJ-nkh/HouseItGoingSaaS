@@ -66,6 +66,8 @@ def handler(event, context):
             'body': json.dumps({'error': 'Unauthorized'})
         }
 
+    print("Called with event:", event)
+
     # Parse request body if it exists
     body = {}
     if 'body' in event:
@@ -87,7 +89,7 @@ def handler(event, context):
 
     if simulation is None:
         print(f"Simulation {simulation_id} not found")
-        return
+        throw ValueError(f"Simulation {simulation_id} not found")
 
     # TODO: Validate against team_id
     project_query = select(projects_table).where(projects_table.c.id == simulation.project_id)
@@ -115,5 +117,5 @@ def handler(event, context):
     return {"report_id": report_id}
 
 
-if __name__ == "__main__" and is_development:
-    handler({"user_id": "dev-sub", "simulation_id": 1}, {})
+# if __name__ == "__main__" and is_development:
+#     handler({"user_id": "dev-sub", "simulation_id": 1}, {})
