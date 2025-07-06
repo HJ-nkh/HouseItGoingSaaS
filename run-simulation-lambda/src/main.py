@@ -41,6 +41,7 @@ def handler(event, context):
     headers = event.get('headers', {})
     api_key = headers.get('x-api-key') or headers.get('X-API-Key')
     expected_api_key = os.environ.get('API_KEY')
+
     
     if not expected_api_key:
         print("API_KEY environment variable not set")
@@ -290,4 +291,4 @@ def handler(event, context):
             })
         }
 
-handler({"body": {"user_id": 1, "simulation_id": 1 }, "headers": { "X-API-Key": "your-secure-api-key-here" } }, {})
+handler({"body": {"user_id": 1, "simulation_id": 1 }, "headers": { "X-API-Key": os.environ.get("API_KEY") } }, {})
