@@ -11,8 +11,8 @@ const DrawingPage: React.FC = () => {
   const { drawingId, projectId }: { drawingId: string, projectId: string } = useParams();
   const router = useRouter();
 
-  const { drawing, loading, refetch } = useDrawing(drawingId);
-  const { simulations } = useSimulations({}, { drawingId, limit: 1});
+  const { drawing, loading } = useDrawing(drawingId);
+  const { simulations, refetch } = useSimulations({}, { drawingId, limit: 1});
 
 	const simulation = simulations?.[0];
 
@@ -27,7 +27,7 @@ const DrawingPage: React.FC = () => {
 
       return () => clearInterval(intervalId);
     }
-  }, [simulation?.status, refetch]);
+  }, [simulation, refetch]);
 
   if (loading) {
     return null;
