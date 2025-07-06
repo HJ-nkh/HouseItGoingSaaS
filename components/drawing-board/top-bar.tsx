@@ -81,9 +81,7 @@ const TopBar: React.FC<TopBarProps> = ({
                       simulationId
                     });
 
-                    console.log('res', res);
-
-                    reportId = res.report_id;
+                    reportId = res.id;
                   }
 
                   downloadReport(reportId);
