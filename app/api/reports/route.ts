@@ -76,11 +76,11 @@ export async function POST(request: NextRequest) {
     const { db } = await import('@/lib/db/drizzle');
     const { reports, activityLogs, ActivityType } = await import('@/lib/db/schema');
 
-    // Verify the simulation exists and belongs to the user
+    // Verify the simulation exists and belongs to the user's team
     const simulation = await db.query.simulations.findFirst({
       where: (simulations, { eq, and }) => and(
         eq(simulations.id, validatedData.simulationId),
-        eq(simulations.userId, user.id)
+        eq(simulations.teamId, userWithTeam.teamId!)
       )
     });
 

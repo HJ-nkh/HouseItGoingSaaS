@@ -89,7 +89,7 @@ export async function DELETE(
     }
 
     // Verify the user owns this simulation
-    if (existingSimulation.userId !== user.id) {
+    if (existingSimulation.teamId !== userWithTeam.teamId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }
@@ -156,7 +156,7 @@ export async function PUT(
     }
 
     // Verify the user owns this simulation
-    if (existingSimulation.userId !== user.id) {
+    if (existingSimulation.teamId !== userWithTeam.teamId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }

@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     const [newSimulation] = await db
       .insert(simulations)
       .values({
-        userId: user.id,
+        teamId: userWithTeam.teamId,
         projectId: validatedData.projectId,
         drawingId: validatedData.drawingId,
         entities: validatedData.entities,
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           simulation_id: newSimulation.id,
-          user_id: user.id,
+          team_id: userWithTeam.teamId,
         }),
       });
 

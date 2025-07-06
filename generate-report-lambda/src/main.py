@@ -110,9 +110,8 @@ def handler(event, context):
     title = "Sample report"
 
     # Create the report in the database
-    # TODO: Add team_id as well
     insert_query = insert(reports_table).values(
-        simulation_id=simulation_id, id=report_id, title=title, user_id=user_id,
+        simulation_id=simulation_id, id=report_id, title=title, team_id=team_id,
         project_id=simulation.project_id, drawing_id=simulation.drawing_id
     )
     session.execute(insert_query)
@@ -121,4 +120,4 @@ def handler(event, context):
     return {"report_id": report_id}
 
 
-handler({ "body": { "team_id": 1, "user_id": 1, "simulation_id": 1 }, "headers": { "x-api-key": os.environ.get('API_KEY') } }, {})
+handler({ "body": { "team_id": 1, "simulation_id": 1 }, "headers": { "x-api-key": os.environ.get('API_KEY') } }, {})

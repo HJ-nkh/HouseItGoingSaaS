@@ -38,9 +38,8 @@ export async function GET(
       );
     }
 
-    // Verify the user owns this report
-    // TODO: Validate against teamId
-    if (report.userId !== user.id) {
+    // Verify the user has access to this report through team membership
+    if (report.teamId !== userWithTeam.teamId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }
