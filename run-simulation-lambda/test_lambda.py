@@ -14,7 +14,7 @@ from main import handler
 test_event = {
     "body": {
         "user_id": 1,  # Changed to string to match database varchar type
-        "simulation_id": 3
+        "simulation_id": 4
     }, 
     "headers": { 
         "X-API-Key": "your-secure-api-key-here" 

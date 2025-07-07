@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     const [newDrawing] = await db
       .insert(drawings)
       .values({
-        userId: user.id,
+        teamId: userWithTeam.teamId,
         projectId: validatedData.projectId,
         title: validatedData.title,
         history: validatedData.history,

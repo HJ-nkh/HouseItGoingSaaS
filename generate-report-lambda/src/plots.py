@@ -40,42 +40,33 @@ def save_plot(
     """
     filepath = get_img_filepath(filename)
 
-    if is_development:
-        # Create folder for filename if it doesn't exist
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    bucket_name = os.getenv('REPORTS_BUCKET_NAME')
 
-        # Save locally
-        fig.savefig(filepath, dpi=dpi, bbox_inches='tight')
-        print(f"Figure saved to {os.path.abspath(filepath)}")
-        return os.path.abspath(filepath)
-    else:
-        bucket_name = os.getenv('REPORTS_BUCKET_NAME')
-
-        if not bucket_name:
-            raise ValueError("bucket_name is required for production environment")
+    if not bucket_name:
+        raise ValueError("bucket_name is required for production environment")
+    
+    # Save to S3
+    try:
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', dpi=dpi, bbox_inches='tight')
+        buf.seek(0)
         
-        # Save to S3
-        try:
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=dpi, bbox_inches='tight')
-            buf.seek(0)
-            
-            # Upload to S3
-            s3_client = boto3.client('s3')
-            s3_client.upload_fileobj(
-                buf,
-                bucket_name,
-                filepath,
-                ExtraArgs={'ContentType': content_type}
-            )
-            
-            return f"https://{bucket_name}.s3.amazonaws.com/{filepath}"
-            
-        except Exception as e:
-            print(f"Error saving to S3: {str(e)}")
-            raise
-        finally:
-            buf.close()
+        # Upload to S3
+        s3_client = boto3.client('s3')
+        s3_client.upload_fileobj(
+            buf,
+            bucket_name,
+            filepath,
+            ExtraArgs={'ContentType': content_type}
+        )
+        
+        return f"https://{bucket_name}.s3.amazonaws.com/{filepath}"
+        
+    except Exception as e:
+        print(f"Error saving to S3: {str(e)}")
+        raise
+    finally:
+        buf.close()
 
 def download_plot(filename: str) -> str:
     """
@@ -87,9 +78,6 @@ def download_plot(filename: str) -> str:
     Returns:
         str: Path where the figure was saved
     """
-    if is_development:
-        return get_img_filepath(filename)
-
     temp_image_path = f"/tmp/{os.path.basename(filename)}"
 
     filepath = get_img_filepath(filename)

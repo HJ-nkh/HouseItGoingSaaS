@@ -38,8 +38,8 @@ export async function GET(
       );
     }
 
-    // Verify the user owns this report
-    if (report.userId !== user.id) {
+    // Verify the user has access to this report through team membership
+    if (report.teamId !== userWithTeam.teamId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }
@@ -56,7 +56,7 @@ export async function GET(
       );
     }
 
-    const reportKey = generateReportKey(user.id, report.projectId, report.id);
+    const reportKey = generateReportKey(userWithTeam.teamId, report.projectId, report.id);
     const downloadUrl = await generatePresignedUrl(bucketName, reportKey, 3600); // 1 hour expiration
     
     // Log the download activity

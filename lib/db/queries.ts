@@ -220,14 +220,13 @@ export async function getDrawingsForProject(projectId: number) {
       isTemplate: drawings.isTemplate,
       createdAt: drawings.createdAt,
       updatedAt: drawings.updatedAt,
-      user: {
-        id: users.id,
-        name: users.name,
-        email: users.email,
+      team: {
+        id: teams.id,
+        name: teams.name,
       },
     })
     .from(drawings)
-    .leftJoin(users, eq(drawings.userId, users.id))
+    .leftJoin(teams, eq(drawings.teamId, teams.id))
     .where(and(eq(drawings.projectId, projectId), isNull(drawings.deletedAt)))
     .orderBy(desc(drawings.updatedAt));
 }
@@ -252,13 +251,8 @@ export async function getDrawingById(drawingId: number) {
       isTemplate: drawings.isTemplate,
       createdAt: drawings.createdAt,
       updatedAt: drawings.updatedAt,
-      userId: drawings.userId,
+      teamId: drawings.teamId,
       projectId: drawings.projectId,
-      user: {
-        id: users.id,
-        name: users.name,
-        email: users.email,
-      },
       project: {
         id: projects.id,
         title: projects.title,
@@ -266,11 +260,11 @@ export async function getDrawingById(drawingId: number) {
       },
     })
     .from(drawings)
-    .leftJoin(users, eq(drawings.userId, users.id))
     .leftJoin(projects, eq(drawings.projectId, projects.id))
     .where(
       and(
         eq(drawings.id, drawingId),
+        eq(drawings.teamId, userWithTeam.teamId),
         eq(projects.teamId, userWithTeam.teamId),
         isNull(drawings.deletedAt),
         isNull(projects.deletedAt)
@@ -310,7 +304,7 @@ export async function getDrawingsForUser() {
     .leftJoin(projects, eq(drawings.projectId, projects.id))
     .where(
       and(
-        eq(drawings.userId, user.id),
+        eq(drawings.teamId, userWithTeam.teamId),
         eq(projects.teamId, userWithTeam.teamId),
         isNull(drawings.deletedAt),
         isNull(projects.deletedAt)
@@ -344,10 +338,9 @@ export async function getSimulationsForProject(projectId: number) {
       result: simulations.result,
       createdAt: simulations.createdAt,
       updatedAt: simulations.updatedAt,
-      user: {
-        id: users.id,
-        name: users.name,
-        email: users.email,
+      team: {
+        id: teams.id,
+        name: teams.name,
       },
       drawing: {
         id: drawings.id,
@@ -355,7 +348,7 @@ export async function getSimulationsForProject(projectId: number) {
       },
     })
     .from(simulations)
-    .leftJoin(users, eq(simulations.userId, users.id))
+    .leftJoin(teams, eq(simulations.teamId, teams.id))
     .leftJoin(drawings, eq(simulations.drawingId, drawings.id))
     .where(and(eq(simulations.projectId, projectId), isNull(simulations.deletedAt), isNull(drawings.deletedAt)))
     .orderBy(desc(simulations.createdAt));
@@ -373,6 +366,11 @@ export async function getSimulationsForDrawing(drawingId: number) {
     throw new Error('Drawing not found or access denied');
   }
 
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    return [];
+  }
+
   return await db
     .select({
       id: simulations.id,
@@ -384,15 +382,13 @@ export async function getSimulationsForDrawing(drawingId: number) {
       result: simulations.result,
       createdAt: simulations.createdAt,
       updatedAt: simulations.updatedAt,
-      user: {
-        id: users.id,
-        name: users.name,
-        email: users.email,
-      },
     })
     .from(simulations)
-    .leftJoin(users, eq(simulations.userId, users.id))
-    .where(and(eq(simulations.drawingId, drawingId), isNull(simulations.deletedAt)))
+    .where(and(
+      eq(simulations.drawingId, drawingId), 
+      eq(simulations.teamId, userWithTeam.teamId),
+      isNull(simulations.deletedAt)
+    ))
     .orderBy(desc(simulations.createdAt));
 }
 
@@ -419,14 +415,9 @@ export async function getSimulationById(simulationId: number) {
       result: simulations.result,
       createdAt: simulations.createdAt,
       updatedAt: simulations.updatedAt,
-      userId: simulations.userId,
+      teamId: simulations.teamId,
       projectId: simulations.projectId,
       drawingId: simulations.drawingId,
-      user: {
-        id: users.id,
-        name: users.name,
-        email: users.email,
-      },
       project: {
         id: projects.id,
         title: projects.title,
@@ -438,12 +429,12 @@ export async function getSimulationById(simulationId: number) {
       },
     })
     .from(simulations)
-    .leftJoin(users, eq(simulations.userId, users.id))
     .leftJoin(projects, eq(simulations.projectId, projects.id))
     .leftJoin(drawings, eq(simulations.drawingId, drawings.id))
     .where(
       and(
         eq(simulations.id, simulationId),
+        eq(simulations.teamId, userWithTeam.teamId),
         eq(projects.teamId, userWithTeam.teamId),
         isNull(simulations.deletedAt),
         isNull(projects.deletedAt),
@@ -493,7 +484,7 @@ export async function getSimulationsForUser() {
     .leftJoin(drawings, eq(simulations.drawingId, drawings.id))
     .where(
       and(
-        eq(simulations.userId, user.id),
+        eq(simulations.teamId, userWithTeam.teamId),
         eq(projects.teamId, userWithTeam.teamId),
         isNull(simulations.deletedAt),
         isNull(projects.deletedAt),
@@ -542,7 +533,7 @@ export async function getReportsForUser() {
     .leftJoin(simulations, eq(reports.simulationId, simulations.id))
     .where(
       and(
-        eq(reports.userId, user.id),
+        eq(reports.teamId, userWithTeam.teamId),
         eq(projects.teamId, userWithTeam.teamId),
         isNull(reports.deletedAt),
         isNull(projects.deletedAt),
@@ -658,7 +649,7 @@ export async function getReportById(reportId: string) {
       title: reports.title,
       createdAt: reports.createdAt,
       updatedAt: reports.updatedAt,
-      userId: reports.userId,
+      teamId: reports.teamId,
       projectId: reports.projectId,
       drawingId: reports.drawingId,
       simulationId: reports.simulationId,
@@ -753,6 +744,11 @@ export async function softDeleteSimulation(simulationId: number) {
     throw new Error('User not authenticated');
   }
 
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    throw new Error('User not associated with a team');
+  }
+
   return await db
     .update(simulations)
     .set({
@@ -762,7 +758,7 @@ export async function softDeleteSimulation(simulationId: number) {
     .where(
       and(
         eq(simulations.id, simulationId),
-        eq(simulations.userId, user.id),
+        eq(simulations.teamId, userWithTeam.teamId),
         isNull(simulations.deletedAt)
       )
     );
@@ -774,6 +770,11 @@ export async function softDeleteReport(reportId: string) {
     throw new Error('User not authenticated');
   }
 
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    throw new Error('User not associated with a team');
+  }
+
   return await db
     .update(reports)
     .set({
@@ -783,7 +784,7 @@ export async function softDeleteReport(reportId: string) {
     .where(
       and(
         eq(reports.id, reportId),
-        eq(reports.userId, user.id),
+        eq(reports.teamId, userWithTeam.teamId),
         isNull(reports.deletedAt)
       )
     );
@@ -836,6 +837,11 @@ export async function restoreSimulation(simulationId: number) {
     throw new Error('User not authenticated');
   }
 
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    throw new Error('User not associated with a team');
+  }
+
   return await db
     .update(simulations)
     .set({
@@ -845,7 +851,7 @@ export async function restoreSimulation(simulationId: number) {
     .where(
       and(
         eq(simulations.id, simulationId),
-        eq(simulations.userId, user.id)
+        eq(simulations.teamId, userWithTeam.teamId)
       )
     );
 }
@@ -854,6 +860,11 @@ export async function restoreReport(reportId: string) {
   const user = await getUser();
   if (!user) {
     throw new Error('User not authenticated');
+  }
+
+  const userWithTeam = await getUserWithTeam(user.id);
+  if (!userWithTeam?.teamId) {
+    throw new Error('User not associated with a team');
   }
 
   return await db
@@ -865,7 +876,7 @@ export async function restoreReport(reportId: string) {
     .where(
       and(
         eq(reports.id, reportId),
-        eq(reports.userId, user.id)
+        eq(reports.teamId, userWithTeam.teamId)
       )
     );
 }

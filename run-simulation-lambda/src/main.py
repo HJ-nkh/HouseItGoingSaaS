@@ -41,6 +41,7 @@ def handler(event, context):
     headers = event.get('headers', {})
     api_key = headers.get('x-api-key') or headers.get('X-API-Key')
     expected_api_key = os.environ.get('API_KEY')
+
     
     if not expected_api_key:
         print("API_KEY environment variable not set")
@@ -67,14 +68,14 @@ def handler(event, context):
                 'body': json.dumps({'error': 'Invalid JSON in request body'})
             }
     
-    # Extract simulation parameters from body or direct event
-    simulation_id = body.get('simulation_id') or event.get('simulation_id')
-    user_id = body.get('user_id') or event.get('user_id')
-    
-    if not simulation_id or not user_id:
+    # Extract simulation parameters from body or direct event    simulation_id = body.get('simulation_id') or event.get('simulation_id')
+    simulation_id = body.get('simulation_id') or event.get('simulationId')
+    team_id = body.get('team_id') or event.get('team_id')
+
+    if not simulation_id or not team_id:
         return {
             'statusCode': 400,
-            'body': json.dumps({'error': 'Missing simulation_id or user_id'})
+            'body': json.dumps({'error': 'Missing simulation_id or team_id'})
         }
     
     from lib.serialization import serialize_instance, default_handler
@@ -85,7 +86,7 @@ def handler(event, context):
     import base64
     import math
 
-    simulation_query = select(simulations_table).where(simulations_table.c.user_id == user_id).where(simulations_table.c.id == simulation_id)
+    simulation_query = select(simulations_table).where(simulations_table.c.team_id == team_id).where(simulations_table.c.id == simulation_id)
     simulation = session.execute(simulation_query).first()
 
     if (simulation == None):
@@ -290,4 +291,4 @@ def handler(event, context):
             })
         }
 
-#handler({"body": {"user_id": 1, "simulation_id": 2 }, "headers": { "X-API-Key": "your-secure-api-key-here" } }, {})
+handler({"body": {"team_id": 1, "simulation_id": 1 }, "headers": { "X-API-Key": os.environ.get("API_KEY") } }, {})

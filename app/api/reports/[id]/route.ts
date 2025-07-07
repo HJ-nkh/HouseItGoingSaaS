@@ -70,7 +70,7 @@ export async function DELETE(
     }
 
     // Verify the user owns this report
-    if (existingReport.userId !== user.id) {
+    if (existingReport.teamId !== userWithTeam.teamId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }

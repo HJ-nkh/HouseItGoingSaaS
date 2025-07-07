@@ -76,11 +76,11 @@ export async function POST(request: NextRequest) {
     const { db } = await import('@/lib/db/drizzle');
     const { reports, activityLogs, ActivityType } = await import('@/lib/db/schema');
 
-    // Verify the simulation exists and belongs to the user
+    // Verify the simulation exists and belongs to the user's team
     const simulation = await db.query.simulations.findFirst({
       where: (simulations, { eq, and }) => and(
         eq(simulations.id, validatedData.simulationId),
-        eq(simulations.userId, user.id)
+        eq(simulations.teamId, userWithTeam.teamId!)
       )
     });
 
@@ -92,13 +92,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Skip lambda invocation in development mode
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔧 Development mode: Skipping report generation lambda invocation');
-      return NextResponse.json(
-        { error: 'Report generation not available in development mode' },
-        { status: 501 }
-      );
-    }
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log('🔧 Development mode: Skipping report generation lambda invocation');
+    //   return NextResponse.json(
+    //     { error: 'Report generation not available in development mode' },
+    //     { status: 501 }
+    //   );
+    // }
 
     // Get the Lambda function URL from environment variables
     const lambdaUrl = process.env.GENERATE_REPORT_LAMBDA_URL;
@@ -122,7 +122,8 @@ export async function POST(request: NextRequest) {
     // This matches the Python Lambda function's expected input format
     const lambdaPayload = {
       user_id: user.id,
-      simulation_id: validatedData.simulationId
+      simulation_id: validatedData.simulationId,
+      team_id: userWithTeam.teamId
     };
 
     // Invoke the Lambda function via HTTP Function URL
@@ -159,6 +160,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    console.log('Lambda response:', lambdaResponse);
 
     // Extract the report ID from the Lambda response
     const reportId = lambdaResponse.report_id;

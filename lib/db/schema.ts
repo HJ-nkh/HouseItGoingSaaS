@@ -109,9 +109,9 @@ export const projects = pgTable('projects', {
 
 export const drawings = pgTable('drawings', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id')
+  teamId: integer('team_id')
     .notNull()
-    .references(() => users.id),
+    .references(() => teams.id),
   projectId: integer('project_id')
     .notNull()
     .references(() => projects.id),
@@ -126,9 +126,9 @@ export const drawings = pgTable('drawings', {
 
 export const simulations = pgTable('simulations', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id')
+  teamId: integer('team_id')
     .notNull()
-    .references(() => users.id),
+    .references(() => teams.id),
   projectId: integer('project_id')
     .notNull()
     .references(() => projects.id),
@@ -150,9 +150,9 @@ export const simulations = pgTable('simulations', {
 
 export const reports = pgTable('reports', {
   id: varchar('id', { length: 255 }).primaryKey(), // String ID as in Python version
-  userId: integer('user_id')
+  teamId: integer('team_id')
     .notNull()
-    .references(() => users.id),
+    .references(() => teams.id),
   projectId: integer('project_id')
     .notNull()
     .references(() => projects.id),
@@ -173,14 +173,15 @@ export const teamsRelations = relations(teams, ({ many }) => ({
   activityLogs: many(activityLogs),
   invitations: many(invitations),
   projects: many(projects),
+  drawings: many(drawings),
+  simulations: many(simulations),
+  reports: many(reports),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
   teamMembers: many(teamMembers),
   invitationsSent: many(invitations),
   createdProjects: many(projects),
-  drawings: many(drawings),
-  simulations: many(simulations),
 }));
 
 export const invitationsRelations = relations(invitations, ({ one }) => ({
@@ -231,9 +232,9 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
 }));
 
 export const drawingsRelations = relations(drawings, ({ one, many }) => ({
-  user: one(users, {
-    fields: [drawings.userId],
-    references: [users.id],
+  team: one(teams, {
+    fields: [drawings.teamId],
+    references: [teams.id],
   }),
   project: one(projects, {
     fields: [drawings.projectId],
@@ -244,9 +245,9 @@ export const drawingsRelations = relations(drawings, ({ one, many }) => ({
 }));
 
 export const simulationsRelations = relations(simulations, ({ one, many }) => ({
-  user: one(users, {
-    fields: [simulations.userId],
-    references: [users.id],
+  team: one(teams, {
+    fields: [simulations.teamId],
+    references: [teams.id],
   }),
   project: one(projects, {
     fields: [simulations.projectId],
@@ -260,9 +261,9 @@ export const simulationsRelations = relations(simulations, ({ one, many }) => ({
 }));
 
 export const reportsRelations = relations(reports, ({ one }) => ({
-  user: one(users, {
-    fields: [reports.userId],
-    references: [users.id],
+  team: one(teams, {
+    fields: [reports.teamId],
+    references: [teams.id],
   }),
   project: one(projects, {
     fields: [reports.projectId],

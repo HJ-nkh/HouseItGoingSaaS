@@ -57,7 +57,7 @@ export default function ProjectPage() {
             <div className="flex gap-2">
               <Button variant="outline" size="sm">
                 <Edit className="h-4 w-4 mr-2" />
-                Opdater
+                Redigér
               </Button>
               <WithConfirmation onConfirm={() => projectMutations.deleteProject(project.id)}>
                 <Button variant="destructive" size="sm">
