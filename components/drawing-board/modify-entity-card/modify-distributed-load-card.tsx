@@ -356,10 +356,10 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
       <CardContent>
         <div className="flex gap-4">
           {/* Left section - main inputs */}
-          <div className="flex-shrink-0" style={{ width: load.type === LoadType.Wind ? '500px' : '340px' }}>
+          <div className="flex-shrink-0" style={{ width: load.type === LoadType.Wind ? '454px' : '340px' }}>
             <div className="flex gap-3 mb-2 items-center">
               <div className="w-32 text-left flex-shrink-0">Type:</div>
-              <div className="flex-1 min-w-0">
+              <div className="w-38 flex-shrink-0">
                 <Select
                   className="w-full border rounded text-left"
                   value={load.type}
@@ -385,7 +385,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
             {load.type === LoadType.Standard ? (
               <div className="flex gap-3 mb-2 items-center">
                 <div className="w-32 text-left flex-shrink-0">Vinkel:</div>
-                <div className="flex-1 min-w-0">
+                <div className="w-38 flex-shrink-0">
                   <NumberInput
                     value={load.angle?.value}
                     onChange={(value) =>
@@ -414,14 +414,14 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                 {/* Zone 1 label and Header row */}
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0 font-bold">Zone 1</div>
-                  <div className="flex-1 text-center font-semibold">Tryk</div>
-                  <div className="flex-1 text-center font-semibold">Sug</div>
+                  <div className="w-38 flex-shrink-0 text-center font-semibold">Tryk</div>
+                  <div className="w-38 flex-shrink-0 text-center font-semibold">Sug</div>
                 </div>
                 
                 {/* C/C afstand row */}
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0">C/C afstand:</div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={ccDistance}
                       onChange={(value) => {
@@ -432,7 +432,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                       placeholder="valgfrit"
                       onEnter={onEnter}
                     />
-                  </div>              <div className="flex-1">
+                  </div>              <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={ccDistanceSuction}
                       onChange={(value) => {
@@ -449,7 +449,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                 {/* Fladelast row */}
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0">Fladelast:</div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={areaLoad}
                       onChange={(value) => {
@@ -460,7 +460,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                       placeholder="valgfrit"
                       onEnter={onEnter}
                     />
-                  </div>              <div className="flex-1">
+                  </div>              <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={areaLoadSuction}
                       onChange={(value) => {
@@ -477,7 +477,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                 {/* Linjelast (start) row */}
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0">Linjelast (start):</div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={load.magnitude1}
                       onChange={(magnitude1) => {
@@ -496,7 +496,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                       unit="kN/m"
                       onEnter={onEnter}                    />
                   </div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={extendedLoad.magnitude1Suction}
                       onChange={(magnitude1Suction) => {
@@ -533,7 +533,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                 {/* Linjelast (slut) row */}
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0">Linjelast (slut):</div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={load.magnitude2}
                       onChange={(magnitude2) => {
@@ -553,7 +553,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                       onEnter={onEnter}
                     />
                   </div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={extendedLoad.magnitude2Suction}
                       onChange={(magnitude2Suction) => {
@@ -588,7 +588,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                 {/* Standard inputs for non-wind loads */}
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0">C/C afstand:</div>
-                  <div className="flex-1 min-w-0">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={ccDistance}
                       onChange={(value) => {
@@ -604,7 +604,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
 
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0">Fladelast:</div>
-                  <div className="flex-1 min-w-0">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={areaLoad}
                       onChange={(value) => {
@@ -620,7 +620,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
 
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0">Linjelast (start):</div>
-                  <div className="flex-1 min-w-0">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={load.magnitude1}
                       onChange={(magnitude1) => {
@@ -644,7 +644,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
 
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0">Linjelast (slut):</div>
-                  <div className="flex-1 min-w-0">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={load.magnitude2}
                       onChange={(magnitude2) => {
@@ -685,7 +685,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
               </div>
             )}        <div className="flex gap-3 mb-2 items-center">
               <div className="w-32 text-left flex-shrink-0">Start:</div>
-              <div className="flex-1 min-w-0">
+              <div className={load.type === LoadType.Wind ? "w-79 flex-shrink-0" : "w-38 flex-shrink-0"}>
                 <ConstraintSelect
                   constraint={load.onMember.constraintStart}
                   setConstraint={(constraintStart) =>
@@ -702,7 +702,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
             </div>
             <div className="flex gap-3 items-center">
               <div className="w-32 text-left flex-shrink-0">Slut:</div>
-              <div className="flex-1 min-w-0">
+              <div className={load.type === LoadType.Wind ? "w-79 flex-shrink-0" : "w-38 flex-shrink-0"}>
                 <ConstraintSelect
                   constraint={load.onMember.constraintEnd}
                   setConstraint={(constraintEnd) =>
@@ -727,14 +727,14 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                 {/* Zone 2 label and Header row */}
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0 font-bold">Zone 2</div>
-                  <div className="flex-1 text-center font-semibold">Tryk</div>
-                  <div className="flex-1 text-center font-semibold">Sug</div>
+                  <div className="w-38 flex-shrink-0 text-center font-semibold">Tryk</div>
+                  <div className="w-38 flex-shrink-0 text-center font-semibold">Sug</div>
                 </div>
                 
                 {/* C/C afstand row */}
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0">C/C afstand:</div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={ccDistance2}
                       onChange={(value) => {
@@ -746,7 +746,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                       onEnter={onEnter}
                     />
                   </div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={ccDistanceSuction2}
                       onChange={(value) => {
@@ -763,7 +763,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                 {/* Fladelast row */}
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0">Fladelast:</div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={areaLoad2}
                       onChange={(value) => {
@@ -775,7 +775,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                       onEnter={onEnter}
                     />
                   </div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={areaLoadSuction2}
                       onChange={(value) => {
@@ -792,7 +792,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                 {/* Linjelast (start) row */}
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0">Linjelast (start):</div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={extendedLoad.magnitude1_2}
                       onChange={(magnitude1_2) => {
@@ -812,7 +812,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                       onEnter={onEnter}
                     />
                   </div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={extendedLoad.magnitude1Suction2}
                       onChange={(magnitude1Suction2) => {
@@ -846,7 +846,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                 {/* Linjelast (slut) row */}
                 <div className="flex gap-3 mb-2 items-center">
                   <div className="w-32 text-left flex-shrink-0">Linjelast (slut):</div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={extendedLoad.magnitude2_2}
                       onChange={(magnitude2_2) => {
@@ -866,7 +866,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                       onEnter={onEnter}
                     />
                   </div>
-                  <div className="flex-1">
+                  <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={extendedLoad.magnitude2Suction2}
                       onChange={(magnitude2Suction2) => {
@@ -896,7 +896,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                 {/* Slut coordinate only */}
                 <div className="flex gap-3 items-center">
                   <div className="w-32 text-left flex-shrink-0">Slut:</div>
-                  <div className="flex-1 min-w-0">
+                  <div className="w-79 flex-shrink-0">
                     <ConstraintSelect
                       constraint={load.onMember.constraintEnd}
                       setConstraint={(constraintEnd) =>
@@ -932,7 +932,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     <div className="flex-1 space-y-3">
                     {/* Roof type dropdown */}
                     <div className="flex gap-3 items-center">
-                      <div className="w-16 text-left flex-shrink-0">Tagtype:</div>
+                      <div className="w-24 text-left flex-shrink-0">Tagtype:</div>
                       <div className="flex-1">
                         <Select
                           className="w-full border rounded text-left"
@@ -954,7 +954,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     {/* Roof pitch dropdown - only show when monopitch is selected */}
                     {roofType === 'monopitch' && (
                       <div className="flex gap-3 items-center">
-                        <div className="w-16 text-left flex-shrink-0">Hældning:</div>
+                        <div className="w-24 text-left flex-shrink-0">Hældning:</div>
                         <div className="flex-1">
                           <NumberInput
                             value={roofPitch}
@@ -976,7 +976,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     {/* Roof pitch dropdown - only show when duopitch is selected */}
                     {roofType === 'duopitch' && (
                       <div className="flex gap-3 items-center">
-                        <div className="w-16 text-left flex-shrink-0">Hældning:</div>
+                        <div className="w-24 text-left flex-shrink-0">Hældning:</div>
                         <div className="flex-1">
                           <NumberInput
                             value={roofPitch}
@@ -999,7 +999,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     {roofType === 'hipped' && (
                       <>
                         <div className="flex gap-3 items-center">
-                          <div className="w-16 text-left flex-shrink-0">Hældning 1:</div>
+                          <div className="w-24 text-left flex-shrink-0">Hældning 1:</div>
                           <div className="flex-1">
                             <NumberInput
                               value={hippedMainPitch}
@@ -1017,7 +1017,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                           </div>
                         </div>
                         <div className="flex gap-3 items-center">
-                          <div className="w-16 text-left flex-shrink-0">Hældning 2:</div>
+                          <div className="w-24 text-left flex-shrink-0">Hældning 2:</div>
                           <div className="flex-1">
                             <NumberInput
                               value={hippedHipPitch}
@@ -1040,7 +1040,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     {/* Flat roof edge type dropdown - only show when flat roof is selected */}
                     {roofType === 'flat' && (
                       <div className="flex gap-3 items-center">
-                        <div className="w-16 text-left flex-shrink-0">Tagkant:</div>
+                        <div className="w-24 text-left flex-shrink-0">Tagkant:</div>
                         <div className="flex-1">
                           <Select
                             className="w-full border rounded text-left"
@@ -1063,7 +1063,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     {/* Conditional input based on flat roof edge type */}
                     {roofType === 'flat' && flatRoofEdgeType === 'parapet' && (
                       <div className="flex gap-3 items-center">
-                        <div className="w-16 text-left flex-shrink-0">Brystning:</div>
+                        <div className="w-24 text-left flex-shrink-0">Brystning:</div>
                         <div className="flex-1">
                           <NumberInput
                             value={parapetHeight}
@@ -1084,7 +1084,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
 
                     {roofType === 'flat' && flatRoofEdgeType === 'rounded' && (
                       <div className="flex gap-3 items-center">
-                        <div className="w-16 text-left flex-shrink-0">Radius:</div>
+                        <div className="w-24 text-left flex-shrink-0">Radius:</div>
                         <div className="flex-1">
                           <NumberInput
                             value={edgeRadius}
@@ -1105,7 +1105,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
 
                     {roofType === 'flat' && flatRoofEdgeType === 'beveled' && (
                       <div className="flex gap-3 items-center">
-                        <div className="w-16 text-left flex-shrink-0">Hældning:</div>
+                        <div className="w-24 text-left flex-shrink-0">Hældning:</div>
                         <div className="flex-1">
                           <NumberInput
                             value={bevelAngle}
@@ -1125,7 +1125,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     )}
                     
                     <div className="flex gap-3 items-center">
-                      <div className="w-16 text-left flex-shrink-0">Højde:</div>
+                      <div className="w-24 text-left flex-shrink-0">Højde:</div>
                       <div className="flex-1">
                         <NumberInput
                           value={houseHeight}
@@ -1144,7 +1144,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     </div>
                     
                     <div className="flex gap-3 items-center">
-                      <div className="w-16 text-left flex-shrink-0">Bredde:</div>
+                      <div className="w-24 text-left flex-shrink-0">Bredde:</div>
                       <div className="flex-1">
                         <NumberInput
                           value={houseWidth}
@@ -1163,7 +1163,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     </div>
                     
                     <div className="flex gap-3 items-center">
-                      <div className="w-16 text-left flex-shrink-0">Dybde:</div>
+                      <div className="w-24 text-left flex-shrink-0">Dybde:</div>
                       <div className="flex-1">
                         <NumberInput
                           value={houseDepth}
@@ -1182,7 +1182,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     </div>
                     
                     <div className="flex gap-3 items-center">
-                      <div className="w-16 text-left flex-shrink-0">Afstand vesterhavet:</div>
+                      <div className="w-24 text-left flex-shrink-0">Afstand vesterhavet:</div>
                       <div className="flex-1">
                         <Select
                           className="w-full border rounded text-left"
@@ -1202,7 +1202,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     </div>
                     
                     <div className="flex gap-3 items-center">
-                      <div className="w-16 text-left flex-shrink-0">Terrænkategori:</div>
+                      <div className="w-24 text-left flex-shrink-0">Terrænkat.:</div>
                       <div className="flex-1">
                         <Select
                           className="w-full border rounded text-left"
@@ -1222,7 +1222,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     </div>
                     
                     <div className="flex gap-3 items-center">
-                      <div className="w-16 text-left flex-shrink-0">Formfaktorer:</div>
+                      <div className="w-24 text-left flex-shrink-0">Formfaktorer:</div>
                       <div className="flex-1">
                         <Select
                           className="w-full border rounded text-left"
