@@ -1,3 +1,4 @@
+import React from 'react';
 import { DistributedLoad, LoadType, ConstraintType } from "../lib/types";
 import {
   Card,
@@ -30,6 +31,7 @@ interface ExtendedDistributedLoad extends DistributedLoad {
   houseHeight?: number;
   houseWidth?: number;
   houseDepth?: number;
+  houseRotation?: number;
   roofType?: 'flat' | 'monopitch' | 'duopitch' | 'hipped';
   // Flat roof edge properties
   flatRoofEdgeType?: 'sharp' | 'parapet' | 'rounded' | 'beveled';
@@ -99,6 +101,25 @@ const FormFactorOptions = [
 type ModifyDistributedLoadCardProps = {
   load: DistributedLoad;
   entitySet: EntitySet;
+  windCalculatorSettings?: {
+    houseHeight?: number;
+    houseWidth?: number;
+    houseDepth?: number;
+    houseRotation: number;
+    roofType: 'flat' | 'monopitch' | 'duopitch' | 'hipped';
+    flatRoofEdgeType: 'sharp' | 'parapet' | 'rounded' | 'beveled';
+    parapetHeight?: number;
+    edgeRadius?: number;
+    bevelAngle?: number;
+    roofPitch?: number;
+    hippedMainPitch?: number;
+    hippedHipPitch?: number;
+    distanceToSea: 'more_than_25km' | 'less_than_25km';
+    terrainCategory: '0' | '1' | '2' | '3' | '4';
+    formFactor: 'main_structure' | 'small_elements';
+    windDirection: number;
+  };
+  onWindCalculatorSettingsChange?: (settings: Partial<NonNullable<ModifyDistributedLoadCardProps['windCalculatorSettings']>>) => void;
   onChange: (load: ExtendedDistributedLoad) => void;
   onSubmit: (load: DistributedLoad) => void;
   onClose: () => void;
@@ -109,6 +130,8 @@ type ModifyDistributedLoadCardProps = {
 const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
   load,
   entitySet,
+  windCalculatorSettings,
+  onWindCalculatorSettingsChange,
   onChange,
   onSubmit,
   onClose,
@@ -121,39 +144,143 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
   const [ccDistance, setCcDistance] = useState<number | undefined>(extendedLoad.ccDistance);
   const [areaLoad, setAreaLoad] = useState<number | undefined>(extendedLoad.areaLoad);
   
-  // State for house rotation
-  const [currentHouseRotation, setCurrentHouseRotation] = useState<number>(houseRotation);
+  // State for house rotation - use shared wind calculator settings with fallback
+  const [currentHouseRotation, setCurrentHouseRotation] = useState<number>(
+    extendedLoad.houseRotation ?? windCalculatorSettings?.houseRotation ?? houseRotation ?? 0
+  );
   
   // State for wind loads (pressure and suction)
   const [ccDistanceSuction, setCcDistanceSuction] = useState<number | undefined>(extendedLoad.ccDistanceSuction);
   const [areaLoadSuction, setAreaLoadSuction] = useState<number | undefined>(extendedLoad.areaLoadSuction);
   
-  // State for 3D house model inputs (wind loads only)
-  const [houseHeight, setHouseHeight] = useState<number | undefined>(extendedLoad.houseHeight);
-  const [houseWidth, setHouseWidth] = useState<number | undefined>(extendedLoad.houseWidth);
-  const [houseDepth, setHouseDepth] = useState<number | undefined>(extendedLoad.houseDepth);
-  const [roofType, setRoofType] = useState<'flat' | 'monopitch' | 'duopitch' | 'hipped'>(extendedLoad.roofType || 'duopitch');
+  // State for 3D house model inputs (wind loads only) - initialize from shared settings with fallbacks
+  const [houseHeight, setHouseHeight] = useState<number | undefined>(
+    extendedLoad.houseHeight ?? windCalculatorSettings?.houseHeight
+  );
+  const [houseWidth, setHouseWidth] = useState<number | undefined>(
+    extendedLoad.houseWidth ?? windCalculatorSettings?.houseWidth
+  );
+  const [houseDepth, setHouseDepth] = useState<number | undefined>(
+    extendedLoad.houseDepth ?? windCalculatorSettings?.houseDepth
+  );
+  const [roofType, setRoofType] = useState<'flat' | 'monopitch' | 'duopitch' | 'hipped'>(
+    extendedLoad.roofType ?? windCalculatorSettings?.roofType ?? 'duopitch'
+  );
   
-  // State for flat roof edge settings
-  const [flatRoofEdgeType, setFlatRoofEdgeType] = useState<'sharp' | 'parapet' | 'rounded' | 'beveled'>(extendedLoad.flatRoofEdgeType || 'sharp');
-  const [parapetHeight, setParapetHeight] = useState<number | undefined>(extendedLoad.parapetHeight);
-  const [edgeRadius, setEdgeRadius] = useState<number | undefined>(extendedLoad.edgeRadius);
-  const [bevelAngle, setBevelAngle] = useState<number | undefined>(extendedLoad.bevelAngle);
-  const [roofPitch, setRoofPitch] = useState<number | undefined>(extendedLoad.roofPitch);
-  const [hippedMainPitch, setHippedMainPitch] = useState<number | undefined>(extendedLoad.hippedMainPitch);
-  const [hippedHipPitch, setHippedHipPitch] = useState<number | undefined>(extendedLoad.hippedHipPitch);
+  // State for flat roof edge settings - initialize from shared settings with fallbacks
+  const [flatRoofEdgeType, setFlatRoofEdgeType] = useState<'sharp' | 'parapet' | 'rounded' | 'beveled'>(
+    extendedLoad.flatRoofEdgeType ?? windCalculatorSettings?.flatRoofEdgeType ?? 'sharp'
+  );
+  const [parapetHeight, setParapetHeight] = useState<number | undefined>(
+    extendedLoad.parapetHeight ?? windCalculatorSettings?.parapetHeight
+  );
+  const [edgeRadius, setEdgeRadius] = useState<number | undefined>(
+    extendedLoad.edgeRadius ?? windCalculatorSettings?.edgeRadius
+  );
+  const [bevelAngle, setBevelAngle] = useState<number | undefined>(
+    extendedLoad.bevelAngle ?? windCalculatorSettings?.bevelAngle
+  );
+  const [roofPitch, setRoofPitch] = useState<number | undefined>(
+    extendedLoad.roofPitch ?? windCalculatorSettings?.roofPitch
+  );
+  const [hippedMainPitch, setHippedMainPitch] = useState<number | undefined>(
+    extendedLoad.hippedMainPitch ?? windCalculatorSettings?.hippedMainPitch
+  );
+  const [hippedHipPitch, setHippedHipPitch] = useState<number | undefined>(
+    extendedLoad.hippedHipPitch ?? windCalculatorSettings?.hippedHipPitch
+  );
   
-  // State for wind calculation parameters
-  const [distanceToSea, setDistanceToSea] = useState<'more_than_25km' | 'less_than_25km'>(extendedLoad.distanceToSea || 'more_than_25km');
-  const [terrainCategory, setTerrainCategory] = useState<'0' | '1' | '2' | '3' | '4'>(extendedLoad.terrainCategory || '2');
-  const [formFactor, setFormFactor] = useState<'main_structure' | 'small_elements'>(extendedLoad.formFactor || 'main_structure');
-  const [windDirection, setWindDirection] = useState<number>(extendedLoad.windDirection || 0);
+  // State for wind calculation parameters - initialize from shared settings with fallbacks
+  const [distanceToSea, setDistanceToSea] = useState<'more_than_25km' | 'less_than_25km'>(
+    extendedLoad.distanceToSea ?? windCalculatorSettings?.distanceToSea ?? 'more_than_25km'
+  );
+  const [terrainCategory, setTerrainCategory] = useState<'0' | '1' | '2' | '3' | '4'>(
+    extendedLoad.terrainCategory ?? windCalculatorSettings?.terrainCategory ?? '2'
+  );
+  const [formFactor, setFormFactor] = useState<'main_structure' | 'small_elements'>(
+    extendedLoad.formFactor ?? windCalculatorSettings?.formFactor ?? 'main_structure'
+  );
+  const [windDirection, setWindDirection] = useState<number>(
+    extendedLoad.windDirection ?? windCalculatorSettings?.windDirection ?? 0
+  );
   
   // State for second set of wind load inputs
   const [ccDistance2, setCcDistance2] = useState<number | undefined>(extendedLoad.ccDistance2);
   const [areaLoad2, setAreaLoad2] = useState<number | undefined>(extendedLoad.areaLoad2);
   const [ccDistanceSuction2, setCcDistanceSuction2] = useState<number | undefined>(extendedLoad.ccDistanceSuction2);
   const [areaLoadSuction2, setAreaLoadSuction2] = useState<number | undefined>(extendedLoad.areaLoadSuction2);
+  
+  // Helper function to update both the load and shared wind calculator settings
+  const updateWindCalculatorSetting = <K extends string>(
+    key: K,
+    value: any
+  ) => {
+    // Update the load
+    onChange({
+      ...load,
+      [key]: value,
+    } as ExtendedDistributedLoad);
+    
+    // Update the shared settings if available
+    if (onWindCalculatorSettingsChange) {
+      onWindCalculatorSettingsChange({ [key]: value });
+    }
+  };
+
+  // Sync local state with shared wind calculator settings when they change
+  React.useEffect(() => {
+    if (windCalculatorSettings) {
+      // Always use shared settings when load values are undefined (applies to new loads and loads without explicit values)
+      if (extendedLoad.houseHeight === undefined) {
+        setHouseHeight(windCalculatorSettings.houseHeight);
+      }
+      if (extendedLoad.houseWidth === undefined) {
+        setHouseWidth(windCalculatorSettings.houseWidth);
+      }
+      if (extendedLoad.houseDepth === undefined) {
+        setHouseDepth(windCalculatorSettings.houseDepth);
+      }
+      if (extendedLoad.houseRotation === undefined) {
+        setCurrentHouseRotation(windCalculatorSettings.houseRotation ?? 0);
+      }
+      if (extendedLoad.roofType === undefined) {
+        setRoofType(windCalculatorSettings.roofType ?? 'duopitch');
+      }
+      if (extendedLoad.flatRoofEdgeType === undefined) {
+        setFlatRoofEdgeType(windCalculatorSettings.flatRoofEdgeType ?? 'sharp');
+      }
+      if (extendedLoad.parapetHeight === undefined) {
+        setParapetHeight(windCalculatorSettings.parapetHeight);
+      }
+      if (extendedLoad.edgeRadius === undefined) {
+        setEdgeRadius(windCalculatorSettings.edgeRadius);
+      }
+      if (extendedLoad.bevelAngle === undefined) {
+        setBevelAngle(windCalculatorSettings.bevelAngle);
+      }
+      if (extendedLoad.roofPitch === undefined) {
+        setRoofPitch(windCalculatorSettings.roofPitch);
+      }
+      if (extendedLoad.hippedMainPitch === undefined) {
+        setHippedMainPitch(windCalculatorSettings.hippedMainPitch);
+      }
+      if (extendedLoad.hippedHipPitch === undefined) {
+        setHippedHipPitch(windCalculatorSettings.hippedHipPitch);
+      }
+      if (extendedLoad.distanceToSea === undefined) {
+        setDistanceToSea(windCalculatorSettings.distanceToSea ?? 'more_than_25km');
+      }
+      if (extendedLoad.terrainCategory === undefined) {
+        setTerrainCategory(windCalculatorSettings.terrainCategory ?? '2');
+      }
+      if (extendedLoad.formFactor === undefined) {
+        setFormFactor(windCalculatorSettings.formFactor ?? 'main_structure');
+      }
+      if (extendedLoad.windDirection === undefined) {
+        setWindDirection(windCalculatorSettings.windDirection ?? 0);
+      }
+    }
+  }, [windCalculatorSettings, load.id]); // Re-sync when wind calculator settings change or when switching to a different load
   
   // Wind calculations hook for automatic calculation
   const windCalculations = useWindCalculations({
@@ -394,11 +521,71 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     if (ltype === LoadType.Wind) {
                       angle = { relativeTo: "member", value: 90 };
                     }
-                    onChange({
+                    
+                    // When changing to wind type, use shared wind calculation settings
+                    const updatedLoad: ExtendedDistributedLoad = {
                       ...load,
                       angle,
                       type: ltype as LoadType,
-                    });
+                    };
+                    
+                    // If switching to wind type, populate with shared wind calculator settings
+                    if (ltype === LoadType.Wind) {
+                      if (windCalculatorSettings) {
+                        updatedLoad.houseHeight = windCalculatorSettings.houseHeight;
+                        updatedLoad.houseWidth = windCalculatorSettings.houseWidth;
+                        updatedLoad.houseDepth = windCalculatorSettings.houseDepth;
+                        updatedLoad.houseRotation = windCalculatorSettings.houseRotation;
+                        updatedLoad.roofType = windCalculatorSettings.roofType;
+                        updatedLoad.flatRoofEdgeType = windCalculatorSettings.flatRoofEdgeType;
+                        updatedLoad.parapetHeight = windCalculatorSettings.parapetHeight;
+                        updatedLoad.edgeRadius = windCalculatorSettings.edgeRadius;
+                        updatedLoad.bevelAngle = windCalculatorSettings.bevelAngle;
+                        updatedLoad.roofPitch = windCalculatorSettings.roofPitch;
+                        updatedLoad.hippedMainPitch = windCalculatorSettings.hippedMainPitch;
+                        updatedLoad.hippedHipPitch = windCalculatorSettings.hippedHipPitch;
+                        updatedLoad.distanceToSea = windCalculatorSettings.distanceToSea;
+                        updatedLoad.terrainCategory = windCalculatorSettings.terrainCategory;
+                        updatedLoad.formFactor = windCalculatorSettings.formFactor;
+                        updatedLoad.windDirection = windCalculatorSettings.windDirection;
+                        
+                        // Also update local state immediately to reflect the shared settings
+                        setHouseHeight(windCalculatorSettings.houseHeight);
+                        setHouseWidth(windCalculatorSettings.houseWidth);
+                        setHouseDepth(windCalculatorSettings.houseDepth);
+                        setCurrentHouseRotation(windCalculatorSettings.houseRotation ?? 0);
+                        setRoofType(windCalculatorSettings.roofType ?? 'duopitch');
+                        setFlatRoofEdgeType(windCalculatorSettings.flatRoofEdgeType ?? 'sharp');
+                        setParapetHeight(windCalculatorSettings.parapetHeight);
+                        setEdgeRadius(windCalculatorSettings.edgeRadius);
+                        setBevelAngle(windCalculatorSettings.bevelAngle);
+                        setRoofPitch(windCalculatorSettings.roofPitch);
+                        setHippedMainPitch(windCalculatorSettings.hippedMainPitch);
+                        setHippedHipPitch(windCalculatorSettings.hippedHipPitch);
+                        setDistanceToSea(windCalculatorSettings.distanceToSea ?? 'more_than_25km');
+                        setTerrainCategory(windCalculatorSettings.terrainCategory ?? '2');
+                        setFormFactor(windCalculatorSettings.formFactor ?? 'main_structure');
+                        setWindDirection(windCalculatorSettings.windDirection ?? 0);
+                      }
+                      
+                      // Keep the load-specific properties (Zone 1 and 2 inputs)
+                      updatedLoad.ccDistance = ccDistance;
+                      updatedLoad.areaLoad = areaLoad;
+                      updatedLoad.ccDistanceSuction = ccDistanceSuction;
+                      updatedLoad.areaLoadSuction = areaLoadSuction;
+                      updatedLoad.ccDistance2 = ccDistance2;
+                      updatedLoad.areaLoad2 = areaLoad2;
+                      updatedLoad.ccDistanceSuction2 = ccDistanceSuction2;
+                      updatedLoad.areaLoadSuction2 = areaLoadSuction2;
+                      updatedLoad.magnitude1Suction = extendedLoad.magnitude1Suction;
+                      updatedLoad.magnitude2Suction = extendedLoad.magnitude2Suction;
+                      updatedLoad.magnitude1Suction2 = extendedLoad.magnitude1Suction2;
+                      updatedLoad.magnitude2Suction2 = extendedLoad.magnitude2Suction2;
+                      updatedLoad.magnitude1_2 = extendedLoad.magnitude1_2;
+                      updatedLoad.magnitude2_2 = extendedLoad.magnitude2_2;
+                    }
+                    
+                    onChange(updatedLoad);
                   }}
                   options={LoadTypeOptions}
                 />
@@ -963,10 +1150,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                             if (!value) return;
                             const newRoofType = value as 'flat' | 'monopitch' | 'duopitch' | 'hipped';
                             setRoofType(newRoofType);
-                            onChange({
-                              ...load,
-                              roofType: newRoofType,
-                            } as ExtendedDistributedLoad);
+                            updateWindCalculatorSetting('roofType', newRoofType);
                           }}
                           options={RoofTypeOptions}
                         />
@@ -982,10 +1166,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                             value={roofPitch}
                             onChange={(value) => {
                               setRoofPitch(value);
-                              onChange({
-                                ...load,
-                                roofPitch: value,
-                              } as ExtendedDistributedLoad);
+                              updateWindCalculatorSetting('roofPitch', value);
                             }}
                             unit="°"
                             placeholder="taghældning"
@@ -1004,10 +1185,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                             value={roofPitch}
                             onChange={(value) => {
                               setRoofPitch(value);
-                              onChange({
-                                ...load,
-                                roofPitch: value,
-                              } as ExtendedDistributedLoad);
+                              updateWindCalculatorSetting('roofPitch', value);
                             }}
                             unit="°"
                             placeholder="taghældning"
@@ -1027,10 +1205,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                               value={hippedMainPitch}
                               onChange={(value) => {
                                 setHippedMainPitch(value);
-                                onChange({
-                                  ...load,
-                                  hippedMainPitch: value,
-                                } as ExtendedDistributedLoad);
+                                updateWindCalculatorSetting('hippedMainPitch', value);
                               }}
                               unit="°"
                               placeholder="hældning langs facaderne"
@@ -1045,10 +1220,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                               value={hippedHipPitch}
                               onChange={(value) => {
                                 setHippedHipPitch(value);
-                                onChange({
-                                  ...load,
-                                  hippedHipPitch: value,
-                                } as ExtendedDistributedLoad);
+                                updateWindCalculatorSetting('hippedHipPitch', value);
                               }}
                               unit="°"
                               placeholder="hældning på valmene"
@@ -1071,10 +1243,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                               if (!value) return;
                               const newEdgeType = value as 'sharp' | 'parapet' | 'rounded' | 'beveled';
                               setFlatRoofEdgeType(newEdgeType);
-                              onChange({
-                                ...load,
-                                flatRoofEdgeType: newEdgeType,
-                              } as ExtendedDistributedLoad);
+                              updateWindCalculatorSetting('flatRoofEdgeType', newEdgeType);
                             }}
                             options={FlatRoofEdgeTypeOptions}
                           />
@@ -1091,10 +1260,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                             value={parapetHeight}
                             onChange={(value) => {
                               setParapetHeight(value);
-                              onChange({
-                                ...load,
-                                parapetHeight: value,
-                              } as ExtendedDistributedLoad);
+                              updateWindCalculatorSetting('parapetHeight', value);
                             }}
                             unit="m"
                             placeholder="brystningshøjde"
@@ -1112,10 +1278,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                             value={edgeRadius}
                             onChange={(value) => {
                               setEdgeRadius(value);
-                              onChange({
-                                ...load,
-                                edgeRadius: value,
-                              } as ExtendedDistributedLoad);
+                              updateWindCalculatorSetting('edgeRadius', value);
                             }}
                             unit="m"
                             placeholder="tagkant radius"
@@ -1133,10 +1296,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                             value={bevelAngle}
                             onChange={(value) => {
                               setBevelAngle(value);
-                              onChange({
-                                ...load,
-                                bevelAngle: value,
-                              } as ExtendedDistributedLoad);
+                              updateWindCalculatorSetting('bevelAngle', value);
                             }}
                             unit="°"
                             placeholder="tagkant hældning"
@@ -1153,10 +1313,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                           value={houseHeight}
                           onChange={(value) => {
                             setHouseHeight(value);
-                            onChange({
-                              ...load,
-                              houseHeight: value,
-                            } as ExtendedDistributedLoad);
+                            updateWindCalculatorSetting('houseHeight', value);
                           }}
                           unit="m"
                           placeholder="højde"
@@ -1172,10 +1329,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                           value={houseWidth}
                           onChange={(value) => {
                             setHouseWidth(value);
-                            onChange({
-                              ...load,
-                              houseWidth: value,
-                            } as ExtendedDistributedLoad);
+                            updateWindCalculatorSetting('houseWidth', value);
                           }}
                           unit="m"
                           placeholder="bredde"
@@ -1191,10 +1345,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                           value={houseDepth}
                           onChange={(value) => {
                             setHouseDepth(value);
-                            onChange({
-                              ...load,
-                              houseDepth: value,
-                            } as ExtendedDistributedLoad);
+                            updateWindCalculatorSetting('houseDepth', value);
                           }}
                           unit="m"
                           placeholder="dybde"
@@ -1213,10 +1364,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                             if (!value) return;
                             const newDistanceToSea = value as 'more_than_25km' | 'less_than_25km';
                             setDistanceToSea(newDistanceToSea);
-                            onChange({
-                              ...load,
-                              distanceToSea: newDistanceToSea,
-                            } as ExtendedDistributedLoad);
+                            updateWindCalculatorSetting('distanceToSea', newDistanceToSea);
                           }}
                           options={DistanceToSeaOptions}
                         />
@@ -1233,10 +1381,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                             if (!value) return;
                             const newTerrainCategory = value as '0' | '1' | '2' | '3' | '4';
                             setTerrainCategory(newTerrainCategory);
-                            onChange({
-                              ...load,
-                              terrainCategory: newTerrainCategory,
-                            } as ExtendedDistributedLoad);
+                            updateWindCalculatorSetting('terrainCategory', newTerrainCategory);
                           }}
                           options={TerrainCategoryOptions}
                         />
@@ -1253,10 +1398,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                             if (!value) return;
                             const newFormFactor = value as 'main_structure' | 'small_elements';
                             setFormFactor(newFormFactor);
-                            onChange({
-                              ...load,
-                              formFactor: newFormFactor,
-                            } as ExtendedDistributedLoad);
+                            updateWindCalculatorSetting('formFactor', newFormFactor);
                           }}
                           options={FormFactorOptions}
                         />
@@ -1279,7 +1421,11 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                           roofPitch={roofPitch}
                           hippedMainPitch={hippedMainPitch}
                           hippedHipPitch={hippedHipPitch}
-                          onRotationChange={setCurrentHouseRotation}
+                          rotation={currentHouseRotation}
+                          onRotationChange={(rotation) => {
+                            setCurrentHouseRotation(rotation);
+                            updateWindCalculatorSetting('houseRotation', rotation);
+                          }}
                         />
                       </div>
                       

@@ -280,6 +280,7 @@ export default function HouseCompassView({
   hippedMainPitch = 15,
   hippedHipPitch = 20,
   roofHeight = 5,
+  rotation = 0,
   onRotationChange
 }: {
   width?: number;
@@ -294,9 +295,15 @@ export default function HouseCompassView({
   hippedMainPitch?: number;
   hippedHipPitch?: number;
   roofHeight?: number;
+  rotation?: number;
   onRotationChange?: (rotation: number) => void;
 }) {
-  const [houseRotation, setHouseRotation] = useState(0);
+  const [houseRotation, setHouseRotation] = useState(rotation);
+  
+  // Update house rotation when the rotation prop changes
+  React.useEffect(() => {
+    setHouseRotation(rotation);
+  }, [rotation]);
   
   // Calculate scale factor to ensure house fits within compass view
   // Target maximum dimension is about 8 units to fit nicely within the compass

@@ -1,6 +1,6 @@
 import { Drawing } from "@/lib/types";
 import reduceHistory from "./reduce-history";
-import { LoadType, DrawingState, Tool } from "./types";
+import { LoadType, DrawingState, Tool, WindCalculatorSettings } from "./types";
 
 export const defaultDrawingState = (aspectRatio: number): DrawingState => ({
   // Persisted
@@ -63,6 +63,15 @@ export const defaultDrawingState = (aspectRatio: number): DrawingState => ({
   },
   showSimulation: false,
   hasChanges: true,
+  windCalculatorSettings: {
+    houseRotation: 0,
+    roofType: 'flat',
+    flatRoofEdgeType: 'sharp',
+    distanceToSea: 'more_than_25km',
+    terrainCategory: '1',
+    formFactor: 'main_structure',
+    windDirection: 0,
+  } as WindCalculatorSettings,
 });
 
 export const makeDrawingState = (
