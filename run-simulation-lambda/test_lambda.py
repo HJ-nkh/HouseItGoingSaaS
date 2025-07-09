@@ -13,11 +13,11 @@ from main import handler
 # Test event
 test_event = {
     "body": {
-        "user_id": 1,  # Changed to string to match database varchar type
-        "simulation_id": 4
+        "team_id": 1,  # Changed from user_id to team_id to match main.py
+        "simulation_id": 6
     }, 
     "headers": { 
-        "X-API-Key": "your-secure-api-key-here" 
+        "X-API-Key": os.environ.get("API_KEY") 
     }
 }
 

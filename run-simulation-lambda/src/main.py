@@ -291,4 +291,4 @@ def handler(event, context):
             })
         }
 
-handler({"body": {"team_id": 1, "simulation_id": 1 }, "headers": { "X-API-Key": os.environ.get("API_KEY") } }, {})
+#handler({"body": {"team_id": 1, "simulation_id": 5 }, "headers": { "X-API-Key": os.environ.get("API_KEY") } }, {})

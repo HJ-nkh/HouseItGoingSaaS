@@ -55,7 +55,7 @@ const ConstraintSelect: React.FC<ConstraintSelectProps> = ({
   return (
     <div className="flex items-center gap-1">
       <Select
-        className="w-12 h-8"
+        className="w-16 h-8"
         value={constraint.type}        onChange={(value) => {
           const newType = value as ConstraintType;
           // When switching constraint type, use the current coordinate value
