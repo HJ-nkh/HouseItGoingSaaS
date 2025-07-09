@@ -15,6 +15,8 @@ import { resolveDistributedLoadPosition } from "../lib/reduce-history/resolve-po
 import { useState } from "react";
 import HouseOutline from "../../house-outline";
 import HouseCompassView from "../../house-compass-view";
+// Import wind calculation functionality
+import { useWindCalculations } from "../lib/wind-calculations";
 
 // Extended interface for DistributedLoad with additional calculation properties
 interface ExtendedDistributedLoad extends DistributedLoad {
@@ -153,6 +155,26 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
   const [ccDistanceSuction2, setCcDistanceSuction2] = useState<number | undefined>(extendedLoad.ccDistanceSuction2);
   const [areaLoadSuction2, setAreaLoadSuction2] = useState<number | undefined>(extendedLoad.areaLoadSuction2);
   
+  // Wind calculations hook for automatic calculation
+  const windCalculations = useWindCalculations({
+    houseHeight,
+    houseWidth,
+    houseDepth,
+    roofType,
+    roofPitch,
+    hippedMainPitch,
+    hippedHipPitch,
+    flatRoofEdgeType,
+    parapetHeight,
+    edgeRadius,
+    bevelAngle,
+    distanceToSea,
+    terrainCategory,
+    formFactor,
+    windDirection,
+    autoCalculate: load.type === LoadType.Wind && Boolean(houseHeight && houseWidth && houseDepth), // Only auto-calculate for wind loads when dimensions are set
+  });
+
   // Function to calculate and set magnitudes
   const calculateMagnitudes = (newCcDistance?: number, newAreaLoad?: number) => {
     const cc = newCcDistance ?? ccDistance;
