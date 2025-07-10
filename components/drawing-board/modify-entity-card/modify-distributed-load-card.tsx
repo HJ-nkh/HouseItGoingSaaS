@@ -16,6 +16,7 @@ import { resolveDistributedLoadPosition } from "../lib/reduce-history/resolve-po
 import { useState } from "react";
 import HouseOutline from "../../house-outline";
 import HouseCompassView from "../../house-compass-view";
+import HouseCompassViewZones from "../house-compass-view-zones";
 // Import wind calculation functionality
 import { useWindCalculations } from "../lib/wind-calculations";
 
@@ -152,6 +153,9 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
   // State for wind loads (pressure and suction)
   const [ccDistanceSuction, setCcDistanceSuction] = useState<number | undefined>(extendedLoad.ccDistanceSuction);
   const [areaLoadSuction, setAreaLoadSuction] = useState<number | undefined>(extendedLoad.areaLoadSuction);
+  
+  // State for wind calculator tabs
+  const [windCalculatorTab, setWindCalculatorTab] = useState<'inputs' | 'zones'>('inputs');
   
   // State for 3D house model inputs (wind loads only) - initialize from shared settings with fallbacks
   const [houseHeight, setHouseHeight] = useState<number | undefined>(
@@ -1135,27 +1139,53 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                 <div className="mb-4">
                   <h3 className="font-semibold mb-3 text-center">Vindlastberegner</h3>
                   
-                  {/* Horizontal layout: inputs on left, compass view on right */}
-                  <div className="flex gap-4">
-                    {/* Left side: Wind load inputs */}
-                    <div className="flex-1 space-y-3">
-                    {/* Roof type dropdown */}
-                    <div className="flex gap-3 items-center">
-                      <div className="w-24 text-left flex-shrink-0">Tagtype:</div>
-                      <div className="flex-1">
-                        <Select
-                          className="w-full border rounded text-left"
-                          value={roofType}
-                          onChange={(value) => {
-                            if (!value) return;
-                            const newRoofType = value as 'flat' | 'monopitch' | 'duopitch' | 'hipped';
-                            setRoofType(newRoofType);
-                            updateWindCalculatorSetting('roofType', newRoofType);
-                          }}
-                          options={RoofTypeOptions}
-                        />
-                      </div>
-                    </div>
+                  {/* Tab navigation */}
+                  <div className="flex border-b border-gray-200 mb-4">
+                    <button
+                      onClick={() => setWindCalculatorTab('inputs')}
+                      className={`px-4 py-2 text-sm font-medium ${
+                        windCalculatorTab === 'inputs'
+                          ? 'border-b-2 border-blue-500 text-blue-600'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      Indstillinger
+                    </button>
+                    <button
+                      onClick={() => setWindCalculatorTab('zones')}
+                      className={`px-4 py-2 text-sm font-medium ${
+                        windCalculatorTab === 'zones'
+                          ? 'border-b-2 border-blue-500 text-blue-600'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      Vindzoner
+                    </button>
+                  </div>
+                  
+                  {windCalculatorTab === 'inputs' && (
+                    <>
+                      {/* Horizontal layout: inputs on left, compass view on right */}
+                      <div className="flex gap-4">
+                        {/* Left side: Wind load inputs */}
+                        <div className="flex-1 space-y-3">
+                        {/* Roof type dropdown */}
+                        <div className="flex gap-3 items-center">
+                          <div className="w-24 text-left flex-shrink-0">Tagtype:</div>
+                          <div className="flex-1">
+                            <Select
+                              className="w-full border rounded text-left"
+                              value={roofType}
+                              onChange={(value) => {
+                                if (!value) return;
+                                const newRoofType = value as 'flat' | 'monopitch' | 'duopitch' | 'hipped';
+                                setRoofType(newRoofType);
+                                updateWindCalculatorSetting('roofType', newRoofType);
+                              }}
+                              options={RoofTypeOptions}
+                            />
+                          </div>
+                        </div>
                     
                     {/* Roof pitch dropdown - only show when monopitch is selected */}
                     {roofType === 'monopitch' && (
@@ -1404,12 +1434,64 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                         />
                       </div>
                     </div>
-                    </div>
-                    
-                    {/* Right side: Compass view */}
-                    <div className="flex-1 min-w-0">
-                      <div className="h-80 w-full">
-                        <HouseCompassView
+                        </div>
+                        
+                        {/* Right side: Compass view */}
+                        <div className="flex-1 min-w-0">
+                          <div className="h-80 w-full">
+                            <HouseCompassView
+                              width={houseWidth ?? 10}
+                              depth={houseDepth ?? 6}
+                              height={houseHeight ?? 8}
+                              roofType={roofType}
+                              flatRoofEdgeType={flatRoofEdgeType}
+                              parapetHeight={parapetHeight}
+                              edgeRadius={edgeRadius}
+                              bevelAngle={bevelAngle}
+                              roofPitch={roofPitch}
+                              hippedMainPitch={hippedMainPitch}
+                              hippedHipPitch={hippedHipPitch}
+                              rotation={currentHouseRotation}
+                              onRotationChange={(rotation) => {
+                                setCurrentHouseRotation(rotation);
+                                updateWindCalculatorSetting('houseRotation', rotation);
+                              }}
+                            />
+                          </div>
+                          
+                          {/* House rotation angle display */}
+                          <div className="mt-2 text-center">
+                            <div className="inline-block bg-blue-50 px-3 py-1 rounded border text-sm font-medium text-gray-700">
+                              Hus vinkel: {Math.round(currentHouseRotation)}°
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* 3D House Model */}
+                      <div className="h-48 w-full border rounded bg-gray-50">
+                        <HouseOutline
+                          width={houseWidth ?? 10}
+                          height={houseHeight ?? 8}
+                          depth={houseDepth ?? 6}
+                          roofType={roofType}
+                          flatRoofEdgeType={flatRoofEdgeType}
+                          parapetHeight={parapetHeight}
+                          edgeRadius={edgeRadius}
+                          bevelAngle={bevelAngle}
+                          roofPitch={roofPitch}
+                          hippedMainPitch={hippedMainPitch}
+                          hippedHipPitch={hippedHipPitch}
+                        />
+                      </div>
+                    </>
+                  )}
+                  
+                  {windCalculatorTab === 'zones' && (
+                    <div className="space-y-4">
+                      {/* House compass view for zones */}
+                      <div className="w-120 h-120 mx-auto">
+                        <HouseCompassViewZones
                           width={houseWidth ?? 10}
                           depth={houseDepth ?? 6}
                           height={houseHeight ?? 8}
@@ -1428,32 +1510,8 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                           }}
                         />
                       </div>
-                      
-                      {/* House rotation angle display */}
-                      <div className="mt-2 text-center">
-                        <div className="inline-block bg-blue-50 px-3 py-1 rounded border text-sm font-medium text-gray-700">
-                          Hus vinkel: {Math.round(currentHouseRotation)}°
-                        </div>
-                      </div>
                     </div>
-                  </div>
-                </div>
-                
-                {/* 3D House Model */}
-                <div className="h-48 w-full border rounded bg-gray-50">
-                  <HouseOutline
-                    width={houseWidth ?? 10}
-                    height={houseHeight ?? 8}
-                    depth={houseDepth ?? 6}
-                    roofType={roofType}
-                    flatRoofEdgeType={flatRoofEdgeType}
-                    parapetHeight={parapetHeight}
-                    edgeRadius={edgeRadius}
-                    bevelAngle={bevelAngle}
-                    roofPitch={roofPitch}
-                    hippedMainPitch={hippedMainPitch}
-                    hippedHipPitch={hippedHipPitch}
-                  />
+                  )}
                 </div>
               </div>
             </>
