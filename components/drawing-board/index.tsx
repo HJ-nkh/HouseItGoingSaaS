@@ -406,6 +406,14 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                 entitySet={processedEntitySet}
                 svgRef={svgRef.current}
                 addAction={addAction}
+                windCalculatorSettings={state.windCalculatorSettings}
+                onWindCalculatorSettingsChange={(settings) =>
+                  setState((s) => ({ 
+                    ...s, 
+                    windCalculatorSettings: { ...s.windCalculatorSettings, ...settings },
+                    hasChanges: true 
+                  }))
+                }
               />
             )}          {/* MODIFY ENTITY CARD */}
           {!showSimulation &&
@@ -433,6 +441,14 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                   state={state}
                   setState={setState}
                   addAction={addAction}
+                  windCalculatorSettings={state.windCalculatorSettings}
+                  onWindCalculatorSettingsChange={(settings) =>
+                    setState((s) => ({ 
+                      ...s, 
+                      windCalculatorSettings: { ...s.windCalculatorSettings, ...settings },
+                      hasChanges: true 
+                    }))
+                  }
                   key={state.selectedIds[0]}
                 />
               </div>

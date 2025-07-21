@@ -114,6 +114,27 @@ export type DrawingState = {
   };
   showSimulation: boolean;
   hasChanges: boolean;
+  // Wind calculator settings - shared across all wind loads
+  windCalculatorSettings: WindCalculatorSettings;
+};
+
+export type WindCalculatorSettings = {
+  houseHeight?: number;
+  houseWidth?: number;
+  houseDepth?: number;
+  houseRotation: number;
+  roofType: 'flat' | 'monopitch' | 'duopitch' | 'hipped';
+  flatRoofEdgeType: 'sharp' | 'parapet' | 'rounded' | 'beveled';
+  parapetHeight?: number;
+  edgeRadius?: number;
+  bevelAngle?: number;
+  roofPitch?: number;
+  hippedMainPitch?: number;
+  hippedHipPitch?: number;
+  distanceToSea: 'more_than_25km' | 'less_than_25km';
+  terrainCategory: '0' | '1' | '2' | '3' | '4';
+  formFactor: 'main_structure' | 'small_elements';
+  windDirection: number;
 };
 
 export enum ConstraintType {

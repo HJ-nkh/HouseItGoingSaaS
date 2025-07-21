@@ -7,6 +7,7 @@ import {
   ActionType,
   DistributedLoad,
   MomentLoad,
+  WindCalculatorSettings,
 } from "./lib/types";
 import { fromSvgCoordinates } from "./lib/svg-coordinates";
 import ModifyPointLoadCard from "./modify-entity-card/modify-point-load-card";
@@ -25,6 +26,8 @@ type AddEntityCardProps = {
   addAction: (action: Action) => void;
   svgRef: SVGSVGElement | null;
   entitySet: EntitySet;
+  windCalculatorSettings?: WindCalculatorSettings;
+  onWindCalculatorSettingsChange?: (settings: Partial<WindCalculatorSettings>) => void;
 };
 
 const AddEntityCard: React.FC<AddEntityCardProps> = ({
@@ -33,6 +36,8 @@ const AddEntityCard: React.FC<AddEntityCardProps> = ({
   addAction,
   svgRef,
   entitySet,
+  windCalculatorSettings,
+  onWindCalculatorSettingsChange,
 }) => {
   if (!state.modifyingEntity) {
     return null;
@@ -113,6 +118,8 @@ const AddEntityCard: React.FC<AddEntityCardProps> = ({
         >          <ModifyDistributedLoadCard
             load={load}
             entitySet={entitySet}
+            windCalculatorSettings={windCalculatorSettings}
+            onWindCalculatorSettingsChange={onWindCalculatorSettingsChange}
             onChange={(load) =>
               setState((s) => ({
                 ...s,

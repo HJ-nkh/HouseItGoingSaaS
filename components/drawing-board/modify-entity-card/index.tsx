@@ -8,6 +8,7 @@ import {
   DrawingState,
   Entity,
   Node,
+  WindCalculatorSettings,
 } from "../lib/types";
 import ModifyPointLoadCard from "./modify-point-load-card";
 import ModifyDistributedLoadCard from "./modify-distributed-load-card";
@@ -23,6 +24,8 @@ type ModifyEntityCardProps = {
   state: DrawingState;
   setState: React.Dispatch<React.SetStateAction<DrawingState>>;
   addAction: (action: Action | Action[]) => void;
+  windCalculatorSettings?: WindCalculatorSettings;
+  onWindCalculatorSettingsChange?: (settings: Partial<WindCalculatorSettings>) => void;
 };
 
 const ModifyEntityCard: React.FC<ModifyEntityCardProps> = ({
@@ -30,6 +33,8 @@ const ModifyEntityCard: React.FC<ModifyEntityCardProps> = ({
   state,
   setState,
   addAction,
+  windCalculatorSettings,
+  onWindCalculatorSettingsChange,
 }) => {
   if (!state.modifyingEntity) {
     return null;
@@ -259,6 +264,8 @@ const ModifyEntityCard: React.FC<ModifyEntityCardProps> = ({
         <ModifyDistributedLoadCard
           load={distributedLoad}
           entitySet={entitySet}
+          windCalculatorSettings={windCalculatorSettings}
+          onWindCalculatorSettingsChange={onWindCalculatorSettingsChange}
           onChange={(load) =>
             setState((s) => ({
               ...s,

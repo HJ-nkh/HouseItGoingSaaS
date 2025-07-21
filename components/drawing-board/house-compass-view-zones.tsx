@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { House } from './house-outline';
+import { House } from '../house-outline';
 
 // Fixed top-down camera - positioned well above the house
 function TopDownCamera({ roofHeight = 5 }: { roofHeight?: number }) {
@@ -26,7 +26,7 @@ function TopDownCamera({ roofHeight = 5 }: { roofHeight?: number }) {
   return null; // Camera component doesn't render anything
 }
 
-// 3D House component - wrapper around imported House with drag functionality
+// 3D House component - fixed orientation, no dragging
 function House3D({ 
   width = 10, 
   height = 4, 
@@ -38,9 +38,7 @@ function House3D({
   bevelAngle = 45,
   roofPitch = 15,
   hippedMainPitch = 15,
-  hippedHipPitch = 20,
-  rotation = 0,
-  onRotationChange
+  hippedHipPitch = 20
 }: {
   width: number;
   height: number;
@@ -53,83 +51,21 @@ function House3D({
   roofPitch?: number;
   hippedMainPitch?: number;
   hippedHipPitch?: number;
-  rotation: number;
-  onRotationChange: (rotation: number) => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const { camera, raycaster, pointer } = useThree();
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ angle: 0, rotation: 0 });
 
-  // Drag functionality
-  const handlePointerDown = (event: any) => {
-    event.stopPropagation();
-    setIsDragging(true);
-    
-    // Calculate current angle from pointer to house center
-    raycaster.setFromCamera(pointer, camera);
-    const planeNormal = new THREE.Vector3(0, 1, 0);
-    const plane = new THREE.Plane(planeNormal, 0);
-    const intersection = new THREE.Vector3();
-    
-    if (raycaster.ray.intersectPlane(plane, intersection)) {
-      // Convert to wind direction convention: 0° = North, clockwise
-      const mathAngle = Math.atan2(intersection.x, -intersection.z) * (180 / Math.PI);
-      const windAngle = ((-mathAngle + 90) % 360 + 360) % 360;
-      setDragStart({ angle: windAngle, rotation });
-    }
-  };
-  
-  const handlePointerMove = () => {
-    if (!isDragging) return;
-    
-    raycaster.setFromCamera(pointer, camera);
-    const planeNormal = new THREE.Vector3(0, 1, 0);
-    const plane = new THREE.Plane(planeNormal, 0);
-    const intersection = new THREE.Vector3();
-    
-    if (raycaster.ray.intersectPlane(plane, intersection)) {
-      // Convert to wind direction convention: 0° = North, clockwise
-      const mathAngle = Math.atan2(intersection.x, -intersection.z) * (180 / Math.PI);
-      const currentWindAngle = ((-mathAngle + 90) % 360 + 360) % 360;
-      const deltaAngle = currentWindAngle - dragStart.angle;
-      // Fix rotation direction: drag clockwise should rotate clockwise
-      const newRotation = ((dragStart.rotation - deltaAngle) % 360 + 360) % 360;
-      onRotationChange(newRotation);
-    }
-  };
-  
-  const handlePointerUp = () => {
-    setIsDragging(false);
-  };
-
+  // House always stays in the same orientation (depth pointing east/west)
+  // Rotated 90 degrees counter-clockwise from the original orientation
   React.useEffect(() => {
     if (groupRef.current) {
-      // Convert wind direction (0° = North, clockwise) to Three.js rotation
-      // Three.js uses radians and 0° = +Z direction, so we need to convert
-      const threeJsRotation = ((-rotation + 90) * Math.PI) / 180;
-      groupRef.current.rotation.y = threeJsRotation;
+      // House stays fixed - depth dimension points east/west (90° counter-clockwise)
+      groupRef.current.rotation.y = Math.PI / 2; // 90 degrees counter-clockwise
     }
-  }, [rotation]);
-
-  React.useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('pointerup', handlePointerUp);
-      document.addEventListener('pointermove', handlePointerMove);
-      
-      return () => {
-        document.removeEventListener('pointerup', handlePointerUp);
-        document.removeEventListener('pointermove', handlePointerMove);
-      };
-    }
-  }, [isDragging, dragStart.angle, dragStart.rotation]);
+  }, []);
 
   return (
-    <group 
-      ref={groupRef} 
-      onPointerDown={handlePointerDown}
-    >
-      {/* Use the imported House component */}
+    <group ref={groupRef}>
+      {/* Use the imported House component - fixed orientation */}
       <House
         width={width}
         height={height}
@@ -145,46 +81,26 @@ function House3D({
         disableRotation={true}
       />
       
-      {/* Direction indicator lines - extends from house center in width and depth directions */}
+      {/* Direction indicator lines - fixed to show house orientation */}
       <group>
-        {/* Visible thin red line - width direction */}
+        {/* Visible thin red line - width direction (now north/south after 90° rotation) */}
         <mesh position={[0, 0.1, 0]} rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[0.02, 0.02, 14]} />
           <meshBasicMaterial color="#FF0000" />
         </mesh>
         
-        {/* Invisible thicker cylinder for easier dragging - width direction */}
-        <mesh 
-          position={[0, 0.1, 0]} 
-          rotation={[0, 0, Math.PI / 2]}
-          onPointerDown={handlePointerDown}
-        >
-          <cylinderGeometry args={[0.2, 0.2, 14]} />
-          <meshBasicMaterial transparent opacity={0} />
-        </mesh>
-        
-        {/* Visible thin red line - depth direction (90 degrees rotated) */}
+        {/* Visible thin red line - depth direction (now east/west after 90° rotation) */}
         <mesh position={[0, 0.1, 0]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.02, 0.02, 14]} />
           <meshBasicMaterial color="#FF0000" />
-        </mesh>
-        
-        {/* Invisible thicker cylinder for easier dragging - depth direction */}
-        <mesh 
-          position={[0, 0.1, 0]} 
-          rotation={[Math.PI / 2, 0, 0]}
-          onPointerDown={handlePointerDown}
-        >
-          <cylinderGeometry args={[0.2, 0.2, 14]} />
-          <meshBasicMaterial transparent opacity={0} />
         </mesh>
       </group>
     </group>
   );
 }
 
-// Compass directions as HTML overlays
-function CompassDirectionsHTML() {
+// Compass directions as HTML overlays - rotates with house direction from settings
+function CompassDirectionsHTML({ houseRotation = 0 }: { houseRotation?: number }) {
   const directions = [
     { name: 'N', angle: 0, degrees: '0°' },
     { name: 'NNØ', angle: 30, degrees: '30°' },
@@ -205,7 +121,12 @@ function CompassDirectionsHTML() {
       {directions.map((dir, index) => {
         const radius = 45; // percentage from center - increased for more space
         const degreesRadius = 35; // percentage from center for degrees - increased
-        const angleRad = (dir.angle * Math.PI) / 180;
+        
+        // Apply house rotation to compass direction
+        // Use negative house rotation to rotate compass in opposite direction
+        const adjustedAngle = (dir.angle - houseRotation + 360) % 360;
+        const angleRad = (adjustedAngle * Math.PI) / 180;
+        
         const x = 50 + Math.sin(angleRad) * radius; // 50% is center
         const y = 50 - Math.cos(angleRad) * radius; // 50% is center, minus because Y increases downward
         const degreesX = 50 + Math.sin(angleRad) * degreesRadius;
@@ -241,7 +162,7 @@ function CompassDirectionsHTML() {
   );
 }
 
-function CompassMarkers() {
+function CompassMarkers({ houseRotation = 0 }: { houseRotation?: number }) {
   const directions = [
     { angle: 0 }, { angle: 30 }, { angle: 60 }, { angle: 90 },
     { angle: 120 }, { angle: 150 }, { angle: 180 }, { angle: 210 },
@@ -252,7 +173,12 @@ function CompassMarkers() {
     <>
       {directions.map((dir, index) => {
         const radius = 12; // Increased radius to avoid overlap with text
-        const angleRad = (dir.angle * Math.PI) / 180;
+        
+        // Apply house rotation to marker positions
+        // Use negative house rotation to rotate compass in opposite direction
+        const adjustedAngle = (dir.angle - houseRotation + 360) % 360;
+        const angleRad = (adjustedAngle * Math.PI) / 180;
+        
         const x = Math.sin(angleRad) * radius;
         const z = -Math.cos(angleRad) * radius;
         
@@ -267,7 +193,7 @@ function CompassMarkers() {
   );
 }
 
-export default function HouseCompassView({
+export default function HouseCompassViewZones({
   width = 24,
   depth = 16,
   height = 12,
@@ -310,16 +236,11 @@ export default function HouseCompassView({
   const maxTargetDimension = 6;
   const maxActualDimension = Math.max(width, depth);
   const scale = maxTargetDimension / maxActualDimension;
-  
-  const handleHouseRotationChange = (rotation: number) => {
-    setHouseRotation(rotation);
-    onRotationChange?.(rotation);
-  };
 
   return (
     <div className="relative w-full h-full bg-gray-50 rounded border">
       {/* HTML compass directions overlay */}
-      <CompassDirectionsHTML />
+      <CompassDirectionsHTML houseRotation={houseRotation} />
       
       <Canvas>
         <TopDownCamera roofHeight={roofHeight} />
@@ -332,9 +253,9 @@ export default function HouseCompassView({
         <gridHelper args={[24, 24, '#CCCCCC', '#EEEEEE']} position={[0, -1, 0]} />
         
         {/* Compass markers */}
-        <CompassMarkers />
+        <CompassMarkers houseRotation={houseRotation} />
         
-        {/* House (draggable for rotation) - using imported House component */}
+        {/* House (fixed orientation) - using imported House component */}
         <House3D
           width={width * scale}
           depth={depth * scale}
@@ -347,8 +268,6 @@ export default function HouseCompassView({
           roofPitch={roofPitch}
           hippedMainPitch={hippedMainPitch}
           hippedHipPitch={hippedHipPitch}
-          rotation={houseRotation}
-          onRotationChange={handleHouseRotationChange}
         />
         
         {/* Center point */}
