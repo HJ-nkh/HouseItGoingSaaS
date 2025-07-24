@@ -16,7 +16,8 @@ import { resolveDistributedLoadPosition } from "../lib/reduce-history/resolve-po
 import { useState } from "react";
 import HouseOutline from "../../house-outline";
 import HouseCompassView from "../../house-compass-view";
-import HouseCompassViewZones from "../house-compass-view-zones";
+import ConstructionWindow from "../../construction-window";
+import InteractiveRectangle from "../../interactive-rectangle";
 // Import wind calculation functionality
 import { useWindCalculations } from "../lib/wind-calculations";
 
@@ -156,6 +157,15 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
   
   // State for wind calculator tabs
   const [windCalculatorTab, setWindCalculatorTab] = useState<'inputs' | 'zones'>('inputs');
+  
+  // State for new construction components
+  const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
+  const [constructionLines, setConstructionLines] = useState<Array<{ id: number; x1: number; y1: number; x2: number; y2: number }>>([
+    { id: 1, x1: 0, y1: 0, x2: 0, y2: 3 },
+    { id: 2, x1: 0, y1: 3, x2: 3, y2: 4 },
+    { id: 3, x1: 3, y1: 4, x2: 6, y2: 3 },
+    { id: 4, x1: 6, y1: 3, x2: 6, y2: 0 },
+  ]);
   
   // State for 3D house model inputs (wind loads only) - initialize from shared settings with fallbacks
   const [houseHeight, setHouseHeight] = useState<number | undefined>(
@@ -1489,26 +1499,31 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                   
                   {windCalculatorTab === 'zones' && (
                     <div className="space-y-4">
-                      {/* House compass view for zones */}
-                      <div className="w-120 h-120 mx-auto">
-                        <HouseCompassViewZones
-                          width={houseWidth ?? 10}
-                          depth={houseDepth ?? 6}
-                          height={houseHeight ?? 8}
-                          roofType={roofType}
-                          flatRoofEdgeType={flatRoofEdgeType}
-                          parapetHeight={parapetHeight}
-                          edgeRadius={edgeRadius}
-                          bevelAngle={bevelAngle}
-                          roofPitch={roofPitch}
-                          hippedMainPitch={hippedMainPitch}
-                          hippedHipPitch={hippedHipPitch}
-                          rotation={currentHouseRotation}
-                          onRotationChange={(rotation) => {
-                            setCurrentHouseRotation(rotation);
-                            updateWindCalculatorSetting('houseRotation', rotation);
-                          }}
-                        />
+                      {/* New Construction Components Layout */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Left side: Construction Window */}
+                        <div className="bg-white rounded-lg border p-4">
+                          <h4 className="font-medium mb-4 text-center">Konstruktionslinjer</h4>
+                          <ConstructionWindow
+                            selectedLineId={selectedLineId}
+                            onLineSelect={setSelectedLineId}
+                            onLinesChange={setConstructionLines}
+                          />
+                        </div>
+                        
+                        {/* Right side: Interactive Rectangle */}
+                        <div className="bg-white rounded-lg border p-4">
+                          <h4 className="font-medium mb-4 text-center">Interaktiv vindzoner</h4>
+                          <InteractiveRectangle
+                            depth={houseDepth ?? 6}
+                            width={houseWidth ?? 10}
+                            selectedLineId={selectedLineId}
+                            constructionLines={constructionLines}
+                            onDotPlaced={(dot) => {
+                              console.log('Dot placed:', dot);
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
                   )}

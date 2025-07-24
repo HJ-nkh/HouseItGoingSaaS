@@ -1,30 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
-import { House } from '../house-outline';
-
-// Fixed top-down camera - positioned well above the house
-function TopDownCamera({ roofHeight = 5 }: { roofHeight?: number }) {
-  const { camera } = useThree();
-  
-  React.useEffect(() => {
-    // Position camera well above the highest point of the house
-    // Calculate the actual roof peak height first
-    const maxRoofHeight = roofHeight * 2; // Ensure we're well above any roof geometry
-    const cameraHeight = maxRoofHeight + 17; // Much higher above the roof
-    camera.position.set(0, cameraHeight, 0);
-    // Look straight down at the house center
-    camera.lookAt(0, 0, 0);
-    camera.up.set(0, 0, -1); // Reset to normal orientation (north up)
-    
-    if (camera instanceof THREE.PerspectiveCamera) {
-      camera.fov = 45; // Narrower field of view for better perspective
-      camera.updateProjectionMatrix();
-    }
-  }, [camera, roofHeight]);
-
-  return null; // Camera component doesn't render anything
-}
+import { House } from './house-outline';
 
 // 3D House component - fixed orientation, no dragging
 function House3D({ 
@@ -94,6 +71,63 @@ function House3D({
           <cylinderGeometry args={[0.02, 0.02, 14]} />
           <meshBasicMaterial color="#FF0000" />
         </mesh>
+        
+        {/* Dashed lines at 45-degree angles from wall intersections */}
+        {/* Right wall intersection (North) - two 45° lines relative to north-south red line */}
+        <group position={[0, 0.1, depth / 2]}>
+          {/* 45° to the east (right when looking north) */}
+          <mesh rotation={[Math.PI / 2, 0, Math.PI / 4]}>
+            <cylinderGeometry args={[0.01, 0.01, 8]} />
+            <meshBasicMaterial color="#0066FF" transparent opacity={0.5} />
+          </mesh>
+          {/* 45° to the west (left when looking north) */}
+          <mesh rotation={[Math.PI / 2, 0, -Math.PI / 4]}>
+            <cylinderGeometry args={[0.01, 0.01, 8]} />
+            <meshBasicMaterial color="#0066FF" transparent opacity={0.5} />
+          </mesh>
+        </group>
+        
+        {/* Left wall intersection (South) - two 45° lines relative to north-south red line */}
+        <group position={[0, 0.1, -depth / 2]}>
+          {/* 45° to the east (right when looking south) */}
+          <mesh rotation={[Math.PI / 2, 0, -Math.PI / 4]}>
+            <cylinderGeometry args={[0.01, 0.01, 8]} />
+            <meshBasicMaterial color="#0066FF" transparent opacity={0.5} />
+          </mesh>
+          {/* 45° to the west (left when looking south) */}
+          <mesh rotation={[Math.PI / 2, 0, Math.PI / 4]}>
+            <cylinderGeometry args={[0.01, 0.01, 8]} />
+            <meshBasicMaterial color="#0066FF" transparent opacity={0.5} />
+          </mesh>
+        </group>
+        
+        {/* Upward pointing wall intersection - two 45° lines relative to east-west red line */}
+        <group position={[width / 2, 0.1, 0]}>
+          {/* 45° to the north (right when looking east) */}
+          <mesh rotation={[Math.PI / 2, 0, Math.PI / 4]}>
+            <cylinderGeometry args={[0.01, 0.01, 8]} />
+            <meshBasicMaterial color="#0066FF" transparent opacity={0.5} />
+          </mesh>
+          {/* 45° to the south (left when looking east) */}
+          <mesh rotation={[Math.PI / 2, 0, -Math.PI / 4]}>
+            <cylinderGeometry args={[0.01, 0.01, 8]} />
+            <meshBasicMaterial color="#0066FF" transparent opacity={0.5} />
+          </mesh>
+        </group>
+        
+        {/* Downward pointing wall intersection - two 45° lines relative to east-west red line */}
+        <group position={[-width / 2, 0.1, 0]}>
+          {/* 45° to the north (left when looking west) */}
+          <mesh rotation={[Math.PI / 2, 0, -Math.PI / 4]}>
+            <cylinderGeometry args={[0.01, 0.01, 8]} />
+            <meshBasicMaterial color="#0066FF" transparent opacity={0.5} />
+          </mesh>
+          {/* 45° to the south (right when looking west) */}
+          <mesh rotation={[Math.PI / 2, 0, Math.PI / 4]}>
+            <cylinderGeometry args={[0.01, 0.01, 8]} />
+            <meshBasicMaterial color="#0066FF" transparent opacity={0.5} />
+          </mesh>
+        </group>
       </group>
     </group>
   );
@@ -158,6 +192,138 @@ function CompassDirectionsHTML({ houseRotation = 0 }: { houseRotation?: number }
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// 2D House walls overlay - hover to reveal wall outlines
+function HouseWallsOverlay({ 
+  width, 
+  depth, 
+  scale 
+}: { 
+  width: number; 
+  depth: number; 
+  scale: number; 
+}) {
+  const [hoveredWall, setHoveredWall] = useState<string | null>(null);
+  
+  // Calculate scaled dimensions - these match exactly what's passed to House3D
+  const scaledWidth = width * scale;
+  const scaledDepth = depth * scale;
+  
+  // Calculate the actual orthographic camera visible bounds
+  // With zoom=30, the orthographic camera shows a specific area
+  // The orthographic frustum size is calculated as: size = 2 / zoom (for normalized coordinates)
+  // But Three.js orthographic camera with zoom=30 approximately shows ±(1/zoom) * some_factor
+  // Based on testing, zoom=30 shows approximately ±8 units
+  const cameraZoom = 30;
+  const visibleBounds = 8; // Empirically determined for zoom=30
+  
+  // Convert 3D world position to screen percentage (0-100)
+  const project3DToScreen = (x: number, z: number) => {
+    // Clamp coordinates to visible bounds to avoid overflow
+    const clampedX = Math.max(-visibleBounds, Math.min(visibleBounds, x));
+    const clampedZ = Math.max(-visibleBounds, Math.min(visibleBounds, z));
+    
+    // Map world coordinates to screen percentage
+    // x: [-visibleBounds, +visibleBounds] → [0, 100]
+    // z: [-visibleBounds, +visibleBounds] → [100, 0] (inverted Y for SVG)
+    const screenX = ((clampedX + visibleBounds) / (visibleBounds * 2)) * 100;
+    const screenY = ((visibleBounds - clampedZ) / (visibleBounds * 2)) * 100;
+    
+    return { x: screenX, y: screenY };
+  };
+  
+  
+  // Wall positions in 3D world coordinates (after house 90° rotation)
+  // The house is rotated 90° counter-clockwise, so:
+  // - House width becomes north/south direction (Z-axis in world)
+  // - House depth becomes east/west direction (X-axis in world)
+  const wall3DPositions = [
+    {
+      id: 'up',
+      name: 'Op væg',
+      // Top wall (north) spans east-west at Z = +scaledWidth/2 (width became north-south)
+      start3D: { x: -scaledDepth/2, z: scaledWidth/2 },
+      end3D: { x: scaledDepth/2, z: scaledWidth/2 },
+    },
+    {
+      id: 'down', 
+      name: 'Ned væg',
+      // Bottom wall (south) spans east-west at Z = -scaledWidth/2
+      start3D: { x: -scaledDepth/2, z: -scaledWidth/2 },
+      end3D: { x: scaledDepth/2, z: -scaledWidth/2 },
+    },
+    {
+      id: 'right',
+      name: 'Højre væg', 
+      // Right wall (east) spans north-south at X = +scaledDepth/2 (depth became east-west)
+      start3D: { x: scaledDepth/2, z: scaledWidth/2 },
+      end3D: { x: scaledDepth/2, z: -scaledWidth/2 },
+    },
+    {
+      id: 'left',
+      name: 'Venstre væg',
+      // Left wall (west) spans north-south at X = -scaledDepth/2
+      start3D: { x: -scaledDepth/2, z: scaledWidth/2 },
+      end3D: { x: -scaledDepth/2, z: -scaledWidth/2 },
+    }
+  ];
+
+  // Convert 3D positions to screen coordinates
+  const walls = wall3DPositions.map(wall => {
+    const start2D = project3DToScreen(wall.start3D.x, wall.start3D.z);
+    const end2D = project3DToScreen(wall.end3D.x, wall.end3D.z);
+    
+    return {
+      id: wall.id,
+      name: wall.name,
+      x1: start2D.x,
+      y1: start2D.y,
+      x2: end2D.x,
+      y2: end2D.y,
+    };
+  });
+
+  return (
+    <div className="absolute inset-0 pointer-events-none z-15">
+      <svg 
+        className="w-full h-full pointer-events-auto" 
+        viewBox="0 0 100 100" 
+        preserveAspectRatio="none"
+      >
+        {walls.map((wall) => (
+          <g key={wall.id}>
+            {/* Invisible hover area (thicker line) */}
+            <line
+              x1={wall.x1}
+              y1={wall.y1}
+              x2={wall.x2}
+              y2={wall.y2}
+              stroke="transparent"
+              strokeWidth="4"
+              className="cursor-pointer"
+              onMouseEnter={() => setHoveredWall(wall.id)}
+              onMouseLeave={() => setHoveredWall(null)}
+              style={{ pointerEvents: 'stroke' }}
+            />
+            {/* Visible line when hovered */}
+            {hoveredWall === wall.id && (
+              <line
+                x1={wall.x1}
+                y1={wall.y1}
+                x2={wall.x2}
+                y2={wall.y2}
+                stroke="#FF0000"
+                strokeWidth="1.5"
+                opacity="1"
+                className="pointer-events-none"
+              />
+            )}
+          </g>
+        ))}
+      </svg>
     </div>
   );
 }
@@ -242,9 +408,21 @@ export default function HouseCompassViewZones({
       {/* HTML compass directions overlay */}
       <CompassDirectionsHTML houseRotation={houseRotation} />
       
-      <Canvas>
-        <TopDownCamera roofHeight={roofHeight} />
-        
+      {/* 2D House walls overlay */}
+      <HouseWallsOverlay 
+        width={width} 
+        depth={depth} 
+        scale={scale} 
+      />
+      
+      <Canvas 
+        orthographic
+        camera={{ 
+          position: [0, roofHeight * 2 + 17, 0], 
+          zoom: 30,
+          up: [0, 0, -1]
+        }}
+      >
         {/* Ambient lighting - same as house-outline */}
         <ambientLight intensity={0.6} />
         <pointLight position={[10, 10, 10]} />
