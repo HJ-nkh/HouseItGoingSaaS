@@ -43,6 +43,7 @@ import { hideAllEntities, showAllEntities } from "./lib/show-entities";
 import SimulationCard from "./simulation-card";
 import ScaleSimulationCard from "./scale-simulation-card";
 import GlobalLocalDefCard from "./global-local-def-card";
+import WindCalculatorCard from "./wind-calculator-card";
 import { getShowLoadByIds } from "./lib/show-loads-by-id";
 import PendingIndicator from "./pending-indicator";
 import ContextHint from "./context-hint";
@@ -453,6 +454,38 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                 />
               </div>
             )}
+
+          {/* WIND CALCULATOR CARD */}
+          {!showSimulation && state.tool === Tool.WindCalculator && (
+            <WindCalculatorCard
+              settings={state.windCalculatorSettings || {
+                houseHeight: undefined,
+                houseWidth: undefined,
+                houseDepth: undefined,
+                houseRotation: 0,
+                roofType: 'duopitch',
+                flatRoofEdgeType: 'sharp',
+                parapetHeight: undefined,
+                edgeRadius: undefined,
+                bevelAngle: undefined,
+                roofPitch: undefined,
+                hippedMainPitch: undefined,
+                hippedHipPitch: undefined,
+                distanceToSea: 'more_than_25km',
+                terrainCategory: '2',
+                formFactor: 'main_structure',
+                windDirection: 0,
+              }}
+              onSettingsChange={(settings) =>
+                setState((s) => ({ 
+                  ...s, 
+                  windCalculatorSettings: { ...s.windCalculatorSettings, ...settings },
+                  hasChanges: true 
+                }))
+              }
+              onClose={() => setState((s) => ({ ...s, tool: Tool.Select }))}
+            />
+          )}
 
           {/* UTILIZATION RATIO MATRIX */}
           {analysis === "UR" &&

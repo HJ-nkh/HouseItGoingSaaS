@@ -8,6 +8,7 @@ export enum Tool {
   DistributedLoad = "DistributedLoad",
   MomentLoad = "MomentLoad",
   Support = "Support",
+  WindCalculator = "WindCalculator",
 }
 
 export enum Entity {

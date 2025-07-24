@@ -317,46 +317,42 @@ export default function HouseCompassView({
   };
 
   return (
-    <div className="relative w-full h-full bg-gray-50 rounded border">
-      {/* HTML compass directions overlay */}
-      <CompassDirectionsHTML />
-      
-      <Canvas>
-        <TopDownCamera roofHeight={roofHeight} />
-        
-        {/* Ambient lighting - same as house-outline */}
-        <ambientLight intensity={0.6} />
-        <pointLight position={[10, 10, 10]} />
-        
-        {/* Grid background */}
-        <gridHelper args={[24, 24, '#CCCCCC', '#EEEEEE']} position={[0, -1, 0]} />
-        
-        {/* Compass markers */}
-        <CompassMarkers />
-        
-        {/* House (draggable for rotation) - using imported House component */}
-        <House3D
-          width={width * scale}
-          depth={depth * scale}
-          height={height * scale}
-          roofType={roofType}
-          flatRoofEdgeType={flatRoofEdgeType}
-          parapetHeight={parapetHeight * scale}
-          edgeRadius={edgeRadius * scale}
-          bevelAngle={bevelAngle}
-          roofPitch={roofPitch}
-          hippedMainPitch={hippedMainPitch}
-          hippedHipPitch={hippedHipPitch}
-          rotation={houseRotation}
-          onRotationChange={handleHouseRotationChange}
-        />
-        
-        {/* Center point */}
-        <mesh position={[0, 0.05, 0]}>
-          <cylinderGeometry args={[0.1, 0.1, 0.05]} />
-          <meshBasicMaterial color="#333333" />
-        </mesh>
-      </Canvas>
+    <div className="relative w-full" style={{ aspectRatio: '1 / 1' }}>
+      <div className="absolute inset-0 bg-gray-50 rounded border overflow-hidden">
+        {/* HTML compass directions overlay */}
+        <CompassDirectionsHTML />
+        <Canvas style={{ width: '100%', height: '100%' }}>
+          <TopDownCamera roofHeight={roofHeight} />
+          {/* Ambient lighting - same as house-outline */}
+          <ambientLight intensity={0.6} />
+          <pointLight position={[10, 10, 10]} />
+          {/* Grid background */}
+          <gridHelper args={[24, 24, '#CCCCCC', '#EEEEEE']} position={[0, -1, 0]} />
+          {/* Compass markers */}
+          <CompassMarkers />
+          {/* House (draggable for rotation) - using imported House component */}
+          <House3D
+            width={width * scale}
+            depth={depth * scale}
+            height={height * scale}
+            roofType={roofType}
+            flatRoofEdgeType={flatRoofEdgeType}
+            parapetHeight={parapetHeight * scale}
+            edgeRadius={edgeRadius * scale}
+            bevelAngle={bevelAngle}
+            roofPitch={roofPitch}
+            hippedMainPitch={hippedMainPitch}
+            hippedHipPitch={hippedHipPitch}
+            rotation={houseRotation}
+            onRotationChange={handleHouseRotationChange}
+          />
+          {/* Center point */}
+          <mesh position={[0, 0.05, 0]}>
+            <cylinderGeometry args={[0.1, 0.1, 0.05]} />
+            <meshBasicMaterial color="#333333" />
+          </mesh>
+        </Canvas>
+      </div>
     </div>
   );
 }

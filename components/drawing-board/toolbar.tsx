@@ -27,6 +27,7 @@ const toolTooltips: Record<Tool, string> = {
   [Tool.DistributedLoad]: "Linjelast (L)",
   [Tool.PointLoad]: "Punktlast (P)",
   [Tool.MomentLoad]: "Moment (M)",
+  [Tool.WindCalculator]: "Vindlastberegner (V)",
 };
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -62,6 +63,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
       <ToolButton key={Tool.DistributedLoad} tool={Tool.DistributedLoad} />
       <ToolButton key={Tool.PointLoad} tool={Tool.PointLoad} />
       <ToolButton key={Tool.MomentLoad} tool={Tool.MomentLoad} />
+      <hr className="my-4 mx-1" />
+      <ToolButton key={Tool.WindCalculator} tool={Tool.WindCalculator} />
     </div>
   );
 };
