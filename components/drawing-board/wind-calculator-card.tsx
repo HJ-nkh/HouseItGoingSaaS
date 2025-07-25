@@ -394,8 +394,6 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
             {/* Wind zones section */}
             <div className="grid grid-cols-1 gap-2">
               {/* Construction Window */}
-              <div className="bg-white rounded-lg border p-2">
-                <h4 className="font-medium mb-2 text-center text-xs">Konstruktionslinjer</h4>
                 <div className="scale-75 origin-top">
                   <ConstructionWindow
                     selectedLineId={selectedLineId}
@@ -403,22 +401,18 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
                     onLinesChange={setConstructionLines}
                   />
                 </div>
-              </div>
               
               {/* Interactive Rectangle */}
-              <div className="bg-white rounded-lg border p-2">
-                <h4 className="font-medium mb-2 text-center text-xs">Interaktiv vindzoner</h4>
-                <div className="scale-75 origin-top">
-                  <InteractiveRectangle
-                    depth={settings.houseDepth ?? 6}
-                    width={settings.houseWidth ?? 10}
-                    selectedLineId={selectedLineId}
-                    constructionLines={constructionLines}
-                    onDotPlaced={(dot: any) => {
-                      console.log('Dot placed:', dot);
-                    }}
-                  />
-                </div>
+              <div className="scale-75 origin-top">
+                <InteractiveRectangle
+                  depth={settings.houseDepth ?? 6}
+                  width={settings.houseWidth ?? 10}
+                  selectedLineId={selectedLineId}
+                  constructionLines={constructionLines}
+                  onDotPlaced={(dot: any) => {
+                    console.log('Dot placed:', dot);
+                  }}
+                />
               </div>
             </div>
           </div>

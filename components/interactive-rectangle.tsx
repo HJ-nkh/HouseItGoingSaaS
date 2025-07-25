@@ -503,7 +503,6 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
 
   return (
     <div className="flex flex-col items-center gap-4 p-8">
-      <h2 className="text-2xl font-bold text-foreground">Interactive Rectangle with Arrows</h2>
       
       {/* Rotation control */}
       <div className="flex items-center gap-4">
@@ -517,17 +516,17 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
           max="360"
           value={rotation}
           onChange={(e) => setRotation(Number(e.target.value))}
-          className="w-20 px-2 py-1 text-sm border border-border rounded bg-background text-foreground"
+          className="w-20 px-2 py-1 text-sm border rounded bg-background text-foreground"
         />
         <span className="text-sm text-muted-foreground">degrees</span>
       </div>
-      
-      <div className="border border-border rounded-lg p-4 bg-card">
+
+      <div className="border rounded-lg p-4 bg-card">
         <svg
           ref={svgRef}
           width={svgWidth}
           height={svgDepth}
-          className="border border-border rounded"
+          className="border rounded"
           style={{ cursor: selectedLineId !== null ? 'crosshair' : 'default' }}
           onClick={handleSvgClick}
         >
@@ -599,7 +598,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
                   key={`quarter-circle-${sideIndex}`}
                   d={pathData}
                   fill="none"
-                  stroke="hsl(var(--primary))"
+                  stroke="black"
                   strokeWidth="2"
                   strokeDasharray="4,4"
                   opacity="0.7"
@@ -630,7 +629,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
                     y1={rectY}
                     x2={x}
                     y2={rectY + scaledWidth}
-                    stroke="hsl(var(--muted-foreground))"
+                    stroke="black"
                     strokeWidth="0.5"
                     opacity="0.3"
                   />
@@ -649,7 +648,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
                     y1={y}
                     x2={rectX + scaledDepth}
                     y2={y}
-                    stroke="hsl(var(--muted-foreground))"
+                    stroke="black"
                     strokeWidth="0.5"
                     opacity="0.3"
                   />
@@ -667,7 +666,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
                   y={rectY + scaledWidth + 15}
                   textAnchor="middle"
                   fontSize="10"
-                  fill="hsl(var(--muted-foreground))"
+                  fill="black"
                 >
                   {meter}
                 </text>
@@ -684,7 +683,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
                   y={y + 3}
                   textAnchor="end"
                   fontSize="10"
-                  fill="hsl(var(--muted-foreground))"
+                  fill="black"
                 >
                   {meter}
                 </text>
@@ -743,9 +742,9 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
               <rect
                 key={area.id}
                 {...rectProps}
-                fill="hsl(var(--primary))"
+                fill="black"
                 fillOpacity="0.2"
-                stroke="hsl(var(--primary))"
+                stroke="black"
                 strokeWidth="1"
                 strokeOpacity="0.5"
               />
@@ -758,7 +757,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
             width={scaledDepth}
             height={scaledWidth}
             fill="none"
-            stroke="hsl(var(--primary))"
+            stroke="black"
             strokeWidth="2"
           />
 
@@ -770,7 +769,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
                 y1={arrow.y1}
                 x2={arrow.x2}
                 y2={arrow.y2}
-                stroke="hsl(var(--primary))"
+                stroke="black"
                 strokeWidth="2"
                 markerEnd="url(#arrowhead)"
               />
@@ -781,7 +780,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize="12"
-                fill="hsl(var(--primary))"
+                fill="black"
                 fontWeight="bold"
               >
                 {arrow.compassDirection.name}
@@ -817,7 +816,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
                     y1={side.y}
                     x2={endX}
                     y2={endY}
-                    stroke="hsl(var(--muted-foreground))"
+                    stroke="black"
                     strokeWidth="1"
                     strokeDasharray="4,4"
                     opacity="0.6"
@@ -841,7 +840,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
             >
               <polygon
                 points="0 0, 10 3.5, 0 7"
-                fill="hsl(var(--primary))"
+                fill="black"
               />
             </marker>
             <marker
@@ -870,7 +869,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
                 cy={coords.y}
                 r="5"
                 fill={isSelected ? "hsl(220, 91%, 56%)" : "hsl(var(--accent))"}
-                stroke="hsl(var(--primary))"
+                stroke="black"
                 strokeWidth="2"
                 style={{ cursor: 'grab' }}
                 onMouseDown={handleMouseDown(index)}
@@ -1090,7 +1089,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
                     y1={arrow.y1}
                     x2={arrow.x2}
                     y2={arrow.y2}
-                    stroke={isSelected ? "hsl(220, 91%, 56%)" : "hsl(var(--accent))"}
+                    stroke={isSelected ? "hsl(220, 91%, 56%)" : "transparent"}
                     strokeWidth="2"
                     markerEnd="url(#line-direction-arrow)"
                     pointerEvents="none"
