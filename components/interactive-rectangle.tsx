@@ -39,6 +39,7 @@ interface InteractiveRectangleProps {
   selectedLineId: number | null;
   constructionLines?: Line[];
   onDotPlaced?: (dot: DotPosition) => void;
+  rotation?: number;
 }
 
 const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
@@ -47,13 +48,13 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
   selectedLineId,
   constructionLines = [],
   onDotPlaced,
+  rotation = 0,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [isDragging, setIsDragging] = useState<number | null>(null);
   const [dots, setDots] = useState<DotPosition[]>([]);
   const [lines, setLines] = useState<LinePosition[]>([]);
   const [draggedLineIndex, setDraggedLineIndex] = useState<number | null>(null);
-  const [rotation, setRotation] = useState<number>(0);
   const [shadedAreas, setShadedAreas] = useState<ShadedArea[]>([]);
   const [draggedTriangleId, setDraggedTriangleId] = useState<string | null>(null);
   
@@ -76,12 +77,12 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
     { name: 'ØNØ', angle: 330, degrees: '330°' }
   ];
 
-  // Calculate dimensions based on fixed circle size (same as original 300x200)
-  const baseWidth = 300;
-  const baseDepth = 200;
+  // Calculate dimensions based on fixed circle size - made smaller to match construction window
+  const baseWidth = 200;
+  const baseDepth = 140;
   const rectDiagonal = Math.sqrt(baseWidth * baseWidth + baseDepth * baseDepth);
-  const circleRadius = rectDiagonal / 2 + 60;
-  const padding = 80;
+  const circleRadius = rectDiagonal / 2 + 40;
+  const padding = 60;
   const svgWidth = (circleRadius + padding) * 2;
   const svgDepth = (circleRadius + padding) * 2;
   
@@ -116,8 +117,8 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
     // Create 12 arrows evenly spaced with rotation applied
     for (let i = 0; i < 12; i++) {
       const baseAngle = (i * 360 / 12); // Base angle in degrees
-      // Apply rotation: when rotation=0, first arrow (i=0) should point East (0°)
-      const currentAngle = (baseAngle + rotation) % 360; // Apply rotation
+      // Apply rotation in opposite direction: when rotation=0, first arrow (i=0) should point East (0°)
+      const currentAngle = (baseAngle - rotation + 360) % 360; // Apply rotation in opposite direction
       
       // Find which side this arrow belongs to based on ±45° from normal direction
       let belongingSide = null;
@@ -145,7 +146,16 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
         const line1Angle = (belongingSide.normal - 45) * Math.PI / 180;
         const line2Angle = (belongingSide.normal + 45) * Math.PI / 180;
         
-        const t = (rectCenterX - rectX) * 1.5; // Use horizontal distance since depth is now horizontal
+        // Use the same scaled distance calculation as in rendering
+        const baseDistance = Math.min(scaledDepth, scaledWidth) * 1.4; // Increased from 1.0 to move much further away
+        const availableSpace = Math.min(
+          (svgWidth - rectX - scaledDepth) / 2, // Space to right edge
+          (svgDepth - rectY - scaledWidth) / 2, // Space to bottom edge  
+          rectX / 2, // Space to left edge
+          rectY / 2  // Space to top edge
+        );
+        const maxDistance = Math.min(baseDistance, availableSpace * 0.95); // Keep below 1.0 to ensure consistency
+        const t = maxDistance;
         
         const point1X = belongingSide.x + Math.cos(line1Angle) * t;
         const point1Y = belongingSide.y + Math.sin(line1Angle) * t;
@@ -502,31 +512,23 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
   const arrows = getArrowPositions();
 
   return (
-    <div className="flex flex-col items-center gap-4 p-8">
+    <div className="relative flex flex-col items-center gap-2 p-4">
       
-      {/* Rotation control */}
-      <div className="flex items-center gap-4">
-        <label htmlFor="rotation" className="text-sm font-medium text-foreground">
-          Rotation:
-        </label>
-        <input
-          id="rotation"
-          type="number"
-          min="0"
-          max="360"
-          value={rotation}
-          onChange={(e) => setRotation(Number(e.target.value))}
-          className="w-20 px-2 py-1 text-sm border rounded bg-background text-foreground"
-        />
-        <span className="text-sm text-muted-foreground">degrees</span>
+      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10">
+        <button 
+          onClick={clearDots}
+          className="px-3 py-1 text-sm bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors shadow-lg"
+        >
+          Ryd
+        </button>
       </div>
-
-      <div className="border rounded-lg p-4 bg-card">
+      
+      <div className="bg-card">
         <svg
           ref={svgRef}
           width={svgWidth}
           height={svgDepth}
-          className="border rounded"
+          className="rounded"
           style={{ cursor: selectedLineId !== null ? 'crosshair' : 'default' }}
           onClick={handleSvgClick}
         >
@@ -551,7 +553,16 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
               // For the quarter circle to intersect both dashed lines:
               // 1. Choose a distance 't' along each dashed line from the side midpoint
               // 2. These become the endpoints of our quarter circle arc
-              const t = (rectCenterX - rectX) * 1.5; // Distance along each dashed line - use horizontal distance
+              // Scale t to ensure arcs stay within visible area while maintaining minimum visibility
+              const baseDistance = Math.min(scaledDepth, scaledWidth) * 1.4; // Increased from 1.0 to move much further away
+              const availableSpace = Math.min(
+                (svgWidth - rectX - scaledDepth) / 2, // Space to right edge
+                (svgDepth - rectY - scaledWidth) / 2, // Space to bottom edge  
+                rectX / 2, // Space to left edge
+                rectY / 2  // Space to top edge
+              );
+              const maxDistance = Math.min(baseDistance, availableSpace * 0.95); // Keep below 1.0 to ensure consistency
+              const t = maxDistance;
               
               // Calculate the two points where we want the arc endpoints to be
               const point1X = side.x + Math.cos(line1Angle) * t;
@@ -612,48 +623,40 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
           {/* Coordinate Grid */}
           {(() => {
             const gridElements = [];
-            const gridSpacing = Math.min(scaledDepth, scaledWidth) / 8; // Grid spacing based on smaller dimension
             
-            // Calculate number of grid lines for each dimension
-            const numVerticalLines = Math.ceil(scaledDepth / gridSpacing) + 1;
-            const numHorizontalLines = Math.ceil(scaledWidth / gridSpacing) + 1;
-            
-            // Vertical grid lines
-            for (let i = 0; i < numVerticalLines; i++) {
-              const x = rectX + (i * gridSpacing);
-              if (x <= rectX + scaledDepth) {
-                gridElements.push(
-                  <line
-                    key={`vertical-${i}`}
-                    x1={x}
-                    y1={rectY}
-                    x2={x}
-                    y2={rectY + scaledWidth}
-                    stroke="black"
-                    strokeWidth="0.5"
-                    opacity="0.3"
-                  />
-                );
-              }
+            // Create grid based on actual dimensions (depth and width)
+            // Vertical grid lines - based on depth (horizontal distance)
+            for (let meter = 0; meter <= depth; meter++) {
+              const x = rectX + (meter / depth) * scaledDepth;
+              gridElements.push(
+                <line
+                  key={`vertical-${meter}`}
+                  x1={x}
+                  y1={rectY}
+                  x2={x}
+                  y2={rectY + scaledWidth}
+                  stroke="black"
+                  strokeWidth="0.5"
+                  opacity="0.3"
+                />
+              );
             }
             
-            // Horizontal grid lines
-            for (let i = 0; i < numHorizontalLines; i++) {
-              const y = rectY + (i * gridSpacing);
-              if (y <= rectY + scaledWidth) {
-                gridElements.push(
-                  <line
-                    key={`horizontal-${i}`}
-                    x1={rectX}
-                    y1={y}
-                    x2={rectX + scaledDepth}
-                    y2={y}
-                    stroke="black"
-                    strokeWidth="0.5"
-                    opacity="0.3"
-                  />
-                );
-              }
+            // Horizontal grid lines - based on width (vertical distance)
+            for (let meter = 0; meter <= width; meter++) {
+              const y = rectY + scaledWidth - (meter / width) * scaledWidth; // Inverted because 0,0 is at bottom left
+              gridElements.push(
+                <line
+                  key={`horizontal-${meter}`}
+                  x1={rectX}
+                  y1={y}
+                  x2={rectX + scaledDepth}
+                  y2={y}
+                  stroke="black"
+                  strokeWidth="0.5"
+                  opacity="0.3"
+                />
+              );
             }
             
             // X coordinate labels (only at meter intervals)
@@ -1113,24 +1116,6 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
             );
           })}
         </svg>
-      </div>
-      
-      <div className="flex flex-col items-center gap-2">
-        <button 
-          onClick={clearDots}
-          className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
-        >
-          Clear Dots
-        </button>
-        <div className="text-sm text-muted-foreground text-center">
-          <p>12 arrows point toward the center of the rectangle</p>
-          {selectedLineId !== null && (
-            <div className="text-primary mt-2">
-              <p>Click to place dots for vertical lines or lines anywhere inside rectangle.</p>
-              <p>Double-click lines to flip 90°. Drag to move.</p>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

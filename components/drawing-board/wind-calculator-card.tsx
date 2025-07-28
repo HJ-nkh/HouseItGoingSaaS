@@ -67,21 +67,20 @@ type WindCalculatorCardProps = {
   settings: WindCalculatorSettings;
   onSettingsChange: (settings: Partial<WindCalculatorSettings>) => void;
   onClose: () => void;
+  drawingBoardLines?: Array<{ id: number; x1: number; y1: number; x2: number; y2: number }>; // Add construction lines from drawing board
 };
 
 const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
   settings,
   onSettingsChange,
   onClose,
+  drawingBoardLines = [], // Default to empty array
 }) => {
   // State for new construction components
   const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
-  const [constructionLines, setConstructionLines] = useState<Array<{ id: number; x1: number; y1: number; x2: number; y2: number }>>([
-    { id: 1, x1: 0, y1: 0, x2: 0, y2: 3 },
-    { id: 2, x1: 0, y1: 3, x2: 3, y2: 4 },
-    { id: 3, x1: 3, y1: 4, x2: 6, y2: 3 },
-    { id: 4, x1: 6, y1: 3, x2: 6, y2: 0 },
-  ]);
+  
+  // Use construction lines from drawing board instead of local state
+  const constructionLines = drawingBoardLines;
 
   const updateSetting = (key: keyof WindCalculatorSettings, value: any) => {
     onSettingsChange({ [key]: value });
@@ -95,8 +94,9 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
     <Card 
       className="fixed z-30" 
       style={{ 
-        width: '1600px',
-        maxHeight: '1000px',
+        width: '1100px',
+        height: '90vh',
+        maxHeight: '800px',
         overflowY: 'auto',
         top: '50%',
         left: '50%',
@@ -107,271 +107,247 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
         <span className="font-bold">Vindlastberegner</span>
       </CardHeader>
       <CardContent>
-        {/* Main layout: settings on left, compass in middle, wind zones on right */}
-        <div className="flex gap-6">
-          {/* Left side: Settings (narrower) */}
-          <div className="w-80 space-y-3">
-            {/* Roof type dropdown */}
-            <div className="flex gap-3 items-center">
-              <div className="w-20 text-left flex-shrink-0 text-sm">Tagtype:</div>
-              <div className="flex-1">
-                <Select
-                  className="w-full border rounded text-left"
-                  value={settings.roofType}
-                  onChange={(value) => {
-                    if (!value) return;
-                    const newRoofType = value as 'flat' | 'monopitch' | 'duopitch' | 'hipped';
-                    updateSetting('roofType', newRoofType);
-                  }}
-                  options={RoofTypeOptions}
-                />
-              </div>
-            </div>
-        
-            {/* Roof pitch dropdown - only show when monopitch is selected */}
-            {settings.roofType === 'monopitch' && (
+        {/* Split the card horizontally */}
+        <div className="space-y-6">
+          {/* Upper half: Settings, Compass View, House Outline */}
+          <div className="flex gap-6">
+            {/* Left: All inputs */}
+            <div className="w-80 space-y-3">
+              {/* Roof type dropdown */}
               <div className="flex gap-3 items-center">
-                <div className="w-20 text-left flex-shrink-0 text-sm">Hældning:</div>
-                <div className="flex-1">
-                  <NumberInput
-                    value={settings.roofPitch}
-                    onChange={(value: number | undefined) => updateSetting('roofPitch', value)}
-                    unit="°"
-                    placeholder="taghældning"
-                    onEnter={onEnter}
-                  />
-                </div>
-              </div>
-            )}
-            
-            {/* Roof pitch dropdown - only show when duopitch is selected */}
-            {settings.roofType === 'duopitch' && (
-              <div className="flex gap-3 items-center">
-                <div className="w-20 text-left flex-shrink-0 text-sm">Hældning:</div>
-                <div className="flex-1">
-                  <NumberInput
-                    value={settings.roofPitch}
-                    onChange={(value: number | undefined) => updateSetting('roofPitch', value)}
-                    unit="°"
-                    placeholder="taghældning"
-                    onEnter={onEnter}
-                  />
-                </div>
-              </div>
-            )}
-            
-            {/* Roof pitch dropdowns - only show when hipped roof is selected */}
-            {settings.roofType === 'hipped' && (
-              <>
-                <div className="flex gap-3 items-center">
-                  <div className="w-20 text-left flex-shrink-0 text-sm">Hældning 1:</div>
-                  <div className="flex-1">
-                    <NumberInput
-                      value={settings.hippedMainPitch}
-                      onChange={(value: number | undefined) => updateSetting('hippedMainPitch', value)}
-                      unit="°"
-                      placeholder="hældning langs facaderne"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-3 items-center">
-                  <div className="w-20 text-left flex-shrink-0 text-sm">Hældning 2:</div>
-                  <div className="flex-1">
-                    <NumberInput
-                      value={settings.hippedHipPitch}
-                      onChange={(value: number | undefined) => updateSetting('hippedHipPitch', value)}
-                      unit="°"
-                      placeholder="hældning på valmene"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-            
-            {/* Flat roof edge type dropdown - only show when flat roof is selected */}
-            {settings.roofType === 'flat' && (
-              <div className="flex gap-3 items-center">
-                <div className="w-20 text-left flex-shrink-0 text-sm">Tagkant:</div>
+                <div className="w-20 text-left flex-shrink-0 text-sm">Tagtype:</div>
                 <div className="flex-1">
                   <Select
                     className="w-full border rounded text-left"
-                    value={settings.flatRoofEdgeType}
+                    value={settings.roofType}
                     onChange={(value) => {
                       if (!value) return;
-                      const newEdgeType = value as 'sharp' | 'parapet' | 'rounded' | 'beveled';
-                      updateSetting('flatRoofEdgeType', newEdgeType);
+                      const newRoofType = value as 'flat' | 'monopitch' | 'duopitch' | 'hipped';
+                      updateSetting('roofType', newRoofType);
                     }}
-                    options={FlatRoofEdgeTypeOptions}
+                    options={RoofTypeOptions}
                   />
                 </div>
               </div>
-            )}
-
-            {/* Conditional input based on flat roof edge type */}
-            {settings.roofType === 'flat' && settings.flatRoofEdgeType === 'parapet' && (
-              <div className="flex gap-3 items-center">
-                <div className="w-20 text-left flex-shrink-0 text-sm">Brystning:</div>
-                <div className="flex-1">
-                  <NumberInput
-                    value={settings.parapetHeight}
-                    onChange={(value: number | undefined) => updateSetting('parapetHeight', value)}
-                    unit="m"
-                    placeholder="brystningshøjde"
-                    onEnter={onEnter}
-                  />
-                </div>
-              </div>
-            )}
-
-            {settings.roofType === 'flat' && settings.flatRoofEdgeType === 'rounded' && (
-              <div className="flex gap-3 items-center">
-                <div className="w-20 text-left flex-shrink-0 text-sm">Radius:</div>
-                <div className="flex-1">
-                  <NumberInput
-                    value={settings.edgeRadius}
-                    onChange={(value: number | undefined) => updateSetting('edgeRadius', value)}
-                    unit="m"
-                    placeholder="tagkant radius"
-                    onEnter={onEnter}
-                  />
-                </div>
-              </div>
-            )}
-
-            {settings.roofType === 'flat' && settings.flatRoofEdgeType === 'beveled' && (
-              <div className="flex gap-3 items-center">
-                <div className="w-20 text-left flex-shrink-0 text-sm">Hældning:</div>
-                <div className="flex-1">
-                  <NumberInput
-                    value={settings.bevelAngle}
-                    onChange={(value: number | undefined) => updateSetting('bevelAngle', value)}
-                    unit="°"
-                    placeholder="tagkant hældning"
-                    onEnter={onEnter}
-                  />
-                </div>
-              </div>
-            )}
-            
-            <div className="flex gap-3 items-center">
-              <div className="w-20 text-left flex-shrink-0 text-sm">Højde:</div>
-              <div className="flex-1">
-                <NumberInput
-                  value={settings.houseHeight}
-                  onChange={(value: number | undefined) => updateSetting('houseHeight', value)}
-                  unit="m"
-                  placeholder="højde"
-                  onEnter={onEnter}
-                />
-              </div>
-            </div>
-            
-            <div className="flex gap-3 items-center">
-              <div className="w-20 text-left flex-shrink-0 text-sm">Bredde:</div>
-              <div className="flex-1">
-                <NumberInput
-                  value={settings.houseWidth}
-                  onChange={(value: number | undefined) => updateSetting('houseWidth', value)}
-                  unit="m"
-                  placeholder="bredde"
-                  onEnter={onEnter}
-                />
-              </div>
-            </div>
-            
-            <div className="flex gap-3 items-center">
-              <div className="w-20 text-left flex-shrink-0 text-sm">Dybde:</div>
-              <div className="flex-1">
-                <NumberInput
-                  value={settings.houseDepth}
-                  onChange={(value: number | undefined) => updateSetting('houseDepth', value)}
-                  unit="m"
-                  placeholder="dybde"
-                  onEnter={onEnter}
-                />
-              </div>
-            </div>
-            
-            <div className="flex gap-3 items-center">
-              <div className="w-20 text-left flex-shrink-0 text-sm">Afst. vest.:</div>
-              <div className="flex-1">
-                <Select
-                  className="w-full border rounded text-left"
-                  value={settings.distanceToSea}
-                  onChange={(value) => {
-                    if (!value) return;
-                    const newDistanceToSea = value as 'more_than_25km' | 'less_than_25km';
-                    updateSetting('distanceToSea', newDistanceToSea);
-                  }}
-                  options={DistanceToSeaOptions}
-                />
-              </div>
-            </div>
-            
-            <div className="flex gap-3 items-center">
-              <div className="w-20 text-left flex-shrink-0 text-sm">Terrænkat.:</div>
-              <div className="flex-1">
-                <Select
-                  className="w-full border rounded text-left"
-                  value={settings.terrainCategory}
-                  onChange={(value) => {
-                    if (!value) return;
-                    const newTerrainCategory = value as '0' | '1' | '2' | '3' | '4';
-                    updateSetting('terrainCategory', newTerrainCategory);
-                  }}
-                  options={TerrainCategoryOptions}
-                />
-              </div>
-            </div>
-            
-            <div className="flex gap-3 items-center">
-              <div className="w-20 text-left flex-shrink-0 text-sm">Formfakt.:</div>
-              <div className="flex-1">
-                <Select
-                  className="w-full border rounded text-left"
-                  value={settings.formFactor}
-                  onChange={(value) => {
-                    if (!value) return;
-                    const newFormFactor = value as 'main_structure' | 'small_elements';
-                    updateSetting('formFactor', newFormFactor);
-                  }}
-                  options={FormFactorOptions}
-                />
-              </div>
-            </div>
-          </div>
           
-          {/* Middle: Compass view and House Model */}
-          <div className="w-80 space-y-2 flex flex-col">
-            {/* Compass view */}
-            <div className="h-48 w-full">
-              <HouseCompassView
-                width={settings.houseWidth ?? 10}
-                depth={settings.houseDepth ?? 6}
-                height={settings.houseHeight ?? 8}
-                roofType={settings.roofType}
-                flatRoofEdgeType={settings.flatRoofEdgeType}
-                parapetHeight={settings.parapetHeight}
-                edgeRadius={settings.edgeRadius}
-                bevelAngle={settings.bevelAngle}
-                roofPitch={settings.roofPitch}
-                hippedMainPitch={settings.hippedMainPitch}
-                hippedHipPitch={settings.hippedHipPitch}
-                rotation={settings.houseRotation}
-                onRotationChange={(rotation: number) => updateSetting('houseRotation', rotation)}
-              />
-            </div>
-            {/* House rotation angle display */}
-            <div className="text-center">
-              <div className="inline-block bg-blue-50 px-2 py-1 rounded border text-xs font-medium text-gray-700">
-                Hus vinkel: {Math.round(settings.houseRotation)}°
+              {/* Roof pitch dropdown - only show when monopitch is selected */}
+              {settings.roofType === 'monopitch' && (
+                <div className="flex gap-3 items-center">
+                  <div className="w-20 text-left flex-shrink-0 text-sm">Hældning:</div>
+                  <div className="flex-1">
+                    <NumberInput
+                      value={settings.roofPitch}
+                      onChange={(value: number | undefined) => updateSetting('roofPitch', value)}
+                      unit="°"
+                      placeholder="taghældning"
+                      onEnter={onEnter}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {/* Roof pitch dropdown - only show when duopitch is selected */}
+              {settings.roofType === 'duopitch' && (
+                <div className="flex gap-3 items-center">
+                  <div className="w-20 text-left flex-shrink-0 text-sm">Hældning:</div>
+                  <div className="flex-1">
+                    <NumberInput
+                      value={settings.roofPitch}
+                      onChange={(value: number | undefined) => updateSetting('roofPitch', value)}
+                      unit="°"
+                      placeholder="taghældning"
+                      onEnter={onEnter}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {/* Roof pitch dropdowns - only show when hipped roof is selected */}
+              {settings.roofType === 'hipped' && (
+                <>
+                  <div className="flex gap-3 items-center">
+                    <div className="w-20 text-left flex-shrink-0 text-sm">Hældning 1:</div>
+                    <div className="flex-1">
+                      <NumberInput
+                        value={settings.hippedMainPitch}
+                        onChange={(value: number | undefined) => updateSetting('hippedMainPitch', value)}
+                        unit="°"
+                        placeholder="hældning langs facaderne"
+                        onEnter={onEnter}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-3 items-center">
+                    <div className="w-20 text-left flex-shrink-0 text-sm">Hældning 2:</div>
+                    <div className="flex-1">
+                      <NumberInput
+                        value={settings.hippedHipPitch}
+                        onChange={(value: number | undefined) => updateSetting('hippedHipPitch', value)}
+                        unit="°"
+                        placeholder="hældning på valmene"
+                        onEnter={onEnter}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+              
+              {/* Flat roof edge type dropdown - only show when flat roof is selected */}
+              {settings.roofType === 'flat' && (
+                <div className="flex gap-3 items-center">
+                  <div className="w-20 text-left flex-shrink-0 text-sm">Tagkant:</div>
+                  <div className="flex-1">
+                    <Select
+                      className="w-full border rounded text-left"
+                      value={settings.flatRoofEdgeType}
+                      onChange={(value) => {
+                        if (!value) return;
+                        const newEdgeType = value as 'sharp' | 'parapet' | 'rounded' | 'beveled';
+                        updateSetting('flatRoofEdgeType', newEdgeType);
+                      }}
+                      options={FlatRoofEdgeTypeOptions}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Conditional input based on flat roof edge type */}
+              {settings.roofType === 'flat' && settings.flatRoofEdgeType === 'parapet' && (
+                <div className="flex gap-3 items-center">
+                  <div className="w-20 text-left flex-shrink-0 text-sm">Brystning:</div>
+                  <div className="flex-1">
+                    <NumberInput
+                      value={settings.parapetHeight}
+                      onChange={(value: number | undefined) => updateSetting('parapetHeight', value)}
+                      unit="m"
+                      placeholder="brystningshøjde"
+                      onEnter={onEnter}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {settings.roofType === 'flat' && settings.flatRoofEdgeType === 'rounded' && (
+                <div className="flex gap-3 items-center">
+                  <div className="w-20 text-left flex-shrink-0 text-sm">Radius:</div>
+                  <div className="flex-1">
+                    <NumberInput
+                      value={settings.edgeRadius}
+                      onChange={(value: number | undefined) => updateSetting('edgeRadius', value)}
+                      unit="m"
+                      placeholder="tagkant radius"
+                      onEnter={onEnter}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {settings.roofType === 'flat' && settings.flatRoofEdgeType === 'beveled' && (
+                <div className="flex gap-3 items-center">
+                  <div className="w-20 text-left flex-shrink-0 text-sm">Hældning:</div>
+                  <div className="flex-1">
+                    <NumberInput
+                      value={settings.bevelAngle}
+                      onChange={(value: number | undefined) => updateSetting('bevelAngle', value)}
+                      unit="°"
+                      placeholder="tagkant hældning"
+                      onEnter={onEnter}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-3 items-center">
+                <div className="w-20 text-left flex-shrink-0 text-sm">Højde:</div>
+                <div className="flex-1">
+                  <NumberInput
+                    value={settings.houseHeight}
+                    onChange={(value: number | undefined) => updateSetting('houseHeight', value)}
+                    unit="m"
+                    placeholder="højde"
+                    onEnter={onEnter}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3 items-center">
+                <div className="w-20 text-left flex-shrink-0 text-sm">Bredde:</div>
+                <div className="flex-1">
+                  <NumberInput
+                    value={settings.houseWidth}
+                    onChange={(value: number | undefined) => updateSetting('houseWidth', value)}
+                    unit="m"
+                    placeholder="bredde"
+                    onEnter={onEnter}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3 items-center">
+                <div className="w-20 text-left flex-shrink-0 text-sm">Dybde:</div>
+                <div className="flex-1">
+                  <NumberInput
+                    value={settings.houseDepth}
+                    onChange={(value: number | undefined) => updateSetting('houseDepth', value)}
+                    unit="m"
+                    placeholder="dybde"
+                    onEnter={onEnter}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3 items-center">
+                <div className="w-20 text-left flex-shrink-0 text-sm">Afst. vest.:</div>
+                <div className="flex-1">
+                  <Select
+                    className="w-full border rounded text-left"
+                    value={settings.distanceToSea}
+                    onChange={(value) => {
+                      if (!value) return;
+                      const newDistanceToSea = value as 'more_than_25km' | 'less_than_25km';
+                      updateSetting('distanceToSea', newDistanceToSea);
+                    }}
+                    options={DistanceToSeaOptions}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3 items-center">
+                <div className="w-20 text-left flex-shrink-0 text-sm">Terrænkat.:</div>
+                <div className="flex-1">
+                  <Select
+                    className="w-full border rounded text-left"
+                    value={settings.terrainCategory}
+                    onChange={(value) => {
+                      if (!value) return;
+                      const newTerrainCategory = value as '0' | '1' | '2' | '3' | '4';
+                      updateSetting('terrainCategory', newTerrainCategory);
+                    }}
+                    options={TerrainCategoryOptions}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3 items-center">
+                <div className="w-20 text-left flex-shrink-0 text-sm">Formfakt.:</div>
+                <div className="flex-1">
+                  <Select
+                    className="w-full border rounded text-left"
+                    value={settings.formFactor}
+                    onChange={(value) => {
+                      if (!value) return;
+                      const newFormFactor = value as 'main_structure' | 'small_elements';
+                      updateSetting('formFactor', newFormFactor);
+                    }}
+                    options={FormFactorOptions}
+                  />
+                </div>
               </div>
             </div>
-            {/* 3D House Model - positioned to align with bottom of wind zones */}
-            <div className="flex-1 flex flex-col justify-end">
-              <div className="h-40 w-full border rounded bg-gray-50">
+            
+            {/* Middle: House Outline */}
+            <div className="w-80 flex">
+              <div className="w-full border rounded bg-gray-50 flex-1">
                 <HouseOutline
                   width={settings.houseWidth ?? 10}
                   height={settings.houseHeight ?? 8}
@@ -387,33 +363,70 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
                 />
               </div>
             </div>
-          </div>
-          
-          {/* Right side: Wind zones */}
-          <div className="flex-1 space-y-2">
-            {/* Wind zones section */}
-            <div className="grid grid-cols-1 gap-2">
-              {/* Construction Window */}
-                <div className="scale-75 origin-top">
-                  <ConstructionWindow
-                    selectedLineId={selectedLineId}
-                    onLineSelect={setSelectedLineId}
-                    onLinesChange={setConstructionLines}
-                  />
-                </div>
-              
-              {/* Interactive Rectangle */}
-              <div className="scale-75 origin-top">
-                <InteractiveRectangle
-                  depth={settings.houseDepth ?? 6}
+            {/* Right: Compass view */}
+            <div className="w-80 space-y-2 flex flex-col">
+              <div className="flex-1 w-full">
+                <HouseCompassView
                   width={settings.houseWidth ?? 10}
-                  selectedLineId={selectedLineId}
-                  constructionLines={constructionLines}
-                  onDotPlaced={(dot: any) => {
-                    console.log('Dot placed:', dot);
-                  }}
+                  depth={settings.houseDepth ?? 6}
+                  height={settings.houseHeight ?? 8}
+                  roofType={settings.roofType}
+                  flatRoofEdgeType={settings.flatRoofEdgeType}
+                  parapetHeight={settings.parapetHeight}
+                  edgeRadius={settings.edgeRadius}
+                  bevelAngle={settings.bevelAngle}
+                  roofPitch={settings.roofPitch}
+                  hippedMainPitch={settings.hippedMainPitch}
+                  hippedHipPitch={settings.hippedHipPitch}
+                  rotation={settings.houseRotation}
+                  onRotationChange={(rotation: number) => updateSetting('houseRotation', rotation)}
                 />
               </div>
+              {/* House rotation input control */}
+              <div className="flex gap-3 items-center">
+                <div className="w-20 text-left flex-shrink-0 text-sm">Rotation:</div>
+                <div className="flex-1 relative">
+                  <input
+                    id="houseRotation"
+                    type="number"
+                    min="0"
+                    max="360"
+                    value={Math.round(settings.houseRotation)}
+                    onChange={(e) => updateSetting('houseRotation', Number(e.target.value))}
+                    className="w-full px-2 py-1 pr-12 text-sm border rounded bg-background text-foreground"
+                  />
+                  <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">grader</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Horizontal separator line */}
+          <div className="border-t border-gray-300"></div>
+          
+          {/* Lower half: Construction Window and Interactive Rectangle */}
+          <div className="flex gap-20 mt-4">
+            {/* Left: Construction Window - aligned with inputs */}
+            <div className="w-80">
+              <ConstructionWindow
+                selectedLineId={selectedLineId}
+                onLineSelect={setSelectedLineId}
+                constructionLines={constructionLines}
+              />
+            </div>
+            
+            {/* Right: Interactive Rectangle - same width as construction window */}
+            <div className="w-80">
+              <InteractiveRectangle
+                depth={settings.houseDepth ?? 6}
+                width={settings.houseWidth ?? 10}
+                selectedLineId={selectedLineId}
+                constructionLines={constructionLines}
+                rotation={settings.houseRotation}
+                onDotPlaced={(dot: any) => {
+                  // Dot placement functionality can be implemented here if needed
+                }}
+              />
             </div>
           </div>
         </div>

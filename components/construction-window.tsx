@@ -12,40 +12,67 @@ interface ConstructionWindowProps {
   selectedLineId: number | null;
   onLineSelect: (lineId: number | null) => void;
   onLinesChange?: (lines: Line[]) => void;
+  constructionLines?: Line[]; // Add prop for construction lines from drawing board
 }
 
 const ConstructionWindow: React.FC<ConstructionWindowProps> = ({
   selectedLineId,
   onLineSelect,
   onLinesChange,
+  constructionLines = [], // Default to empty array if not provided
 }) => {
   
-  // Initial construction lines
-  const [lines] = useState<Line[]>([
-    { id: 1, x1: 0, y1: 0, x2: 0, y2: 3 },
-    { id: 2, x1: 0, y1: 3, x2: 3, y2: 4 },
-    { id: 3, x1: 3, y1: 4, x2: 6, y2: 3 },
-    { id: 4, x1: 6, y1: 3, x2: 6, y2: 0 },
-  ]);
+  // Use only construction lines from drawing board
+  const lines = constructionLines;
 
-  // SVG dimensions and scaling
-  const scale = 40; // pixels per unit
-  const padding = 100;
+  // SVG dimensions - fixed size to match interactive rectangle
   const svgWidth = 400;
-  const svgHeight = 300;
-  const offsetX = padding;
-  const offsetY = svgHeight - padding;
+  const svgHeight = 400;
+  const padding = 40;
+
+  // Calculate construction bounds to scale it to fill the window
+  const getBounds = (lines: Line[]) => {
+    if (lines.length === 0) return { minX: 0, maxX: 6, minY: 0, maxY: 4 };
+    
+    let minX = Math.min(...lines.flatMap(line => [line.x1, line.x2]));
+    let maxX = Math.max(...lines.flatMap(line => [line.x1, line.x2]));
+    let minY = Math.min(...lines.flatMap(line => [line.y1, line.y2]));
+    let maxY = Math.max(...lines.flatMap(line => [line.y1, line.y2]));
+    
+    // Add small margin if bounds are too tight
+    const width = maxX - minX;
+    const height = maxY - minY;
+    if (width < 0.1) { minX -= 0.5; maxX += 0.5; }
+    if (height < 0.1) { minY -= 0.5; maxY += 0.5; }
+    
+    return { minX, maxX, minY, maxY };
+  };
+
+  const bounds = getBounds(lines);
+  const constructionWidth = bounds.maxX - bounds.minX;
+  const constructionHeight = bounds.maxY - bounds.minY;
+  
+  // Calculate scale to fit construction in available space
+  const availableWidth = svgWidth - 2 * padding;
+  const availableHeight = svgHeight - 2 * padding;
+  const scaleX = availableWidth / constructionWidth;
+  const scaleY = availableHeight / constructionHeight;
+  const scale = Math.min(scaleX, scaleY) * 0.9; // 0.9 for some margin
+  
+  // Center the construction in the SVG
+  const offsetX = padding + (availableWidth - constructionWidth * scale) / 2 - bounds.minX * scale;
+  const offsetY = padding + (availableHeight - constructionHeight * scale) / 2 - bounds.minY * scale;
 
   // Convert construction coordinates to SVG coordinates
   const toSvgCoords = (x: number, y: number) => ({
     x: x * scale + offsetX,
-    y: offsetY - y * scale,
+    y: y * scale + offsetY, // Fixed: removed the Y-axis flip
   });
 
   // Convert SVG coordinates to construction coordinates
   const fromSvgCoords = (svgX: number, svgY: number) => ({
     x: (svgX - offsetX) / scale,
-    y: (offsetY - svgY) / scale,
+    y: (svgY - offsetY) / scale, // Fixed: removed the Y-axis flip
   });
 
   // Check if a line is vertical
@@ -107,12 +134,12 @@ const ConstructionWindow: React.FC<ConstructionWindowProps> = ({
 
 
   return (
-    <div className="flex flex-col items-center gap-4 p-8">
-      <div className="borderrounded-lg p-4 bg-card">
+    <div className="flex flex-col items-center gap-2 p-4">
+
         <svg
           width={svgWidth}
           height={svgHeight}
-          className="border rounded"
+          className="no-border rounded"
         >
           {/* Arrow marker definition */}
           <defs>
@@ -200,12 +227,11 @@ const ConstructionWindow: React.FC<ConstructionWindowProps> = ({
           })}
 
         </svg>
-      </div>
       
-      <div className="text-sm text-muted-foreground max-w-md text-center">
-        <p>Click lines to select them. Selected vertical lines allow placing dots on the rectangle.</p>
-        {selectedLine && isVerticalLine(selectedLine) && (
-          <p className="text-blue-500 mt-2">Vertical line selected - click on the rectangle to place dots.</p>
+      <div className="text-xs text-muted-foreground max-w-md text-center">
+        <p>Klik på konstruktionsdel som der ønskes vindlast på</p>
+        {selectedLine && (
+          <p className="text-blue-500 mt-1">Klik på huset for at placere konstruktionsdel</p>
         )}
       </div>
     </div>

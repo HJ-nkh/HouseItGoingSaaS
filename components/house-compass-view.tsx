@@ -153,6 +153,12 @@ function House3D({
           <meshBasicMaterial color="#FF0000" />
         </mesh>
         
+        {/* Arrow head for width direction - pointing towards positive X (when rotation=0, points East) */}
+        <mesh position={[7, 0.1, 0]} rotation={[0, 0, -Math.PI / 2]}>
+          <coneGeometry args={[0.3, 0.8, 8]} />
+          <meshBasicMaterial color="#FF0000" />
+        </mesh>
+        
         {/* Invisible thicker cylinder for easier dragging - width direction */}
         <mesh 
           position={[0, 0.1, 0]} 
@@ -166,6 +172,11 @@ function House3D({
         {/* Visible thin red line - depth direction (90 degrees rotated) */}
         <mesh position={[0, 0.1, 0]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.02, 0.02, 14]} />
+          <meshBasicMaterial color="#FF0000" />
+        </mesh>
+        
+        {/* Arrow head for depth direction - pointing towards positive Z (when rotation=0, points South) */}
+        <mesh position={[0, 0.1, 7]} rotation={[-Math.PI / 2, 0, 0]}>
           <meshBasicMaterial color="#FF0000" />
         </mesh>
         

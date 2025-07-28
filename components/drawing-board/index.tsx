@@ -476,6 +476,16 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                 formFactor: 'main_structure',
                 windDirection: 0,
               }}
+              drawingBoardLines={(() => {
+                const lines = Object.values(members).map((member, index) => ({
+                  id: index + 1,
+                  x1: member.resolved.point1.x,
+                  y1: member.resolved.point1.y,
+                  x2: member.resolved.point2.x,
+                  y2: member.resolved.point2.y,
+                }));
+                return lines;
+              })()}
               onSettingsChange={(settings) =>
                 setState((s) => ({ 
                   ...s, 
