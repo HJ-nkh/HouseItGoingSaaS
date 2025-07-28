@@ -38,7 +38,12 @@ interface InteractiveRectangleProps {
   width?: number;
   selectedLineId: number | null;
   constructionLines?: Line[];
+  initialDots?: DotPosition[];
+  initialLines?: LinePosition[];
   onDotPlaced?: (dot: DotPosition) => void;
+  onLinePlaced?: (line: LinePosition) => void;
+  onDotsChanged?: (dots: DotPosition[]) => void;
+  onLinesChanged?: (lines: LinePosition[]) => void;
   rotation?: number;
 }
 
@@ -47,19 +52,33 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
   width = 200,
   selectedLineId,
   constructionLines = [],
+  initialDots = [],
+  initialLines = [],
   onDotPlaced,
+  onLinePlaced,
+  onDotsChanged,
+  onLinesChanged,
   rotation = 0,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [isDragging, setIsDragging] = useState<number | null>(null);
-  const [dots, setDots] = useState<DotPosition[]>([]);
-  const [lines, setLines] = useState<LinePosition[]>([]);
+  const [dots, setDots] = useState<DotPosition[]>(initialDots);
+  const [lines, setLines] = useState<LinePosition[]>(initialLines);
   const [draggedLineIndex, setDraggedLineIndex] = useState<number | null>(null);
   const [shadedAreas, setShadedAreas] = useState<ShadedArea[]>([]);
   const [draggedTriangleId, setDraggedTriangleId] = useState<string | null>(null);
   
   // Use a ref to track triangle dragging state for immediate access
   const triangleDragRef = useRef<string | null>(null);
+
+  // Sync state with props when they change
+  React.useEffect(() => {
+    setDots(initialDots);
+  }, [initialDots]);
+
+  React.useEffect(() => {
+    setLines(initialLines);
+  }, [initialLines]);
 
   // Compass directions for the 12 arrows (corrected: N points up at 270° in SVG coordinates)
   const compassDirections = [
@@ -317,13 +336,16 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
       
       setDots(prev => {
         const existingIndex = prev.findIndex(dot => dot.lineId === selectedLineId);
+        let newDots;
         if (existingIndex >= 0) {
           // Replace existing dot
-          return prev.map((dot, index) => index === existingIndex ? newDot : dot);
+          newDots = prev.map((dot, index) => index === existingIndex ? newDot : dot);
         } else {
           // Add new dot
-          return [...prev, newDot];
+          newDots = [...prev, newDot];
         }
+        onDotsChanged?.(newDots);
+        return newDots;
       });
       onDotPlaced?.(newDot);
     } else {
@@ -332,16 +354,20 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
       
       setLines(prev => {
         const existingIndex = prev.findIndex(line => line.lineId === selectedLineId);
+        let newLines;
         if (existingIndex >= 0) {
           // Replace existing line but preserve its rotation
           const existingLine = prev[existingIndex];
           const newLine = coordinatesToLinePosition(x, y, selectedLineId, lineLength, existingLine.rotation);
-          return prev.map((line, index) => index === existingIndex ? newLine : line);
+          newLines = prev.map((line, index) => index === existingIndex ? newLine : line);
         } else {
           // Add new line with default rotation
           const newLine = coordinatesToLinePosition(x, y, selectedLineId, lineLength, 0);
-          return [...prev, newLine];
+          newLines = [...prev, newLine];
+          onLinePlaced?.(newLine);
         }
+        onLinesChanged?.(newLines);
+        return newLines;
       });
     }
   };
@@ -349,6 +375,8 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
   const clearDots = () => {
     setDots([]);
     setLines([]);
+    onDotsChanged?.([]);
+    onLinesChanged?.([]);
   };
 
   const handleMouseDown = (index: number) => (e: React.MouseEvent) => {
@@ -452,9 +480,13 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
       const draggedDot = dots[isDragging];
       const newPosition = coordinatesToProgress(x, y, draggedDot.lineId);
       
-      setDots(prev => prev.map((dot, index) => 
-        index === isDragging ? newPosition : dot
-      ));
+      setDots(prev => {
+        const newDots = prev.map((dot, index) => 
+          index === isDragging ? newPosition : dot
+        );
+        onDotsChanged?.(newDots);
+        return newDots;
+      });
     }
 
     // Only process line dragging if no triangle is being dragged AND draggedLineIndex is set
@@ -473,9 +505,11 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
         const newPosition = coordinatesToLinePosition(x, y, draggedLine.lineId, draggedLine.length, draggedLine.rotation);
         console.log('New position rotation:', newPosition.rotation);
         
-        return prev.map((line, index) => 
+        const newLines = prev.map((line, index) => 
           index === draggedLineIndex ? newPosition : line
         );
+        onLinesChanged?.(newLines);
+        return newLines;
       });
     }
   }, [isDragging, draggedLineIndex, draggedTriangleId, dots, lines, rectX, rectY, scaledDepth, scaledWidth]);
@@ -952,6 +986,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
                     prevAreas.filter(area => !area.id.startsWith(`${index}-`))
                   );
                   
+                  onLinesChanged?.(newLines);
                   return newLines;
                 });
               }

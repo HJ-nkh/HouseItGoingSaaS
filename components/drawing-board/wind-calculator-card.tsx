@@ -61,6 +61,25 @@ type WindCalculatorSettings = {
   terrainCategory: '0' | '1' | '2' | '3' | '4';
   formFactor: 'main_structure' | 'small_elements';
   windDirection: number;
+  // Wind calculator construction elements and load area
+  selectedLineId?: number | null;
+  lastopland?: number;
+  constructionDots?: Array<{
+    x: number;
+    y: number;
+    side: 'top' | 'right' | 'bottom' | 'left';
+    progress: number;
+    lineId: number;
+  }>;
+  constructionLines?: Array<{
+    x: number;
+    y: number;
+    side: 'top' | 'right' | 'bottom' | 'left' | 'inside';
+    progress: number;
+    lineId: number;
+    length: number;
+    rotation: number;
+  }>;
 };
 
 type WindCalculatorCardProps = {
@@ -76,14 +95,93 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
   onClose,
   drawingBoardLines = [], // Default to empty array
 }) => {
-  // State for new construction components
-  const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
+  // State for new construction components - initialize from saved settings
+  const [selectedLineId, setSelectedLineId] = useState<number | null>(settings.selectedLineId ?? null);
+  const [lastopland, setLastopland] = useState<number>(settings.lastopland ?? 1.0);
+  const [constructionDots, setConstructionDots] = useState(settings.constructionDots ?? []);
+  const [constructionLines, setConstructionLines] = useState(settings.constructionLines ?? []);
   
   // Use construction lines from drawing board instead of local state
-  const constructionLines = drawingBoardLines;
+  const constructionLinesFromBoard = drawingBoardLines;
 
   const updateSetting = (key: keyof WindCalculatorSettings, value: any) => {
     onSettingsChange({ [key]: value });
+  };
+
+  // Save construction elements to settings when they change
+  const saveConstructionElements = () => {
+    onSettingsChange({
+      selectedLineId,
+      lastopland,
+      constructionDots,
+      constructionLines,
+    });
+  };
+
+  // Validation function
+  const validateAllFields = () => {
+    const errors: string[] = [];
+    
+    // Check all required form fields
+    if (!settings.houseHeight || settings.houseHeight <= 0) {
+      errors.push('Hus højde skal være større end 0');
+    }
+    if (!settings.houseWidth || settings.houseWidth <= 0) {
+      errors.push('Hus bredde skal være større end 0');
+    }
+    if (!settings.houseDepth || settings.houseDepth <= 0) {
+      errors.push('Hus dybde skal være større end 0');
+    }
+    
+    // Roof specific validations
+    if (settings.roofType === 'flat' && settings.flatRoofEdgeType === 'parapet' && (!settings.parapetHeight || settings.parapetHeight <= 0)) {
+      errors.push('Brystningshøjde skal angives for brystninger');
+    }
+    if (settings.roofType === 'flat' && settings.flatRoofEdgeType === 'rounded' && (!settings.edgeRadius || settings.edgeRadius <= 0)) {
+      errors.push('Radius skal angives for afrundede tagkanter');
+    }
+    if (settings.roofType === 'flat' && settings.flatRoofEdgeType === 'beveled' && (!settings.bevelAngle || settings.bevelAngle <= 0)) {
+      errors.push('Hældning skal angives for afskårne tagkanter');
+    }
+    if ((settings.roofType === 'monopitch' || settings.roofType === 'duopitch') && (!settings.roofPitch || settings.roofPitch <= 0 || settings.roofPitch > 90)) {
+      errors.push('Taghældning skal være mellem 0 og 90 grader');
+    }
+    if (settings.roofType === 'hipped') {
+      if (!settings.hippedMainPitch || settings.hippedMainPitch <= 0 || settings.hippedMainPitch > 90) {
+        errors.push('Hovedhældning skal være mellem 0 og 90 grader for valmtag');
+      }
+      if (!settings.hippedHipPitch || settings.hippedHipPitch <= 0 || settings.hippedHipPitch > 90) {
+        errors.push('Valmhældning skal være mellem 0 og 90 grader for valmtag');
+      }
+    }
+    
+    // Check that at least one construction element is placed
+    const hasConstructionElements = constructionDots.length > 0 || constructionLines.length > 0;
+    if (!hasConstructionElements) {
+      errors.push('Mindst én konstruktionsdel (prik eller linje) skal placeres i Interactive Rectangle');
+    }
+    
+    return errors;
+  };
+
+  const validationErrors = validateAllFields();
+  const canApplyLoads = validationErrors.length === 0;
+
+  const handleApplyLoads = () => {
+    if (canApplyLoads) {
+      // Save all current state to settings
+      saveConstructionElements();
+      // TODO: Apply wind loads based on construction elements and settings
+      console.log('Applying wind loads with settings:', {
+        ...settings,
+        selectedLineId,
+        lastopland,
+        constructionDots,
+        constructionLines,
+      });
+      // Close the calculator
+      onClose();
+    }
   };
 
   const onEnter = () => {
@@ -410,8 +508,11 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
             <div className="w-80">
               <ConstructionWindow
                 selectedLineId={selectedLineId}
-                onLineSelect={setSelectedLineId}
-                constructionLines={constructionLines}
+                onLineSelect={(lineId) => {
+                  setSelectedLineId(lineId);
+                  onSettingsChange({ selectedLineId: lineId });
+                }}
+                constructionLines={constructionLinesFromBoard}
               />
             </div>
             
@@ -421,24 +522,88 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
                 depth={settings.houseDepth ?? 6}
                 width={settings.houseWidth ?? 10}
                 selectedLineId={selectedLineId}
-                constructionLines={constructionLines}
+                constructionLines={constructionLinesFromBoard}
+                initialDots={constructionDots}
+                initialLines={constructionLines}
                 rotation={settings.houseRotation}
                 onDotPlaced={(dot: any) => {
-                  // Dot placement functionality can be implemented here if needed
+                  const newDots = [...constructionDots, dot];
+                  setConstructionDots(newDots);
+                  onSettingsChange({ constructionDots: newDots });
+                }}
+                onLinePlaced={(line: any) => {
+                  const newLines = [...constructionLines, line];
+                  setConstructionLines(newLines);
+                  onSettingsChange({ constructionLines: newLines });
+                }}
+                onDotsChanged={(dots: any) => {
+                  setConstructionDots(dots);
+                  onSettingsChange({ constructionDots: dots });
+                }}
+                onLinesChanged={(lines: any) => {
+                  setConstructionLines(lines);
+                  onSettingsChange({ constructionLines: lines });
                 }}
               />
+            </div>
+            
+            {/* Third column: Lastopland input */}
+            <div className="w-40">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Lastopland
+                </label>
+                <NumberInput
+                  value={lastopland}
+                  onChange={(value) => {
+                    const newValue = value ?? 1.0;
+                    setLastopland(newValue);
+                    onSettingsChange({ lastopland: newValue });
+                  }}
+                  onEnter={onEnter}
+                  unit="m"
+                />
+              </div>
             </div>
           </div>
         </div>
       </CardContent>
       <CardFooter>
-        <div className="flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-          >
-            Luk
-          </button>
+        <div className="flex justify-between items-center w-full">
+          {/* Validation errors display */}
+          <div className="flex-1">
+            {validationErrors.length > 0 && (
+              <div className="text-red-600 text-sm">
+                <p className="font-medium">Følgende felter skal udfyldes:</p>
+                <ul className="list-disc list-inside mt-1">
+                  {validationErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              Luk
+            </button>
+            <button
+              onClick={handleApplyLoads}
+              disabled={!canApplyLoads}
+              className={`px-4 py-2 rounded transition-colors ${
+                canApplyLoads
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              Påfør laster
+            </button>
+          </div>
         </div>
       </CardFooter>
     </Card>

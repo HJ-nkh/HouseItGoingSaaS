@@ -148,6 +148,25 @@ export type WindCalculatorSettings = {
   terrainCategory: '0' | '1' | '2' | '3' | '4';
   formFactor: 'main_structure' | 'small_elements';
   windDirection: number;
+  // Wind calculator construction elements and load area
+  selectedLineId?: number | null;
+  lastopland?: number;
+  constructionDots?: Array<{
+    x: number;
+    y: number;
+    side: 'top' | 'right' | 'bottom' | 'left';
+    progress: number;
+    lineId: number;
+  }>;
+  constructionLines?: Array<{
+    x: number;
+    y: number;
+    side: 'top' | 'right' | 'bottom' | 'left' | 'inside';
+    progress: number;
+    lineId: number;
+    length: number;
+    rotation: number;
+  }>;
 };
 
 export enum ConstraintType {
