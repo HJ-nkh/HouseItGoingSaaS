@@ -17,20 +17,25 @@ const handlePointLoadClick: InputEventHandler = (
     state.tool === Tool.DistributedLoad ||
     state.tool === Tool.MomentLoad
   ) {
-    let selectedIds: string[] = [];
+    const loadId = e.payload.id as string;
+    let selectedIds: string[];
 
     if (e.payload.ctrlKey || e.payload.metaKey) {
-      selectedIds = [...state.selectedIds];
+      // Toggle selection: remove if already selected, add if not
+      const already = state.selectedIds.includes(loadId);
+      selectedIds = already
+        ? state.selectedIds.filter((id) => id !== loadId)
+        : [...state.selectedIds, loadId];
+    } else {
+      selectedIds = [loadId];
     }
-
-    selectedIds.push(e.payload.id as string);
 
     let modifyingEntity: DrawingState["modifyingEntity"] = null;
 
     if (selectedIds.length === 1) {
       modifyingEntity = {
         type: Entity.PointLoad,
-        pointLoad: entitySet.pointLoads[e.payload.id],
+        pointLoad: entitySet.pointLoads[selectedIds[0]],
       };
     }
 

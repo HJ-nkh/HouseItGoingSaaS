@@ -54,11 +54,12 @@ export const generateGroupId = (nextGroupNumber: number): string => {
 export const createLoadGroup = (
   selectedLoadIds: string[],
   loadType: LoadType,
-  nextGroupNumber: number
+  nextGroupNumber: number,
+  customName?: string
 ) => {
   return {
     id: generateGroupId(nextGroupNumber),
-    name: `Group ${nextGroupNumber}`,
+    name: customName || `Group ${nextGroupNumber}`,
     type: loadType,
     loadIds: selectedLoadIds,
     visible: true,
@@ -93,12 +94,16 @@ export const isLoadVisible = (
   loadType: LoadType,
   state: DrawingState
 ): boolean => {
-  // First check group visibility
-  if (!isLoadVisibleThroughGroups(loadId, state.loadGroups, state.showEntities)) {
-    return false;
+  // If a group is active, only show loads from that group
+  if (state.showEntities.activeGroupId) {
+    const activeGroup = state.loadGroups.find(g => g.id === state.showEntities.activeGroupId);
+    if (activeGroup) {
+      // Only show loads that are in the active group
+      return activeGroup.loadIds.includes(loadId);
+    }
   }
 
-  // Then check traditional visibility logic
+  // No active group - use traditional visibility logic
   if (loadId.startsWith('pl-')) {
     return state.showEntities.pointLoads[loadType];
   } else if (loadId.startsWith('dl-')) {

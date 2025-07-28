@@ -123,6 +123,7 @@ export type DrawingState = {
       [LoadType.Live]: boolean;
     };
     groups: { [groupId: string]: boolean };
+    activeGroupId: string | null;
   };
   showSimulation: boolean;
   hasChanges: boolean;

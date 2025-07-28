@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { LoadType } from './lib/types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 
 type GroupConfirmationCardProps = {
   selectedLoadCount: number;
   loadType: LoadType;
-  onConfirm: () => void;
+  onConfirm: (groupName?: string) => void;
   onCancel: () => void;
   position: { x: number; y: number };
 };
@@ -26,13 +27,19 @@ const GroupConfirmationCard: React.FC<GroupConfirmationCardProps> = ({
   onCancel,
   position,
 }) => {
+  const [groupName, setGroupName] = useState('');
+
+  const handleConfirm = () => {
+    onConfirm(groupName.trim() || undefined);
+  };
+
   return (
     <Card 
       className="absolute bg-white border rounded shadow-lg p-4 z-50"
       style={{ 
         left: position.x, 
         top: position.y,
-        minWidth: '200px'
+        minWidth: '250px'
       }}
     >
       <div className="space-y-3">
@@ -40,6 +47,18 @@ const GroupConfirmationCard: React.FC<GroupConfirmationCardProps> = ({
         <p className="text-sm text-gray-600">
           Vil du gruppere {selectedLoadCount} {loadTypeNames[loadType].toLowerCase()}?
         </p>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Gruppenavn:
+          </label>
+          <Input
+            type="text"
+            placeholder="Valgfrit"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            className="text-sm"
+          />
+        </div>
         <div className="flex gap-2 justify-end">
           <Button 
             variant="outline" 
@@ -50,7 +69,7 @@ const GroupConfirmationCard: React.FC<GroupConfirmationCardProps> = ({
           </Button>
           <Button 
             size="sm" 
-            onClick={onConfirm}
+            onClick={handleConfirm}
           >
             OK
           </Button>

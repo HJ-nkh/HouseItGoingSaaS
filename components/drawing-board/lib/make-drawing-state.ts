@@ -63,6 +63,7 @@ export const defaultDrawingState = (aspectRatio: number): DrawingState => ({
       [LoadType.Live]: true,
     },
     groups: {},
+    activeGroupId: null, // Only one group can be active at a time
   },
   showSimulation: false,
   hasChanges: true,

@@ -79,6 +79,7 @@ const DisplayOptionsCard: React.FC<DisplayOptionsCardProps> = ({
 }) => {
   const [showGroupConfirmation, setShowGroupConfirmation] = useState(false);
   const [groupConfirmationPosition, setGroupConfirmationPosition] = useState({ x: 0, y: 0 });
+  const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
 
   // Check if selected loads can be grouped
   const { canGroup, loadType } = canGroupSelectedLoads(state.selectedIds, entitySet);
@@ -87,9 +88,9 @@ const DisplayOptionsCard: React.FC<DisplayOptionsCardProps> = ({
   );
 
   // Handle group creation
-  const handleGroupConfirm = () => {
+  const handleGroupConfirm = (groupName?: string) => {
     if (canGroup && loadType && selectedLoadIds.length >= 2) {
-      const newGroup = createLoadGroup(selectedLoadIds, loadType, state.nextGroupNumber);
+      const newGroup = createLoadGroup(selectedLoadIds, loadType, state.nextGroupNumber, groupName);
       
       setState(s => ({
         ...s,
@@ -100,7 +101,7 @@ const DisplayOptionsCard: React.FC<DisplayOptionsCardProps> = ({
           ...s.showEntities,
           groups: {
             ...s.showEntities.groups,
-            [newGroup.id]: true,
+            [newGroup.id]: false, // Groups start as disabled
           },
         },
       }));
@@ -110,6 +111,76 @@ const DisplayOptionsCard: React.FC<DisplayOptionsCardProps> = ({
 
   const handleGroupCancel = () => {
     setShowGroupConfirmation(false);
+  };
+
+  // Handle group deletion and renumbering
+  const handleDeleteGroup = (groupToDelete: string) => {
+    setState(s => {
+      // Remove the group
+      const updatedGroups = s.loadGroups.filter(group => group.id !== groupToDelete);
+      
+      // Renumber groups and update their IDs
+      const renumberedGroups = updatedGroups.map((group, index) => ({
+        ...group,
+        id: `group-${index + 1}`,
+        name: `Group ${index + 1}`,
+      }));
+      
+      // Update visibility state to match new IDs
+      const newGroupsVisibility: { [groupId: string]: boolean } = {};
+      renumberedGroups.forEach((group) => {
+        newGroupsVisibility[group.id] = false; // All groups start disabled
+      });
+      
+      // If we deleted the active group, reset to normal mode
+      const newActiveGroupId = groupToDelete === s.showEntities.activeGroupId ? null : s.showEntities.activeGroupId;
+      
+      return {
+        ...s,
+        loadGroups: renumberedGroups,
+        nextGroupNumber: renumberedGroups.length + 1,
+        showEntities: {
+          ...s.showEntities,
+          groups: newGroupsVisibility,
+          activeGroupId: newActiveGroupId,
+          // If we deleted the active group, restore normal visibility
+          ...(newActiveGroupId === null ? {
+            distributedLoadsButton: true,
+            pointLoadsButton: true,
+            momentLoadsButton: true,
+            loadtypeButtons: {
+              [LoadType.Standard]: true,
+              [LoadType.Snow]: true,
+              [LoadType.Wind]: true,
+              [LoadType.Dead]: true,
+              [LoadType.Live]: true,
+            },
+            pointLoads: {
+              [LoadType.Standard]: true,
+              [LoadType.Snow]: true,
+              [LoadType.Wind]: true,
+              [LoadType.Dead]: true,
+              [LoadType.Live]: true,
+            },
+            distributedLoads: {
+              [LoadType.Standard]: true,
+              [LoadType.Snow]: true,
+              [LoadType.Wind]: true,
+              [LoadType.Dead]: true,
+              [LoadType.Live]: true,
+            },
+            momentLoads: {
+              [LoadType.Standard]: true,
+              [LoadType.Snow]: true,
+              [LoadType.Wind]: true,
+              [LoadType.Dead]: true,
+              [LoadType.Live]: true,
+            },
+          } : {}),
+        },
+      };
+    });
+    setHoveredGroupId(null);
   };
 
   // Show group confirmation when appropriate conditions are met
@@ -271,28 +342,130 @@ const DisplayOptionsCard: React.FC<DisplayOptionsCardProps> = ({
           <>
             <hr className="h-6 border-l border-gray-300 mx-1" />
             {state.loadGroups.map((group, index) => (
-              <button
-                key={group.id}
-                className={classNames("w-8 h-8 rounded flex items-center justify-center text-xs font-semibold", {
-                  [loadTypeColors.background[group.type]]: state.showEntities.groups[group.id] !== false,
-                  "bg-gray-100": state.showEntities.groups[group.id] === false,
-                })}
-                title={`Vis/skjul gruppe ${index + 1} (${group.name})`}
-                onClick={() => {
-                  setState(s => ({
-                    ...s,
-                    showEntities: {
-                      ...s.showEntities,
-                      groups: {
-                        ...s.showEntities.groups,
-                        [group.id]: s.showEntities.groups[group.id] === false,
-                      },
-                    },
-                  }));
-                }}
+              <div 
+                key={group.id} 
+                className="relative flex flex-col items-center"
+                onMouseEnter={() => setHoveredGroupId(group.id)}
+                onMouseLeave={() => setHoveredGroupId(null)}
               >
-                {index + 1}
-              </button>
+                <button
+                  className={classNames("w-8 h-8 rounded flex items-center justify-center text-xs font-semibold transition-colors", {
+                    [loadTypeColors.background[group.type]]: state.showEntities.activeGroupId === group.id,
+                    "bg-gray-100": state.showEntities.activeGroupId !== group.id,
+                  })}
+                  title={`Vis/skjul gruppe ${index + 1} (${group.name})`}
+                  onClick={() => {
+                    setState(s => {
+                      const isCurrentlyActive = s.showEntities.activeGroupId === group.id;
+                      
+                      if (isCurrentlyActive) {
+                        // Deactivate current group - return to normal mode
+                        return {
+                          ...s,
+                          showEntities: {
+                            ...s.showEntities,
+                            activeGroupId: null,
+                            // Restore default visibility states
+                            distributedLoadsButton: true,
+                            pointLoadsButton: true,
+                            momentLoadsButton: true,
+                            loadtypeButtons: {
+                              [LoadType.Standard]: true,
+                              [LoadType.Snow]: true,
+                              [LoadType.Wind]: true,
+                              [LoadType.Dead]: true,
+                              [LoadType.Live]: true,
+                            },
+                            pointLoads: {
+                              [LoadType.Standard]: true,
+                              [LoadType.Snow]: true,
+                              [LoadType.Wind]: true,
+                              [LoadType.Dead]: true,
+                              [LoadType.Live]: true,
+                            },
+                            distributedLoads: {
+                              [LoadType.Standard]: true,
+                              [LoadType.Snow]: true,
+                              [LoadType.Wind]: true,
+                              [LoadType.Dead]: true,
+                              [LoadType.Live]: true,
+                            },
+                            momentLoads: {
+                              [LoadType.Standard]: true,
+                              [LoadType.Snow]: true,
+                              [LoadType.Wind]: true,
+                              [LoadType.Dead]: true,
+                              [LoadType.Live]: true,
+                            },
+                          },
+                        };
+                      } else {
+                        // Activate this group exclusively
+                        return {
+                          ...s,
+                          showEntities: {
+                            ...s.showEntities,
+                            activeGroupId: group.id,
+                            // Set only this group's load type to true, all others false
+                            distributedLoadsButton: true,
+                            pointLoadsButton: true,
+                            momentLoadsButton: true,
+                            loadtypeButtons: {
+                              [LoadType.Standard]: group.type === LoadType.Standard,
+                              [LoadType.Snow]: group.type === LoadType.Snow,
+                              [LoadType.Wind]: group.type === LoadType.Wind,
+                              [LoadType.Dead]: group.type === LoadType.Dead,
+                              [LoadType.Live]: group.type === LoadType.Live,
+                            },
+                            pointLoads: {
+                              [LoadType.Standard]: group.type === LoadType.Standard,
+                              [LoadType.Snow]: group.type === LoadType.Snow,
+                              [LoadType.Wind]: group.type === LoadType.Wind,
+                              [LoadType.Dead]: group.type === LoadType.Dead,
+                              [LoadType.Live]: group.type === LoadType.Live,
+                            },
+                            distributedLoads: {
+                              [LoadType.Standard]: group.type === LoadType.Standard,
+                              [LoadType.Snow]: group.type === LoadType.Snow,
+                              [LoadType.Wind]: group.type === LoadType.Wind,
+                              [LoadType.Dead]: group.type === LoadType.Dead,
+                              [LoadType.Live]: group.type === LoadType.Live,
+                            },
+                            momentLoads: {
+                              [LoadType.Standard]: group.type === LoadType.Standard,
+                              [LoadType.Snow]: group.type === LoadType.Snow,
+                              [LoadType.Wind]: group.type === LoadType.Wind,
+                              [LoadType.Dead]: group.type === LoadType.Dead,
+                              [LoadType.Live]: group.type === LoadType.Live,
+                            },
+                          },
+                        };
+                      }
+                    });
+                  }}
+                >
+                  {index + 1}
+                </button>
+                
+                {/* Invisible hover bridge to keep hover state active */}
+                {hoveredGroupId === group.id && (
+                  <div className="absolute top-8 w-6 h-2 bg-transparent" />
+                )}
+                
+                {/* Delete button that appears on hover */}
+                {hoveredGroupId === group.id && (
+                  <button
+                    className="absolute top-10 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded flex items-center justify-center text-xs font-bold transition-all duration-200 shadow-lg z-50"
+                    title={`Slet gruppe ${index + 1}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteGroup(group.id);
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             ))}
           </>
         )}
