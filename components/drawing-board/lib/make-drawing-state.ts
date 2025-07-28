@@ -11,6 +11,8 @@ export const defaultDrawingState = (aspectRatio: number): DrawingState => ({
   nextDistributedLoadNumber: 0,
   nextMomentLoadNumber: 0,
   nextSupportNumber: 0,
+  loadGroups: [],
+  nextGroupNumber: 1,
 
   // Ephemeral
   tool: Tool.Select,
@@ -60,6 +62,7 @@ export const defaultDrawingState = (aspectRatio: number): DrawingState => ({
       [LoadType.Dead]: true,
       [LoadType.Live]: true,
     },
+    groups: {},
   },
   showSimulation: false,
   hasChanges: true,

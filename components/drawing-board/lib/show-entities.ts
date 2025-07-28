@@ -32,6 +32,7 @@ export const hideAllEntities: DrawingState["showEntities"] = {
     [LoadType.Dead]: false,
     [LoadType.Live]: false,
   },
+  groups: {},
 };
 
 export const showAllEntities: DrawingState["showEntities"] = {
@@ -66,6 +67,7 @@ export const showAllEntities: DrawingState["showEntities"] = {
     [LoadType.Dead]: true,
     [LoadType.Live]: true,
   },
+  groups: {},
 };
 
 export const isAnyDistributedLoadShown = (

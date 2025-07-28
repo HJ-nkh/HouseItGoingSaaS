@@ -50,6 +50,7 @@ import ContextHint from "./context-hint";
 import { useContextHints } from "./lib/use-context-hints";
 import { calculateCardPosition, getCardTypeFromEntity } from "./lib/card-positioning";
 import { CreateDrawingData } from "@/lib/api";
+import { isLoadVisible } from "./lib/load-groups";
 
 type DrawingBoardProps = {
   drawing?: Drawing | null;
@@ -350,11 +351,15 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
           )}
 
           <div className="absolute z-30 top-4 w-full flex justify-center">
-            <div className="flex flex-col items-center gap-4 w-full max-w-md">
-              <div className="w-full">
-                <DisplayOptionsCard state={state} setState={setState} />
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-auto">
+                <DisplayOptionsCard 
+                  state={state} 
+                  setState={setState} 
+                  entitySet={entitySet}
+                />
               </div>              {analysis && ["F1", "F2", "M", "Ve", "R0"].includes(analysis as string) && (
-                <div className="w-full">
+                <div className="w-auto">
                   <ScaleSimulationCard
                     scale={
                       analysis === "Ve"
@@ -385,7 +390,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                     analysis={analysis}
                   />
                   {analysis === "Ve" && (
-                    <div className="w-full mt-2">
+                    <div className="w-auto mt-2">
                       <GlobalLocalDefCard 
                         selected={selectedGlobalLocal} 
                         setSelected={setSelectedGlobalLocal} 
@@ -606,7 +611,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                    return null;
                  }
                }
-               if (!state.showEntities.distributedLoads[load.type]) {
+               if (!isLoadVisible(load.id, load.type, state)) {
                  return null;
                }
 
@@ -730,7 +735,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
             {/* POINT LOADS (on top) */}
             {Object.values(pointLoads).map((load) => {
-              if (!state.showEntities.pointLoads[load.type]) return null;
+              if (!isLoadVisible(load.id, load.type, state)) return null;
               const isSelected = state.selectedIds.includes(load.id);
               const strokeWidth = isSelected
                 ? state.viewBox[3] * 0.003
@@ -757,7 +762,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
             {/* MOMENT LOADS (on top) */}
             {Object.values(momentLoads).map((load) => {
-              if (!state.showEntities.momentLoads[load.type]) return null;
+              if (!isLoadVisible(load.id, load.type, state)) return null;
               const isSelected = state.selectedIds.includes(load.id);
               const size = momentScale;
               const isHovered = state.hoveringId === load.id;

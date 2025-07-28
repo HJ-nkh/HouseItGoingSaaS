@@ -49,6 +49,14 @@ export type Action = {
   };
 };
 
+export type LoadGroup = {
+  id: string;
+  name: string;
+  type: LoadType;
+  loadIds: string[];
+  visible: boolean;
+};
+
 export type DrawingState = {
   history: Action[];
   tool: Tool;
@@ -80,6 +88,8 @@ export type DrawingState = {
   createNewNode: boolean;
   startNodeId: string | null;
   startMemberId: string | null;
+  loadGroups: LoadGroup[];
+  nextGroupNumber: number;
   showEntities: {
     distributedLoadsButton: boolean;
     pointLoadsButton: boolean;
@@ -112,6 +122,7 @@ export type DrawingState = {
       [LoadType.Dead]: boolean;
       [LoadType.Live]: boolean;
     };
+    groups: { [groupId: string]: boolean };
   };
   showSimulation: boolean;
   hasChanges: boolean;
