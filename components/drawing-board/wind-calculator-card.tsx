@@ -64,6 +64,7 @@ type WindCalculatorSettings = {
   // Wind calculator construction elements and load area
   selectedLineId?: number | null;
   lastopland?: number;
+  terrainHeight?: number;
   constructionDots?: Array<{
     x: number;
     y: number;
@@ -100,6 +101,7 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
   const [lastopland, setLastopland] = useState<number>(settings.lastopland ?? 1.0);
   const [constructionDots, setConstructionDots] = useState(settings.constructionDots ?? []);
   const [constructionLines, setConstructionLines] = useState(settings.constructionLines ?? []);
+  const [terrainHeight, setTerrainHeight] = useState<number>(settings.terrainHeight ?? 0);
   
   // Use construction lines from drawing board instead of local state
   const constructionLinesFromBoard = drawingBoardLines;
@@ -113,9 +115,50 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
     onSettingsChange({
       selectedLineId,
       lastopland,
+      terrainHeight,
       constructionDots,
       constructionLines,
     });
+  };
+
+  // Find the lowest construction element (dot or line end point)
+  const findLowestConstructionElement = () => {
+    const allPoints: Array<{ x: number; y: number; type: 'dot' | 'line' }> = [];
+    
+    // Add all dots
+    constructionDots.forEach(dot => {
+      allPoints.push({ x: dot.x, y: dot.y, type: 'dot' });
+    });
+    
+    // Add all line end points (both start and end)
+    constructionLines.forEach(line => {
+      // Add start point
+      allPoints.push({ x: line.x, y: line.y, type: 'line' });
+      
+      // Calculate end point based on length and rotation
+      const isVertical = line.rotation === 90 || line.rotation === 270;
+      if (isVertical) {
+        // Vertical line
+        const endY = line.rotation === 90 ? line.y + line.length : line.y - line.length;
+        allPoints.push({ x: line.x, y: endY, type: 'line' });
+      } else {
+        // Horizontal line
+        const endX = line.rotation === 0 ? line.x + line.length : line.x - line.length;
+        allPoints.push({ x: endX, y: line.y, type: 'line' });
+      }
+    });
+    
+    if (allPoints.length === 0) return null;
+    
+    // Find the point with the highest y value (lowest on screen, since y=0 is top)
+    const maxY = Math.max(...allPoints.map(p => p.y));
+    const lowestPoints = allPoints.filter(p => p.y === maxY);
+    
+    // If multiple points at same y level, find the leftmost (smallest x)
+    const minX = Math.min(...lowestPoints.map(p => p.x));
+    const lowestLeftmostPoint = lowestPoints.find(p => p.x === minX);
+    
+    return lowestLeftmostPoint;
   };
 
   // Validation function
@@ -504,7 +547,7 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
           
           {/* Lower half: Construction Window and Interactive Rectangle */}
           <div className="flex gap-20 mt-4">
-            {/* Left: Construction Window - aligned with inputs */}
+            {/* Left: Construction Window with terrain height indicator */}
             <div className="w-80">
               <ConstructionWindow
                 selectedLineId={selectedLineId}
@@ -513,10 +556,18 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
                   onSettingsChange({ selectedLineId: lineId });
                 }}
                 constructionLines={constructionLinesFromBoard}
+                showTerrainHeight={constructionDots.length > 0 || constructionLines.length > 0 || constructionLinesFromBoard.length > 0}
+                terrainHeight={terrainHeight}
+                onTerrainHeightChange={(height) => {
+                  setTerrainHeight(height);
+                  onSettingsChange({ terrainHeight: height });
+                }}
+                constructionDots={constructionDots}
+                constructionElements={constructionLines}
               />
             </div>
             
-            {/* Right: Interactive Rectangle - same width as construction window */}
+            {/* Right: Interactive Rectangle */}
             <div className="w-80">
               <InteractiveRectangle
                 depth={settings.houseDepth ?? 6}
@@ -547,22 +598,24 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
               />
             </div>
             
-            {/* Third column: Lastopland input */}
+            {/* Third column: Lastopland input and terrain height */}
             <div className="w-40">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Lastopland
-                </label>
-                <NumberInput
-                  value={lastopland}
-                  onChange={(value) => {
-                    const newValue = value ?? 1.0;
-                    setLastopland(newValue);
-                    onSettingsChange({ lastopland: newValue });
-                  }}
-                  onEnter={onEnter}
-                  unit="m"
-                />
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Lastopland
+                  </label>
+                  <NumberInput
+                    value={lastopland}
+                    onChange={(value) => {
+                      const newValue = value ?? 1.0;
+                      setLastopland(newValue);
+                      onSettingsChange({ lastopland: newValue });
+                    }}
+                    onEnter={onEnter}
+                    unit="m"
+                  />
+                </div>
               </div>
             </div>
           </div>

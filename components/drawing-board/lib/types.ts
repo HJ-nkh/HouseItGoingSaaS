@@ -151,6 +151,7 @@ export type WindCalculatorSettings = {
   // Wind calculator construction elements and load area
   selectedLineId?: number | null;
   lastopland?: number;
+  terrainHeight?: number;
   constructionDots?: Array<{
     x: number;
     y: number;

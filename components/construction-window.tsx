@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
+import NumberInput from './number-input';
 
 interface Line {
   id: number;
@@ -13,6 +14,26 @@ interface ConstructionWindowProps {
   onLineSelect: (lineId: number | null) => void;
   onLinesChange?: (lines: Line[]) => void;
   constructionLines?: Line[]; // Add prop for construction lines from drawing board
+  // Terrain height props
+  showTerrainHeight?: boolean;
+  terrainHeight?: number;
+  onTerrainHeightChange?: (height: number) => void;
+  constructionDots?: Array<{
+    x: number;
+    y: number;
+    side: 'top' | 'right' | 'bottom' | 'left';
+    progress: number;
+    lineId: number;
+  }>;
+  constructionElements?: Array<{
+    x: number;
+    y: number;
+    side: 'top' | 'right' | 'bottom' | 'left' | 'inside';
+    progress: number;
+    lineId: number;
+    length: number;
+    rotation: number;
+  }>;
 }
 
 const ConstructionWindow: React.FC<ConstructionWindowProps> = ({
@@ -20,6 +41,11 @@ const ConstructionWindow: React.FC<ConstructionWindowProps> = ({
   onLineSelect,
   onLinesChange,
   constructionLines = [], // Default to empty array if not provided
+  showTerrainHeight = false,
+  terrainHeight = 0,
+  onTerrainHeightChange,
+  constructionDots = [],
+  constructionElements = [],
 }) => {
   
   // Use only construction lines from drawing board
@@ -74,6 +100,30 @@ const ConstructionWindow: React.FC<ConstructionWindowProps> = ({
     x: (svgX - offsetX) / scale,
     y: (svgY - offsetY) / scale, // Fixed: removed the Y-axis flip
   });
+
+  // Find the lowest construction element for terrain height indicator
+  const findLowestConstructionElement = () => {
+    if (lines.length === 0) return null;
+    
+    // Get all endpoints of construction lines
+    const allPoints: Array<{ x: number; y: number }> = [];
+    lines.forEach(line => {
+      allPoints.push({ x: line.x1, y: line.y1 });
+      allPoints.push({ x: line.x2, y: line.y2 });
+    });
+    
+    if (allPoints.length === 0) return null;
+    
+    // Find the point with the highest y value (lowest in construction coordinates)
+    const maxY = Math.max(...allPoints.map(p => p.y));
+    const lowestPoints = allPoints.filter(p => p.y === maxY);
+    
+    // If multiple points at same y level, find the leftmost (smallest x)
+    const minX = Math.min(...lowestPoints.map(p => p.x));
+    const lowestLeftmostPoint = lowestPoints.find(p => p.x === minX);
+    
+    return lowestLeftmostPoint;
+  };
 
   // Check if a line is vertical
   const isVerticalLine = (line: Line) => line.x1 === line.x2;
@@ -134,7 +184,7 @@ const ConstructionWindow: React.FC<ConstructionWindowProps> = ({
 
 
   return (
-    <div className="flex flex-col items-center gap-2 p-4">
+    <div className="relative flex flex-col items-center gap-2 p-4">
 
         <svg
           width={svgWidth}
@@ -226,7 +276,79 @@ const ConstructionWindow: React.FC<ConstructionWindowProps> = ({
             );
           })}
 
+          {/* Terrain height indicator - intersecting the lowest construction element */}
+          {showTerrainHeight && (() => {
+            const lowestElement = findLowestConstructionElement();
+            if (!lowestElement) return null;
+            
+            // Convert to SVG coordinates
+            const svgCoords = toSvgCoords(lowestElement.x, lowestElement.y);
+            const lineY = svgCoords.y; // Position line exactly at the element point
+            const lineStartX = svgCoords.x - 25;
+            const lineEndX = svgCoords.x + 25;
+            
+            return (
+              <g>
+                {/* Red horizontal line intersecting the point */}
+                <line
+                  x1={lineStartX}
+                  y1={lineY}
+                  x2={lineEndX}
+                  y2={lineY}
+                  stroke="red"
+                  strokeWidth={3}
+                />
+                
+                {/* Text label below the intersection line */}
+                <text
+                  x={lineStartX}
+                  y={lineY + 20}
+                  textAnchor="start"
+                  fontSize="10"
+                  fill="red"
+                  fontWeight="bold"
+                >
+                  Højde over terræn:
+                </text>
+              </g>
+            );
+          })()}
+
         </svg>
+        
+        {/* Normal input field positioned next to red text */}
+        {showTerrainHeight && (() => {
+          const lowestElement = findLowestConstructionElement();
+          if (!lowestElement) return null;
+          
+          // Convert to SVG coordinates to position the input
+          const svgCoords = toSvgCoords(lowestElement.x, lowestElement.y);
+          const lineStartX = svgCoords.x - 25;
+          
+          // Calculate fixed distance from end of red text
+          // Text "Højde over terræn:" is approximately 85px wide at font-size 10
+          const textWidth = 85;
+          const gapFromText = 5; // 5px gap from text
+          
+          return (
+            <div 
+              className="absolute"
+              style={{
+                left: `${lineStartX + textWidth + gapFromText}px`, // Fixed distance from red text
+                top: `${svgCoords.y + 8}px`,
+                zIndex: 10
+              }}
+            >
+              <NumberInput
+                value={terrainHeight}
+                onChange={(value) => onTerrainHeightChange?.(value || 0)}
+                unit="m"
+                className="w-20 text-xs"
+                min={0}
+              />
+            </div>
+          );
+        })()}
       
       <div className="text-xs text-muted-foreground max-w-md text-center">
         <p>Klik på konstruktionsdel som der ønskes vindlast på</p>
