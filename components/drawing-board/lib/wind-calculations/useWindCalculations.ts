@@ -1,6 +1,8 @@
 /**
  * React hook for wind load calculations
- * Integrates the TypeScript wind calculation classes with React components
+ * Integrates the TypeScript wind calculation classes w    if (props.houseRotation === undefined || props.houseRotation < 0 || props.houseRotation >= 360) {
+      errors.push('Hus rotation skal være mellem 0 og 360 grader');
+    } React components
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -35,7 +37,7 @@ export interface UseWindCalculationsProps {
   distanceToSea?: 'more_than_25km' | 'less_than_25km';
   terrainCategory?: '0' | '1' | '2' | '3' | '4';
   formFactor?: 'main_structure' | 'small_elements';
-  windDirection?: number;
+  houseRotation?: number;
   
   // Auto-calculate flag
   autoCalculate?: boolean;
@@ -100,8 +102,8 @@ export function useWindCalculations(props: UseWindCalculationsProps): UseWindCal
       errors.push('Formfaktorer skal vælges');
     }
     
-    if (props.windDirection === undefined || props.windDirection < 0 || props.windDirection >= 360) {
-      errors.push('Vindretning skal være mellem 0 og 359 grader');
+    if (props.houseRotation === undefined || props.houseRotation < 0 || props.houseRotation >= 360) {
+      errors.push('Hus rotation skal være mellem 0 og 359 grader');
     }
     
     // Roof-specific validations
@@ -161,7 +163,7 @@ export function useWindCalculations(props: UseWindCalculationsProps): UseWindCal
         distanceToSea: props.distanceToSea!,
         terrainCategory: props.terrainCategory!,
         formFactor: props.formFactor!,
-        windDirection: props.windDirection!,
+        houseRotation: props.houseRotation!,
       };
 
       const calculationResults = calculateWindLoads(inputs);
@@ -199,7 +201,7 @@ export function useWindCalculations(props: UseWindCalculationsProps): UseWindCal
     props.distanceToSea,
     props.terrainCategory,
     props.formFactor,
-    props.windDirection,
+    props.houseRotation,
     props.autoCalculate,
     canCalculate,
   ]);
@@ -218,7 +220,7 @@ export function useWindCalculations(props: UseWindCalculationsProps): UseWindCal
   // Get available zones for current roof configuration
   const getAvailableRoofZones = () => {
     if (!props.roofType) return [];
-    return getAvailableZones(props.roofType, props.windDirection);
+    return getAvailableZones(props.roofType, props.houseRotation);
   };
 
   const getAvailableWallZones = () => {

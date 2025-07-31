@@ -11,6 +11,7 @@ import HouseOutline from "../house-outline";
 import HouseCompassView from "../house-compass-view";
 import ConstructionWindow from "../construction-window";
 import InteractiveRectangle from "../interactive-rectangle";
+import { calculateWindLoads } from "./lib/wind-calculations";
 
 const RoofTypeOptions = [
   { label: "Fladt tag", value: "flat" },
@@ -60,7 +61,6 @@ type WindCalculatorSettings = {
   distanceToSea: 'more_than_25km' | 'less_than_25km';
   terrainCategory: '0' | '1' | '2' | '3' | '4';
   formFactor: 'main_structure' | 'small_elements';
-  windDirection: number;
   // Wind calculator construction elements and load area
   selectedLineId?: number | null;
   lastopland?: number;
@@ -214,14 +214,45 @@ const WindCalculatorCard: React.FC<WindCalculatorCardProps> = ({
     if (canApplyLoads) {
       // Save all current state to settings
       saveConstructionElements();
-      // TODO: Apply wind loads based on construction elements and settings
-      console.log('Applying wind loads with settings:', {
-        ...settings,
+      
+      // Calculate wind loads with the new 4-side approach
+      const windCalculationInputs = {
+        houseHeight: settings.houseHeight!,
+        houseWidth: settings.houseWidth!,
+        houseDepth: settings.houseDepth!,
+        roofType: settings.roofType,
+        roofPitch: settings.roofPitch,
+        hippedMainPitch: settings.hippedMainPitch,
+        hippedHipPitch: settings.hippedHipPitch,
+        flatRoofEdgeType: settings.flatRoofEdgeType,
+        parapetHeight: settings.parapetHeight,
+        edgeRadius: settings.edgeRadius,
+        bevelAngle: settings.bevelAngle,
+        distanceToSea: settings.distanceToSea,
+        terrainCategory: settings.terrainCategory,
+        formFactor: settings.formFactor,
+        houseRotation: settings.houseRotation,
+      };
+      
+      console.log('=== PÅFØR LASTER - STARTER VINDBEREGNING ===');
+      console.log('Vindberegningsindstillinger:', windCalculationInputs);
+      console.log('Konstruktionselementer:', {
         selectedLineId,
         lastopland,
         constructionDots,
         constructionLines,
+        terrainHeight,
       });
+      
+      try {
+        // Actually perform the wind calculation
+        const windResults = calculateWindLoads(windCalculationInputs);
+        console.log('=== VINDBEREGNING FULDFØRT ===');
+        console.log('Resultater:', windResults);
+      } catch (error) {
+        console.error('FEJL i vindberegning:', error);
+      }
+      
       // Close the calculator
       onClose();
     }
