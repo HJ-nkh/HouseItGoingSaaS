@@ -4,10 +4,17 @@
  */
 
 import { WindProp } from './windprop';
-import { EC14 } from './EC1-4';
+import { EC14, ZoneDWindPressureResult } from './EC1-4';
 export { WindProp } from './windprop';
 export type { Number } from './windprop';
 export { EC14 } from './EC1-4';
+export type { 
+  WindLoadResult, 
+  MultiSurfaceWindLoadResult, 
+  MultiSurfaceWindLoadWithZoneInfo,
+  WindPressureProfile,
+  ZoneDWindPressureResult
+} from './EC1-4';
 
 // Export hooks
 export { useWindCalculations, useWindCalculation } from './useWindCalculations';
@@ -56,6 +63,11 @@ export interface WindCalculationResults {
   
   roofLoads?: {
     [cpeType: string]: { [zone: string]: number };
+  };
+
+  // Zone D height-dependent pressure profiles
+  zoneDProfiles?: {
+    [surface: string]: ZoneDWindPressureResult;
   };
 }
 
@@ -112,7 +124,8 @@ export function calculateWindLoads(inputs: WindCalculationInputs): WindCalculati
   console.log('Facade2 (højre) max vind:', maxFacade2Wind.directions.map(d => `${d.name} (${d.angle}°)`).join(', '), 'cDir²:', maxFacade2Wind.cDirFactor);
   console.log('Gavl2 (bund) max vind:', maxGavl2Wind.directions.map(d => `${d.name} (${d.angle}°)`).join(', '), 'cDir²:', maxGavl2Wind.cDirFactor);
   console.log('Facade1 (venstre) max vind:', maxFacade1Wind.directions.map(d => `${d.name} (${d.angle}°)`).join(', '), 'cDir²:', maxFacade1Wind.cDirFactor);
-  
+  console.log('');
+
   // Create EC1-4 calculator instances for each side with their maximum wind directions
   const facade1Ec14 = new EC14(
     roofPitch,                    // roof pitch [°]
@@ -123,22 +136,28 @@ export function calculateWindLoads(inputs: WindCalculationInputs): WindCalculati
     terrainCat,                   // terrain category
     maxFacade1Wind.directions[0].angle, // wind direction [°] - use first direction
     1.0,                          // season factor
-    true                          // use DK NA
+    true,                         // use DK NA
+    inputs.roofType,              // roof type for h_face_zone_D calculation
+    inputs.parapetHeight || 0,    // parapet height [m]
+    inputs.flatRoofEdgeType || 'sharp'  // flat roof edge type
   );
   
   const gavl1Ec14 = new EC14(
     roofPitch, inputs.houseHeight, inputs.houseWidth, inputs.houseDepth,
-    distToCoastKm, terrainCat, maxGavl1Wind.directions[0].angle, 1.0, true
+    distToCoastKm, terrainCat, maxGavl1Wind.directions[0].angle, 1.0, true, 
+    inputs.roofType, inputs.parapetHeight || 0, inputs.flatRoofEdgeType || 'sharp'
   );
   
   const facade2Ec14 = new EC14(
     roofPitch, inputs.houseHeight, inputs.houseWidth, inputs.houseDepth,
-    distToCoastKm, terrainCat, maxFacade2Wind.directions[0].angle, 1.0, true
+    distToCoastKm, terrainCat, maxFacade2Wind.directions[0].angle, 1.0, true, 
+    inputs.roofType, inputs.parapetHeight || 0, inputs.flatRoofEdgeType || 'sharp'
   );
   
   const gavl2Ec14 = new EC14(
     roofPitch, inputs.houseHeight, inputs.houseWidth, inputs.houseDepth,
-    distToCoastKm, terrainCat, maxGavl2Wind.directions[0].angle, 1.0, true
+    distToCoastKm, terrainCat, maxGavl2Wind.directions[0].angle, 1.0, true, 
+    inputs.roofType, inputs.parapetHeight || 0, inputs.flatRoofEdgeType || 'sharp'
   );
   
   // Calculate basic wind pressure for each side
@@ -146,34 +165,34 @@ export function calculateWindLoads(inputs: WindCalculationInputs): WindCalculati
   gavl1Ec14.windPressure();
   facade2Ec14.windPressure();
   gavl2Ec14.windPressure();
-  
-  // Log basic wind parameters from all 4 sides
-  console.log('=== VINDPARAMETRE ===');
+
+      // Log basic wind parameters from all 4 sides
+  console.log('=== VINDPARAMETRE (Ekslusiv Zone D for vægflader) ===');
   console.log(`Facade1 (venstre) - Vind: ${maxFacade1Wind.directions.map(d => `${d.name} (${d.angle}°)`).join(', ')}:`);
   console.log('  Grundvindshastighed vB:', facade1Ec14.vB.toFixed(1), 'm/s');
   console.log('  Middelvindshastighed vM:', facade1Ec14.vM.toFixed(1), 'm/s');
   console.log('  Turbulensintensitet iV:', facade1Ec14.iV.toFixed(3));
-  console.log('  Toptrykhastighed qP:', facade1Ec14.qP.toFixed(1), 'Pa');
+  console.log('  Toptrykhastighed qP:', facade1Ec14.qP.toFixed(1), `Pa (qP@${facade1Ec14.buildingHeight.toFixed(2)}m)`);
   
   console.log(`Gavl1 (top) - Vind: ${maxGavl1Wind.directions.map(d => `${d.name} (${d.angle}°)`).join(', ')}:`);
   console.log('  Grundvindshastighed vB:', gavl1Ec14.vB.toFixed(1), 'm/s');
   console.log('  Middelvindshastighed vM:', gavl1Ec14.vM.toFixed(1), 'm/s');
   console.log('  Turbulensintensitet iV:', gavl1Ec14.iV.toFixed(3));
-  console.log('  Toptrykhastighed qP:', gavl1Ec14.qP.toFixed(1), 'Pa');
+  console.log('  Toptrykhastighed qP:', gavl1Ec14.qP.toFixed(1), `Pa (qP@${gavl1Ec14.buildingHeight.toFixed(2)}m)`);
   
   console.log(`Facade2 (højre) - Vind: ${maxFacade2Wind.directions.map(d => `${d.name} (${d.angle}°)`).join(', ')}:`);
   console.log('  Grundvindshastighed vB:', facade2Ec14.vB.toFixed(1), 'm/s');
   console.log('  Middelvindshastighed vM:', facade2Ec14.vM.toFixed(1), 'm/s');
   console.log('  Turbulensintensitet iV:', facade2Ec14.iV.toFixed(3));
-  console.log('  Toptrykhastighed qP:', facade2Ec14.qP.toFixed(1), 'Pa');
+  console.log('  Toptrykhastighed qP:', facade2Ec14.qP.toFixed(1), `Pa (qP@${facade2Ec14.buildingHeight.toFixed(2)}m)`);
   
   console.log(`Gavl2 (bund) - Vind: ${maxGavl2Wind.directions.map(d => `${d.name} (${d.angle}°)`).join(', ')}:`);
   console.log('  Grundvindshastighed vB:', gavl2Ec14.vB.toFixed(1), 'm/s');
   console.log('  Middelvindshastighed vM:', gavl2Ec14.vM.toFixed(1), 'm/s');
   console.log('  Turbulensintensitet iV:', gavl2Ec14.iV.toFixed(3));
-  console.log('  Toptrykhastighed qP:', gavl2Ec14.qP.toFixed(1), 'Pa');
+  console.log('  Toptrykhastighed qP:', gavl2Ec14.qP.toFixed(1), `Pa (qP@${gavl2Ec14.buildingHeight.toFixed(2)}m)`);
   console.log('');
-
+  
   // Calculate wall loads for each side
   const facade1WallLoads = facade1Ec14.windLoadWall();
   const gavl1WallLoads = gavl1Ec14.windLoadWall();
@@ -183,39 +202,135 @@ export function calculateWindLoads(inputs: WindCalculationInputs): WindCalculati
   console.log('=== VÆGBELASTNINGER FOR HVER SIDE ===');
   console.log(`Facade1 (venstre) - Vind: ${maxFacade1Wind.directions.map(d => `${d.name} (${d.angle}°)`).join(', ')}:`);
   if (facade1WallLoads.Facade && facade1WallLoads.Facade['cpe,10']) {
-    Object.entries(facade1WallLoads.Facade['cpe,10']).forEach(([zone, value]) => {
-      console.log(`  Zone ${zone}: ${value.toFixed(1)} Pa`);
-    });
+    const zoneInfo = (facade1WallLoads.Facade as any).zoneInfo;
+    if (zoneInfo) {
+      console.log(`  e/d ratio: ${zoneInfo.ratio.toFixed(2)} (e=${zoneInfo.e.toFixed(2)}m, d=${zoneInfo.d.toFixed(2)}m)`);
+      for (const zone of zoneInfo.appliedZones) {
+        // Skip Zone D as it's handled separately in height-dependent profiles
+        if (zone === 'D') continue;
+        const zoneKey = 'q' + zone;
+        if (facade1WallLoads.Facade['cpe,10'][zoneKey] !== undefined) {
+          const zoneDim = zoneInfo.zoneDimensions?.[zone] || '';
+          console.log(`  Zone ${zone}: ${facade1WallLoads.Facade['cpe,10'][zoneKey].toFixed(1)} Pa ${zoneDim ? `(${zoneDim})` : ''}`);
+        }
+      }
+    } else {
+      Object.entries(facade1WallLoads.Facade['cpe,10']).forEach(([zone, value]) => {
+        // Skip Zone D
+        if (zone === 'qD') return;
+        console.log(`  Zone ${zone}: ${value.toFixed(1)} Pa`);
+      });
+    }
   }
   
   console.log(`Gavl1 (top) - Vind: ${maxGavl1Wind.directions.map(d => `${d.name} (${d.angle}°)`).join(', ')}:`);
-  if (gavl1WallLoads.Facade && gavl1WallLoads.Facade['cpe,10']) {
-    Object.entries(gavl1WallLoads.Facade['cpe,10']).forEach(([zone, value]) => {
-      console.log(`  Zone ${zone}: ${value.toFixed(1)} Pa`);
-    });
+  if (gavl1WallLoads.Gavl && gavl1WallLoads.Gavl['cpe,10']) {
+    const zoneInfo = (gavl1WallLoads.Gavl as any).zoneInfo;
+    if (zoneInfo) {
+      console.log(`  e/d ratio: ${zoneInfo.ratio.toFixed(2)} (e=${zoneInfo.e.toFixed(2)}m, d=${zoneInfo.d.toFixed(2)}m)`);
+      for (const zone of zoneInfo.appliedZones) {
+        // Skip Zone D as it's handled separately in height-dependent profiles
+        if (zone === 'D') continue;
+        const zoneKey = 'q' + zone;
+        if (gavl1WallLoads.Gavl['cpe,10'][zoneKey] !== undefined) {
+          const zoneDim = zoneInfo.zoneDimensions?.[zone] || '';
+          console.log(`  Zone ${zone}: ${gavl1WallLoads.Gavl['cpe,10'][zoneKey].toFixed(1)} Pa ${zoneDim ? `(${zoneDim})` : ''}`);
+        }
+      }
+    } else {
+      Object.entries(gavl1WallLoads.Gavl['cpe,10']).forEach(([zone, value]) => {
+        // Skip Zone D
+        if (zone === 'qD') return;
+        console.log(`  Zone ${zone}: ${value.toFixed(1)} Pa`);
+      });
+    }
   }
   
   console.log(`Facade2 (højre) - Vind: ${maxFacade2Wind.directions.map(d => `${d.name} (${d.angle}°)`).join(', ')}:`);
   if (facade2WallLoads.Facade && facade2WallLoads.Facade['cpe,10']) {
-    Object.entries(facade2WallLoads.Facade['cpe,10']).forEach(([zone, value]) => {
-      console.log(`  Zone ${zone}: ${value.toFixed(1)} Pa`);
-    });
+    const zoneInfo = (facade2WallLoads.Facade as any).zoneInfo;
+    if (zoneInfo) {
+      console.log(`  e/d ratio: ${zoneInfo.ratio.toFixed(2)} (e=${zoneInfo.e.toFixed(2)}m, d=${zoneInfo.d.toFixed(2)}m)`);
+      for (const zone of zoneInfo.appliedZones) {
+        // Skip Zone D as it's handled separately in height-dependent profiles
+        if (zone === 'D') continue;
+        const zoneKey = 'q' + zone;
+        if (facade2WallLoads.Facade['cpe,10'][zoneKey] !== undefined) {
+          const zoneDim = zoneInfo.zoneDimensions?.[zone] || '';
+          console.log(`  Zone ${zone}: ${facade2WallLoads.Facade['cpe,10'][zoneKey].toFixed(1)} Pa ${zoneDim ? `(${zoneDim})` : ''}`);
+        }
+      }
+    } else {
+      Object.entries(facade2WallLoads.Facade['cpe,10']).forEach(([zone, value]) => {
+        // Skip Zone D
+        if (zone === 'qD') return;
+        console.log(`  Zone ${zone}: ${value.toFixed(1)} Pa`);
+      });
+    }
   }
   
   console.log(`Gavl2 (bund) - Vind: ${maxGavl2Wind.directions.map(d => `${d.name} (${d.angle}°)`).join(', ')}:`);
-  if (gavl2WallLoads.Facade && gavl2WallLoads.Facade['cpe,10']) {
-    Object.entries(gavl2WallLoads.Facade['cpe,10']).forEach(([zone, value]) => {
-      console.log(`  Zone ${zone}: ${value.toFixed(1)} Pa`);
-    });
+  if (gavl2WallLoads.Gavl && gavl2WallLoads.Gavl['cpe,10']) {
+    const zoneInfo = (gavl2WallLoads.Gavl as any).zoneInfo;
+    if (zoneInfo) {
+      console.log(`  e/d ratio: ${zoneInfo.ratio.toFixed(2)} (e=${zoneInfo.e.toFixed(2)}m, d=${zoneInfo.d.toFixed(2)}m)`);
+      for (const zone of zoneInfo.appliedZones) {
+        // Skip Zone D as it's handled separately in height-dependent profiles
+        if (zone === 'D') continue;
+        const zoneKey = 'q' + zone;
+        if (gavl2WallLoads.Gavl['cpe,10'][zoneKey] !== undefined) {
+          const zoneDim = zoneInfo.zoneDimensions?.[zone] || '';
+          console.log(`  Zone ${zone}: ${gavl2WallLoads.Gavl['cpe,10'][zoneKey].toFixed(1)} Pa ${zoneDim ? `(${zoneDim})` : ''}`);
+        }
+      }
+    } else {
+      Object.entries(gavl2WallLoads.Gavl['cpe,10']).forEach(([zone, value]) => {
+        // Skip Zone D
+        if (zone === 'qD') return;
+        console.log(`  Zone ${zone}: ${value.toFixed(1)} Pa`);
+      });
+    }
   }
+  console.log('');
+  
+  // Calculate Zone D height-dependent pressure profiles for each side
+  console.log('=== ZONE D HØJDEAFHÆNGIGE TRYKPROFILER ===');
+  
+  const facade1ZoneDProfile = facade1Ec14.windPressureZoneD(true, 'facade1'); // Wind on facade1 (left/low side)
+  console.log(`Facade1 (venstre) Zone D - h_face_zone_D: ${facade1ZoneDProfile.h_face_zone_D.toFixed(2)}m, vindside bredde: ${facade1ZoneDProfile.windwardWidth.toFixed(2)}m:`);
+  facade1ZoneDProfile.profiles.forEach((profile, index) => {
+    const heightBottom = index === facade1ZoneDProfile.profiles.length - 1 ? 0 : facade1ZoneDProfile.profiles[index + 1]?.heightTop || 0;
+    console.log(`  Profil ${index + 1}: ${profile.qP.toFixed(1)} Pa (qP@${profile.refHeight.toFixed(2)}m) fra ${heightBottom.toFixed(2)}m til ${profile.heightTop.toFixed(2)}m højde`);
+  });
+  
+  const gavl1ZoneDProfile = gavl1Ec14.windPressureZoneD(false); // Wind on gavl1
+  console.log(`Gavl1 (top) Zone D - h_face_zone_D: ${gavl1ZoneDProfile.h_face_zone_D.toFixed(2)}m, vindside bredde: ${gavl1ZoneDProfile.windwardWidth.toFixed(2)}m:`);
+  gavl1ZoneDProfile.profiles.forEach((profile, index) => {
+    const heightBottom = index === gavl1ZoneDProfile.profiles.length - 1 ? 0 : gavl1ZoneDProfile.profiles[index + 1]?.heightTop || 0;
+    console.log(`  Profil ${index + 1}: ${profile.qP.toFixed(1)} Pa (qP@${profile.refHeight.toFixed(2)}m) fra ${heightBottom.toFixed(2)}m til ${profile.heightTop.toFixed(2)}m højde`);
+  });
+  
+  const facade2ZoneDProfile = facade2Ec14.windPressureZoneD(true, 'facade2'); // Wind on facade2 (right/high side)
+  console.log(`Facade2 (højre) Zone D - h_face_zone_D: ${facade2ZoneDProfile.h_face_zone_D.toFixed(2)}m, vindside bredde: ${facade2ZoneDProfile.windwardWidth.toFixed(2)}m:`);
+  facade2ZoneDProfile.profiles.forEach((profile, index) => {
+    const heightBottom = index === facade2ZoneDProfile.profiles.length - 1 ? 0 : facade2ZoneDProfile.profiles[index + 1]?.heightTop || 0;
+    console.log(`  Profil ${index + 1}: ${profile.qP.toFixed(1)} Pa (qP@${profile.refHeight.toFixed(2)}m) fra ${heightBottom.toFixed(2)}m til ${profile.heightTop.toFixed(2)}m højde`);
+  });
+  
+  const gavl2ZoneDProfile = gavl2Ec14.windPressureZoneD(false); // Wind on gavl2
+  console.log(`Gavl2 (bund) Zone D - h_face_zone_D: ${gavl2ZoneDProfile.h_face_zone_D.toFixed(2)}m, vindside bredde: ${gavl2ZoneDProfile.windwardWidth.toFixed(2)}m:`);
+  gavl2ZoneDProfile.profiles.forEach((profile, index) => {
+    const heightBottom = index === gavl2ZoneDProfile.profiles.length - 1 ? 0 : gavl2ZoneDProfile.profiles[index + 1]?.heightTop || 0;
+    console.log(`  Profil ${index + 1}: ${profile.qP.toFixed(1)} Pa (qP@${profile.refHeight.toFixed(2)}m) fra ${heightBottom.toFixed(2)}m til ${profile.heightTop.toFixed(2)}m højde`);
+  });
   console.log('');
   
   // Combine wall loads into result structure
   const wallLoads = {
     Facade1: facade1WallLoads.Facade,
-    Gavl1: gavl1WallLoads.Facade,
+    Gavl1: gavl1WallLoads.Gavl,
     Facade2: facade2WallLoads.Facade,
-    Gavl2: gavl2WallLoads.Facade
+    Gavl2: gavl2WallLoads.Gavl
   };
   
   // Calculate roof loads based on roof type and wind directions for all 4 sides
@@ -424,6 +539,12 @@ export function calculateWindLoads(inputs: WindCalculationInputs): WindCalculati
     peakVelocityPressure: facade1Ec14.qP,
     wallLoads,
     roofLoads,
+    zoneDProfiles: {
+      Facade1: facade1ZoneDProfile,
+      Gavl1: gavl1ZoneDProfile,
+      Facade2: facade2ZoneDProfile,
+      Gavl2: gavl2ZoneDProfile
+    }
   };
 }
 
