@@ -388,14 +388,13 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
   const handleTriangleMouseDown = (triangleId: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Triangle mouse down:', triangleId, 'BEFORE - draggedLineIndex:', draggedLineIndex);
+
     
     // AGGRESSIVELY clear any line dragging state
     triangleDragRef.current = triangleId; // Set ref immediately
     setDraggedLineIndex(null); // Clear line dragging when triangle is clicked
     setDraggedTriangleId(triangleId);
     
-    console.log('Triangle mouse down:', triangleId, 'AFTER - cleared draggedLineIndex');
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -404,7 +403,6 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
     // IMMEDIATE BLOCK: If any triangle is being dragged, handle ONLY triangle logic
     if (draggedTriangleId !== null || triangleDragRef.current !== null) {
       const currentTriangleId = draggedTriangleId || triangleDragRef.current;
-      console.log('TRIANGLE DRAG ACTIVE - blocking all other drag logic:', currentTriangleId);
       
       const rect = svgRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -491,19 +489,15 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
 
     // Only process line dragging if no triangle is being dragged AND draggedLineIndex is set
     if (draggedLineIndex !== null && draggedTriangleId === null && triangleDragRef.current === null) {
-      console.log('Moving line - draggedLineIndex:', draggedLineIndex, 'draggedTriangleId:', draggedTriangleId);
       setLines(prev => {
         // DEFENSIVE CHECK: Double-check triangle dragging state before actually updating
         if (draggedTriangleId !== null || triangleDragRef.current !== null) {
-          console.log('BLOCKED line update - triangle is active during setLines');
           return prev; // Return unchanged if triangle dragging became active
         }
         
         const draggedLine = prev[draggedLineIndex];
-        console.log('Dragging line with rotation:', draggedLine.rotation);
         // Always preserve the current line's rotation (set by double-click)
         const newPosition = coordinatesToLinePosition(x, y, draggedLine.lineId, draggedLine.length, draggedLine.rotation);
-        console.log('New position rotation:', newPosition.rotation);
         
         const newLines = prev.map((line, index) => 
           index === draggedLineIndex ? newPosition : line
@@ -538,7 +532,6 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
   // Force clear line dragging when triangle dragging starts
   React.useEffect(() => {
     if (draggedTriangleId !== null) {
-      console.log('FORCE CLEARING draggedLineIndex due to triangle drag:', draggedTriangleId);
       setDraggedLineIndex(null);
     }
   }, [draggedTriangleId]);
@@ -942,7 +935,6 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
               e.stopPropagation();
               // Double click to flip orientation
               if (e.detail === 2) {
-                console.log('Double click detected, flipping orientation for line', index);
                 setLines(prev => {
                   const currentLine = prev[index];
                   
@@ -979,7 +971,6 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
                   const newLines = prev.map((l, i) => 
                     i === index ? newLine : l
                   );
-                  console.log('Line rotation changed to:', newLines[index].rotation);
                   
                   // Clear shaded areas for this line when rotating
                   setShadedAreas(prevAreas => 
@@ -995,10 +986,8 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
             const handleLineMouseDown = (e: React.MouseEvent) => {
               // Only allow line dragging if no triangle is currently being dragged (check both state and ref)
               if (draggedTriangleId !== null || triangleDragRef.current !== null) {
-                console.log('BLOCKED line mouse down - triangle is active:', draggedTriangleId, triangleDragRef.current);
                 return;
               }
-              console.log('Line mouse down allowed - setting draggedLineIndex to:', index);
               e.preventDefault();
               e.stopPropagation();
               setDraggedLineIndex(index);
