@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUser, getUserWithTeam, getSimulationsForUser, getSimulationsForProject, getSimulationsForDrawing } from '@/lib/db/queries';
 import { db } from '@/lib/db/drizzle';
 import { simulations, activityLogs, ActivityType } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -208,8 +209,23 @@ export async function POST(request: NextRequest) {
       
     } catch (lambdaError) {
       console.error('❌ Error invoking Lambda function:', lambdaError);
-      // Continue anyway - simulation is created, just not processed
-      // You might want to update simulation status to 'failed' here
+      // Mark simulation as failed so the UI doesn't poll forever
+      const errorMessage = lambdaError instanceof Error ? lambdaError.message : 'Lambda invocation failed';
+      try {
+        await db
+          .update(simulations)
+          .set({ status: 'failed', error: errorMessage, updatedAt: new Date(), endTime: new Date() })
+          .where(eq(simulations.id, newSimulation.id));
+        // Optional: log an activity entry for failure to invoke
+        await db.insert(activityLogs).values({
+          teamId: userWithTeam.teamId,
+          userId: user.id,
+          action: ActivityType.FAIL_SIMULATION,
+          ipAddress: request.headers.get('x-forwarded-for') || undefined,
+        });
+      } catch (dbErr) {
+        console.error('❌ Error updating simulation to failed after lambda invocation error:', dbErr);
+      }
     }
 
     console.log('📤 Returning simulation response');
