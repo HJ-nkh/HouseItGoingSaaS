@@ -63,11 +63,18 @@ export async function fetchWithCache<T>(
   options?: RequestInit,
   cacheConfig?: { ttl?: number; skipCache?: boolean }
 ): Promise<T> {
+  // Bust CDN/proxy caches when skipCache is set or GET requests should be fresh
+  const isGet = !options?.method || options.method === 'GET';
+  const forceFresh = cacheConfig?.skipCache === true;
+  const urlWithBuster = isGet
+    ? `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`
+    : url;
+
   const cacheKey = `${url}-${JSON.stringify(options?.method || 'GET')}`;
   const { ttl = 5 * 60 * 1000, skipCache = false } = cacheConfig || {};
   
   // Check cache first (only for GET requests)
-  if (!skipCache && (!options?.method || options.method === 'GET')) {
+  if (!skipCache && isGet) {
     const cached = apiCache.get<T>(cacheKey);
     if (cached) {
       return cached;
@@ -76,15 +83,18 @@ export async function fetchWithCache<T>(
   
   // Check for pending request (deduplication)
   if (pendingRequests.has(cacheKey)) {
-    return pendingRequests.get(cacheKey);
+    return pendingRequests.get(cacheKey) as Promise<T>;
   }
   
-  // Make the request
-  const request = fetch(url, {
+  // Make the request with no-store semantics
+  const request = fetch(urlWithBuster, {
     headers: {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+      'Pragma': 'no-cache',
       ...options?.headers,
     },
+    cache: 'no-store',
     ...options,
   })
     .then(async (response) => {
@@ -92,7 +102,7 @@ export async function fetchWithCache<T>(
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
       }
-      return response.json();
+      return response.json() as Promise<T>;
     })
     .finally(() => {
       pendingRequests.delete(cacheKey);
@@ -103,7 +113,7 @@ export async function fetchWithCache<T>(
   const data = await request;
   
   // Cache GET requests
-  if (!skipCache && (!options?.method || options.method === 'GET')) {
+  if (!skipCache && isGet) {
     apiCache.set(cacheKey, data, ttl);
   }
   

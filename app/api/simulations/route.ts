@@ -36,7 +36,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(simulationsList);
+    return new NextResponse(JSON.stringify(simulationsList), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store',
+      },
+    });
   } catch (error) {
     if (error instanceof Error && error.message === 'User not authenticated') {
       return NextResponse.json(
@@ -51,6 +60,11 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// Opt out of all Next.js caching for this route
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export async function POST(request: NextRequest) {
   try {
