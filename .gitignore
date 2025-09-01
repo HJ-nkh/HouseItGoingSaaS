@@ -3,3 +3,4 @@ node_modules
 .next
 run-simulation-lambda/test_lambda.py
 
+tsconfig.tsbuildinfo

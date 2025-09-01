@@ -22,6 +22,10 @@ type TopBarProps = {
   state: DrawingState;
   simulationId?: string;
   showDownload?: boolean;
+  // Called right after a simulation has been queued/created; parent can refetch
+  onSimulationQueued?: () => void;
+  // Called immediately when user clicks Run, before any network calls
+  onRunStart?: () => void;
 };
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -32,6 +36,8 @@ const TopBar: React.FC<TopBarProps> = ({
   state,
   simulationId,
   showDownload = false,
+  onSimulationQueued,
+  onRunStart,
 }) => {
   const params = useParams();
   const projectId = params.projectId as string;
@@ -99,15 +105,23 @@ const TopBar: React.FC<TopBarProps> = ({
                   return;
                 }
 
+                // Inform parent to hide result UI instantly
+                onRunStart?.();
+
                 onSave({ title, history: state.history, projectId, hasChanges: false });
 
-                await simulationMutations.createSimulation({
+                const created = await simulationMutations.createSimulation({
                   projectId,
                   drawingId: drawing?.id,
                   entities: flipYAxisOnResolvedEntities(entitySet),
                 });
                 
                 simulationMutations.refetch();
+                // Locally mark drawing as not changed after run
+                // (the onSave above already persisted hasChanges: false)
+                // Parent controls props; local state will reflect via DrawingBoard onSave wrapper
+                // Notify parent/page to refetch latest simulation so UI updates immediately
+                onSimulationQueued?.();
               }}
             >
               <Triangle className="transform rotate-90 mr-1" /> Kør
