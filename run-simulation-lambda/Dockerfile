@@ -1,45 +1,14 @@
-FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+FROM public.ecr.aws/lambda/python:3.12
 
-ENV LAMBDA_TASK_ROOT=/var/task
-ENV LAMBDA_RUNTIME_DIR=/var/runtime
+# Workdir for Lambda code
+WORKDIR /var/task
 
-RUN mkdir -p ${LAMBDA_TASK_ROOT}
+# Install Python dependencies (manylinux wheels compatible with AWS Lambda x86_64)
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-WORKDIR ${LAMBDA_TASK_ROOT}
+# Copy function code
+COPY src/ ./src/
 
-ENV UV_COMPILE_BYTECODE=1
-
-ENV UV_LINK_MODE=copy
-
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONFAULTHANDLER=1
-
-RUN --mount=type=cache,target=/root/.cache/uv \
-	--mount=type=bind,source=uv.lock,target=uv.lock \
-	--mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-	uv sync --frozen --no-install-project --no-dev
-
-ADD . ${LAMBDA_TASK_ROOT}
-RUN --mount=type=cache,target=/root/.cache/uv \
-	uv sync --frozen --no-dev
-
-# Install AWS Lambda Runtime Interface Client
-RUN pip install awslambdaric
-
-# Place executables in the environment at the front of the path
-ENV PATH="${LAMBDA_TASK_ROOT}/.venv/bin:$PATH"
-
-# Add the Lambda Runtime Interface Emulator and set permissions
-ADD https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/latest/download/aws-lambda-rie /usr/bin/aws-lambda-rie
-RUN chmod 755 /usr/bin/aws-lambda-rie
-
-COPY bootstrap /var/runtime/bootstrap
-RUN chmod 755 /var/runtime/bootstrap
-
-# Enable Python to find packages in the virtual environment
-ENV PYTHONPATH="${LAMBDA_TASK_ROOT}/.venv/lib/python3.12/site-packages:${LAMBDA_TASK_ROOT}:${LAMBDA_TASK_ROOT}/src:${PYTHONPATH}"
-
-ENV PYTHONDONTWRITEBYTECODE=1
-
-ENTRYPOINT ["/var/runtime/bootstrap"]
+# Set the handler for AWS Lambda
 CMD ["src.main.handler"]

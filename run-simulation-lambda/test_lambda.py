@@ -29,6 +29,15 @@ if __name__ == "__main__":
     try:
         result = handler(test_event, test_context)
         print(f"Result: {result}")
+
+        print("Testing /health endpoint...")
+        health_event = {
+            "headers": { "X-API-Key": os.environ.get("API_KEY") or os.environ.get("LAMBDA_API_KEY") },
+            "requestContext": { "http": { "method": "GET" } },
+            "rawPath": "/health"
+        }
+        health_result = handler(health_event, test_context)
+        print(f"Health: {health_result}")
     except Exception as e:
         print(f"Error: {e}")
         import traceback

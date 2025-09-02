@@ -173,7 +173,36 @@ export async function POST(request: NextRequest) {
         throw new Error('LAMBDA_API_KEY environment variable is not set');
       }
       
-  const lambdaResponse = await fetch(lambdaUrl, {
+      // Small helper to add timeout + retries for transient network/5xx issues
+      const fetchWithRetry = async (input: string, init: RequestInit, attempts = 3) => {
+        let lastErr: any;
+        for (let i = 0; i < attempts; i++) {
+          const ac = new AbortController();
+          const t = setTimeout(() => ac.abort(), 10_000); // 10s timeout
+          try {
+            const res = await fetch(input, { ...init, signal: ac.signal, cache: 'no-store' as any });
+            clearTimeout(t);
+            // retry on typical transient statuses
+            if ([429, 500, 502, 503, 504].includes(res.status)) {
+              lastErr = new Error(`HTTP ${res.status} ${res.statusText}`);
+              // backoff with jitter
+              const wait = Math.min(1000 * 2 ** i, 3000) + Math.floor(Math.random() * 200);
+              await new Promise(r => setTimeout(r, wait));
+              continue;
+            }
+            return res;
+          } catch (e) {
+            clearTimeout(t);
+            lastErr = e;
+            // network/abort errors: backoff and retry
+            const wait = Math.min(1000 * 2 ** i, 3000) + Math.floor(Math.random() * 200);
+            await new Promise(r => setTimeout(r, wait));
+          }
+        }
+        throw lastErr;
+      };
+
+      const lambdaResponse = await fetchWithRetry(lambdaUrl!, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,6 +1,7 @@
 import os
 import json
 import sys
+from urllib.parse import urlparse
 
 # Append the path to the "src" folder and its parent folder to the system path
 # This is necessary for running on AWS Lambda
@@ -9,11 +10,14 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from dotenv import load_dotenv
 
+# Delay SQLAlchemy imports until after env validation to reduce import-time failures
 from sqlalchemy import create_engine, func, Table, MetaData
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.sql import select, update
 
+print("[main] module import starting", flush=True)
 load_dotenv()
+print("[main] dotenv loaded", flush=True)
 
 is_development = os.environ.get('API_ENV') == 'development'
 
@@ -30,16 +34,38 @@ def init_db_once():
     global engine, Session, metadata, projects_table, simulations_table
     if engine is not None:
         return
-    missing = [k for k in ['POSTGRES_USER','POSTGRES_PASSWORD','POSTGRES_HOST','POSTGRES_PORT','POSTGRES_DB'] if not os.environ.get(k)]
-    if missing:
-        raise RuntimeError(f"Missing DB environment variables: {', '.join(missing)}")
-    database_url = (
-        'postgresql://' + os.environ['POSTGRES_USER'] +
-        ':' + os.environ['POSTGRES_PASSWORD'] +
-        '@' + os.environ['POSTGRES_HOST'] +
-        ':' + os.environ['POSTGRES_PORT'] + '/' +
-        os.environ['POSTGRES_DB']
-    )
+    # Prefer a full DATABASE_URL/POSTGRES_URL if provided
+    database_url = os.environ.get('POSTGRES_URL') or os.environ.get('DATABASE_URL')
+
+    if not database_url:
+        # Fall back to discrete vars with multiple naming schemes
+        user = os.environ.get('POSTGRES_USER') or os.environ.get('PGUSER')
+        password = os.environ.get('POSTGRES_PASSWORD') or os.environ.get('PGPASSWORD')
+        host = os.environ.get('POSTGRES_HOST') or os.environ.get('PGHOST') or 'localhost'
+        port = os.environ.get('POSTGRES_PORT') or os.environ.get('PGPORT') or '5432'
+        dbname = os.environ.get('POSTGRES_DB') or os.environ.get('POSTGRES_DATABASE') or os.environ.get('PGDATABASE')
+
+        missing = [name for name, val in [
+            ('user', user), ('password', password), ('host', host), ('port', port), ('database', dbname)
+        ] if not val]
+        if missing:
+            raise RuntimeError(f"Missing DB environment variables: {', '.join(missing)}")
+
+        database_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
+
+    # Normalize scheme for SQLAlchemy if env provides postgres:// or postgresql://
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql+psycopg2://', 1)
+    elif database_url.startswith('postgresql://'):
+        database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
+
+    # Basic sanity parse to catch malformed URLs early
+    try:
+        parsed = urlparse(database_url)
+        if not parsed.scheme.startswith('postgres'):
+            raise ValueError('Not a postgres URL')
+    except Exception as e:
+        raise RuntimeError(f"Invalid database URL: {database_url}. Error: {e}")
     # Keep it simple; could set connect timeout via connect_args if needed
     engine = create_engine(database_url)
     Session = sessionmaker(bind=engine)
@@ -49,10 +75,12 @@ def init_db_once():
 
 
 def handler(event, context):
+    print("[handler] invoked", flush=True)
     # Validate API key from headers
     headers = event.get('headers', {})
     api_key = headers.get('x-api-key') or headers.get('X-API-Key')
-    expected_api_key = os.environ.get('API_KEY')
+    # Accept either API_KEY or LAMBDA_API_KEY from env
+    expected_api_key = os.environ.get('API_KEY') or os.environ.get('LAMBDA_API_KEY')
 
     
     if not expected_api_key:
@@ -68,6 +96,26 @@ def handler(event, context):
             'statusCode': 401,
             'body': json.dumps({'error': 'Unauthorized'})
         }
+
+    # Optional health check to avoid full runs: GET {function_url}/health
+    method = (event.get('requestContext', {}).get('http', {}) or {}).get('method')
+    raw_path = event.get('rawPath') or event.get('path') or ''
+    if method == 'GET' and '/health' in str(raw_path):
+        try:
+            init_db_once()
+            # quick DB ping
+            sess = Session()
+            sess.execute(select(1))
+            sess.close()
+            return {
+                'statusCode': 200,
+                'body': json.dumps({'ok': True, 'db': True})
+            }
+        except Exception as e:
+            return {
+                'statusCode': 500,
+                'body': json.dumps({'ok': False, 'db': False, 'message': str(e)})
+            }
     
     # Parse request body if it exists
     body = {}
@@ -141,13 +189,12 @@ def handler(event, context):
     session.execute(update_query)
     session.commit()
 
-    # Construct model
+    # Construct model and map entities safely
     project = Project()
     model = Model()
     s = S(model, project)
 
     # Add project details
-    # TODO: Add project details from database
     project.addProjectNumber('!Ptest')
     project.addCC('CC2')
     project.selfweightTrueFalse(True)
@@ -157,7 +204,7 @@ def handler(event, context):
     # defCritWood1 = 400, defCritWood2 = 250 for DA nationalt anneks
     project.addDeformationCriteriaWood(400, 250)
 
-    # TODO: Add beams, walls, supports, loads from simulation entities
+    # Safely parse entities
     entities_val = sim_row.get('entities')
     if isinstance(entities_val, dict):
         entity_set = entities_val
@@ -167,104 +214,125 @@ def handler(event, context):
         except Exception:
             entity_set = {}
 
-    # Add members
-    model.addMembers(entity_set)
+    try:
+        # Add members
+        model.addMembers(entity_set)
 
-    # Add walls
-    # wall.addWall(coor1=[0,0], coor2=[0,-2], h=2800, hv=2800, l=2000, t=108, efod=0, e5=10, et=0, t_plade=10, b_plade=100, l_plade=200,
-    #              l1=0, t1=0, l2=0, t2=0, Ned=20000, ned=10000, afstand_kraft=0, vind=0, name='M.1', walltype='Gammelt murværk')
-
-    # Add supports
-    for id, support in entity_set.get('supports').items():
-        x = support.get('resolved').get('x')
-        y = support.get('resolved').get('y')
-        type = support.get('type')
-        if (type == 'Fixed'):
-            model.addSupport([x, y], 'x')
-            model.addSupport([x, y], 'y')
-            model.addSupport([x, y], 'r')
-        if (type == 'Pinned'):
-            model.addSupport([x, y], 'x')
-            model.addSupport([x, y], 'y')
-        if (type == 'Roller'):
-            # TODO: Get angle and calculate y and x composants
-            if support.get('angle') == 0 or support.get('angle') == 180:
-                model.addSupport([x, y], 'y')
-            elif support.get('angle') == 90 or support.get('angle') == 270:
+        # Add supports
+        for id, support in (entity_set.get('supports') or {}).items():
+            resolved = support.get('resolved') or {}
+            x = resolved.get('x')
+            y = resolved.get('y')
+            stype = support.get('type')
+            if x is None or y is None:
+                continue
+            if stype == 'Fixed':
                 model.addSupport([x, y], 'x')
+                model.addSupport([x, y], 'y')
+                model.addSupport([x, y], 'r')
+            elif stype == 'Pinned':
+                model.addSupport([x, y], 'x')
+                model.addSupport([x, y], 'y')
+            elif stype == 'Roller':
+                ang = support.get('angle')
+                if ang in (0, 180):
+                    model.addSupport([x, y], 'y')
+                elif ang in (90, 270):
+                    model.addSupport([x, y], 'x')
 
-    # Add point loads
-    for id, point_load in entity_set.get('pointLoads').items():
-        type = point_load.get('type')
-        if type == 'Standard': type = 'Standard'
-        if type == 'Dead': type = 'Egenlast'
-        if type == 'Live': type = 'Nyttelast'
-        if type == 'Snow': type = 'Snelast'
-        if type == 'Wind': type = 'Vindlast'
+        # Add point loads
+        for id, point_load in (entity_set.get('pointLoads') or {}).items():
+            ltype = point_load.get('type')
+            if ltype == 'Dead': ltype = 'Egenlast'
+            elif ltype == 'Live': ltype = 'Nyttelast'
+            elif ltype == 'Snow': ltype = 'Snelast'
+            elif ltype == 'Wind': ltype = 'Vindlast'
+            else: ltype = 'Standard'
 
-        x = point_load.get('resolved').get('x')
-        y = point_load.get('resolved').get('y')
-        # TODO: Resolve fx and fy from magnitude and angle
-        fx = 0
-        fy = -10000
-        # TODO: Point load type?
-        s.addPointLoad([x, y], [fx, fy], type, id)
+            resolved = point_load.get('resolved') or {}
+            x = resolved.get('x')
+            y = resolved.get('y')
+            if x is None or y is None:
+                continue
+            # TODO: Resolve fx/fy from magnitude/angle (placeholder values)
+            fx = 0
+            fy = -10000
+            s.addPointLoad([x, y], [fx, fy], ltype, id)
 
-    # Add line loads
-    for id, line_load in entity_set.get('distributedLoads').items():
-        if line_load.get('resolved').get('point1').get('x') < line_load.get('resolved').get('point2').get('x'):
-            x1 = line_load.get('resolved').get('point1').get('x')
-            y1 = line_load.get('resolved').get('point1').get('y')
-            x2 = line_load.get('resolved').get('point2').get('x')
-            y2 = line_load.get('resolved').get('point2').get('y')
-        elif line_load.get('resolved').get('point1').get('x') > line_load.get('resolved').get('point2').get('x'):
-            x1 = line_load.get('resolved').get('point2').get('x')
-            y1 = line_load.get('resolved').get('point2').get('y')
-            x2 = line_load.get('resolved').get('point1').get('x')
-            y2 = line_load.get('resolved').get('point1').get('y')
-        else:
-            print('implementer for lodret din ost')
-            # TODO: implement for vertical lines you cheese
+        # Add line loads
+        for id, line_load in (entity_set.get('distributedLoads') or {}).items():
+            resolved = line_load.get('resolved') or {}
+            p1 = (resolved.get('point1') or {})
+            p2 = (resolved.get('point2') or {})
+            if 'x' not in p1 or 'x' not in p2 or 'y' not in p1 or 'y' not in p2:
+                continue
+            if p1['x'] <= p2['x']:
+                x1, y1, x2, y2 = p1['x'], p1['y'], p2['x'], p2['y']
+            else:
+                x1, y1, x2, y2 = p2['x'], p2['y'], p1['x'], p1['y']
 
-        type = line_load.get('type')
+            ltype = line_load.get('type')
+            if ltype in ('Standard', 'Dead', 'Live'):
+                lx1 = line_load.get('magnitude1') or 0
+                lx2 = line_load.get('magnitude2') or 0
+                name = {'Standard':'Standard','Dead':'Egenlast','Live':'Nyttelast'}[ltype]
+                fx1, fy1, fx2, fy2 = 0, -lx1*10**3, 0, -lx2*10**3
+                ltype = name
+            elif ltype == 'Snow':
+                dx, dy = x2-x1, y2-y1
+                c = math.sqrt(dx**2+dy**2) or 1
+                scaleSnow = abs((dx)/c)
+                m1 = line_load.get('magnitude1') or 0
+                m2 = line_load.get('magnitude2') or 0
+                fx1, fy1, fx2, fy2 = 0, -scaleSnow*m1*10**3, 0, -scaleSnow*m2*10**3
+                ltype = 'Snelast'
+            elif ltype == 'Wind':
+                dx, dy = x2-x1, y2-y1
+                c = math.sqrt(dx**2+dy**2) or 1
+                m1 = line_load.get('magnitude1') or 0
+                m2 = line_load.get('magnitude2') or 0
+                fx1 = m1/c*dy*10**3
+                fy1 = -m1/c*dx*10**3
+                fx2 = m2/c*dy*10**3
+                fy2 = -m2/c*dx*10**3
+                ltype = 'Vindlast'
+            else:
+                # Unknown type
+                continue
 
-        if type == 'Standard': type, fx1, fy1, fx2, fy2 = 'Standard', 0, -line_load.get('magnitude1')*10**3, 0, -line_load.get('magnitude2')*10**3
-        if type == 'Dead': type, fx1, fy1, fx2, fy2 = 'Egenlast', 0, -line_load.get('magnitude1')*10**3, 0, -line_load.get('magnitude2')*10**3
-        if type == 'Live': type, fx1, fy1, fx2, fy2 = 'Nyttelast', 0, -line_load.get('magnitude1')*10**3, 0, -line_load.get('magnitude2')*10**3
-        if type == 'Snow': 
-            type = 'Snelast'
-            dx, dy = x2-x1, y2-y1
-            c = math.sqrt(dx**2+dy**2)
-            scaleSnow = abs(dx/c)
-            fx1, fy1, fx2, fy2 = 0, -scaleSnow*line_load.get('magnitude1')*10**3, 0, -scaleSnow*line_load.get('magnitude2')*10**3
+            s.addLineLoad([x1, y1], [x2, y2], [fx1, fy1], [fx2, fy2], ltype, id)
 
-        if type == 'Wind': 
-            type = 'Vindlast'
-            dx, dy = x2-x1, y2-y1
-            c = math.sqrt(dx**2+dy**2)
-            fx1 = line_load.get('magnitude1')/c*dy*10**3
-            fy1 = -line_load.get('magnitude1')/c*dx*10**3
-            fx2 = line_load.get('magnitude2')/c*dy*10**3
-            fy2 = -line_load.get('magnitude2')/c*dx*10**3
+        # add moment loads
+        for id, moment_load in (entity_set.get('momentLoads') or {}).items():
+            resolved = moment_load.get('resolved') or {}
+            x = resolved.get('x')
+            y = resolved.get('y')
+            if x is None or y is None:
+                continue
+            M0 = (moment_load.get('magnitude') or 0) * 10**3
+            ltype = moment_load.get('type') or 'Standard'
+            s.addMoment([x, y], [M0], ltype, id)
 
-        s.addLineLoad([x1, y1], [x2, y2], [fx1, fy1],
-                      [fx2, fy2], type, id)
-        
-    # add momemt loads
-    for id, moment_load in entity_set.get('momentLoads').items():
-        #type = moment_load.get('type')
-        x = moment_load.get('resolved').get('x')
-        y = moment_load.get('resolved').get('y')
-        M0 = moment_load.get('magnitude')*10**3
-        type = moment_load.get('type')
-        s.addMoment([x, y], [M0], type, id)
-
-    # add self weight
-    if project.selfweightOnOff:
-        s.addSelfweight()
+        # add self weight
+        if getattr(project, 'selfweightOnOff', False):
+            s.addSelfweight()
+    except Exception as e:
+        # If entity mapping fails, record failure and return gracefully
+        try:
+            update_query = update(simulations_table).where(simulations_table.c.id == simulation_id).values(
+                status="failed", end_time=func.now(), error=f"Entity mapping failed: {e}")
+            session.execute(update_query)
+            session.commit()
+        except Exception:
+            pass
+        session.close()
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': 'Simulation failed during entity mapping', 'message': str(e), 'simulation_id': simulation_id})
+        }
 
     try:
-        #Run simulation
+        # Run simulation
         s.run()
 
         members = {}
@@ -272,7 +340,7 @@ def handler(event, context):
         for b in s.member_discr:
             members[b["id"]] = b
 
-        # Update simulation status and start time
+        # Prepare results
         FEMModel = { "members": members, "X": s.X_discr, "T": s.T_discr, "R0_coor": s.R0_coordinates, "R0_types": s.R0_type }
         pickled_data = pickle.dumps(s)
         encoded_s = base64.b64encode(pickled_data)
