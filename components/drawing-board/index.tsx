@@ -82,6 +82,8 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
   const [scaleR0, setScaleR0] = useState(0.001); // Add scale for reactions
   const [selectedGlobalLocal, setSelectedGlobalLocal] = useState<"global" | "local">("global");
   const [selectedReactionIndex, setSelectedReactionIndex] = useState<number | null>(null); // Add reaction selection state
+  // Track dismissal of failed-run banner for the current latest simulation
+  const [dismissedFailedBannerForSimId, setDismissedFailedBannerForSimId] = useState<string | number | null>(null);
   // Prevent a single-frame flash when switching analyses
   const [switchingAnalysis, setSwitchingAnalysis] = useState(false);
   const prevAnalysisRef = useRef<Analysis | null>(null);
@@ -313,6 +315,11 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     }
   }, [simulation?.status]);
 
+  // Reset dismissal when the latest simulation changes (new run or different id)
+  useEffect(() => {
+    setDismissedFailedBannerForSimId(null);
+  }, [simulation?.id]);
+
   // TODO: Add cursor classes to div when they work
   const SnappingAngle: React.FC = () => {
     if (
@@ -389,9 +396,21 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
             </div>
           )}
 
-          {simulation?.status === SimulationStatus.Failed && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2 shadow-sm max-w-[90%]">
-              Seneste kørsel fejlede{simulation?.error ? `: ${simulation.error}` : ''}
+          {simulation?.status === SimulationStatus.Failed && dismissedFailedBannerForSimId !== simulation?.id && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 max-w-[90%]">
+              <div className="flex items-center gap-3 bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2 shadow-sm">
+                <span className="text-sm">
+                  Seneste kørsel fejlede{simulation?.error ? `: ${simulation.error}` : ''}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Luk advarsel"
+                  className="ml-auto text-red-700/80 hover:text-red-900"
+                  onClick={() => setDismissedFailedBannerForSimId(simulation?.id ?? null)}
+                >
+                  ×
+                </button>
+              </div>
             </div>
           )}
 
