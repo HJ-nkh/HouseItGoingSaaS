@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from dotenv import load_dotenv
 
 # Delay SQLAlchemy imports until after env validation to reduce import-time failures
-from sqlalchemy import create_engine, func, Table, MetaData
+from sqlalchemy import create_engine, func, Table, MetaData, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.sql import select, update
 
@@ -106,10 +106,26 @@ def handler(event, context):
             # quick DB ping
             sess = Session()
             sess.execute(select(1))
+            db_name = None
+            sims_count = None
+            sims_max_id = None
+            try:
+                db_name = sess.execute(text("select current_database()"))
+                db_name = db_name.scalar_one_or_none()
+            except Exception:
+                db_name = None
+            try:
+                sims_count = sess.execute(text("select count(*) from simulations"))
+                sims_count = int(sims_count.scalar_one())
+                sims_max_id = sess.execute(text("select max(id) from simulations"))
+                sims_max_id = sims_max_id.scalar_one()
+            except Exception:
+                sims_count = None
+                sims_max_id = None
             sess.close()
             return {
                 'statusCode': 200,
-                'body': json.dumps({'ok': True, 'db': True})
+                'body': json.dumps({'ok': True, 'db': True, 'dbName': db_name, 'simulations': {'count': sims_count, 'maxId': sims_max_id}})
             }
         except Exception as e:
             return {
@@ -137,6 +153,15 @@ def handler(event, context):
             'statusCode': 400,
             'body': json.dumps({'error': 'Missing simulation_id or team_id'})
         }
+    # Coerce to integers if possible (avoids string vs int mismatches)
+    try:
+        simulation_id = int(simulation_id)
+        team_id = int(team_id)
+    except Exception:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': 'simulation_id and team_id must be integers'})
+        }
     
     from lib.serialization import serialize_instance, default_handler
     from Moon2Mars.S import S
@@ -157,7 +182,8 @@ def handler(event, context):
             'body': json.dumps({'error': 'Server configuration error: DB', 'message': str(e)})
         }
 
-    simulation_query = select(simulations_table).where(simulations_table.c.team_id == team_id).where(simulations_table.c.id == simulation_id)
+    # Fetch by id first, then validate team to provide clearer diagnostics
+    simulation_query = select(simulations_table).where(simulations_table.c.id == simulation_id)
     sim_row = session.execute(simulation_query).mappings().first()
 
     if sim_row is None:
@@ -165,6 +191,13 @@ def handler(event, context):
         return {
             'statusCode': 404,
             'body': json.dumps({'error': 'Simulation not found'})
+        }
+
+    if int(sim_row.get('team_id')) != int(team_id):
+        print("Simulation team mismatch", flush=True)
+        return {
+            'statusCode': 403,
+            'body': json.dumps({'error': 'Simulation team mismatch', 'simulation_team_id': int(sim_row.get('team_id'))})
         }
 
     if (sim_row['status'] != "pending" and not is_development):
