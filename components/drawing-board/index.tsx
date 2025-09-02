@@ -389,9 +389,8 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
             </div>
           )}
 
-          {/* Inline banner when the latest run failed */}
           {simulation?.status === SimulationStatus.Failed && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2 shadow-sm max-w-[90%]">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2 shadow-sm max-w-[90%]">
               Seneste kørsel fejlede{simulation?.error ? `: ${simulation.error}` : ''}
             </div>
           )}

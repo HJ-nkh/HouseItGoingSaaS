@@ -189,7 +189,10 @@ export async function POST(request: NextRequest) {
       
       if (!lambdaResponse.ok) {
         const errText = await lambdaResponse.text().catch(() => '');
-        throw new Error(`Lambda invocation failed: ${lambdaResponse.status} ${lambdaResponse.statusText} ${errText ? `- ${errText}` : ''}`);
+        const reqId = lambdaResponse.headers.get('x-amzn-requestid') || lambdaResponse.headers.get('x-amzn-request-id') || undefined;
+        const errType = lambdaResponse.headers.get('x-amzn-errortype') || undefined;
+        const extra = [errType ? `ErrorType=${errType}` : null, reqId ? `RequestId=${reqId}` : null].filter(Boolean).join(' ');
+        throw new Error(`Lambda invocation failed: ${lambdaResponse.status} ${lambdaResponse.statusText}${extra ? ` (${extra})` : ''}${errText ? ` - ${errText}` : ''}`);
       }
 
       const responseData = await lambdaResponse.text();
