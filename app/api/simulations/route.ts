@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUser, getUserWithTeam, getSimulationsForUser, getSimulationsForProject, getSimulationsForDrawing } from '@/lib/db/queries';
 import { db } from '@/lib/db/drizzle';
 import { simulations, activityLogs, ActivityType } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -159,8 +160,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(newSimulation, { status: 202 });
     }
 
-    const lambdaUrl = process.env.RUN_SIMULATION_LAMBDA_URL;
-    const lambdaApiKey = process.env.LAMBDA_API_KEY;
+  const lambdaUrl = process.env.RUN_SIMULATION_LAMBDA_URL;
+  // Support both env var names so prod/staging can be configured either way
+  const lambdaApiKey = process.env.LAMBDA_API_KEY || process.env.API_KEY;
 
     try {
       if (!lambdaUrl) {
@@ -171,7 +173,7 @@ export async function POST(request: NextRequest) {
         throw new Error('LAMBDA_API_KEY environment variable is not set');
       }
       
-      const lambdaResponse = await fetch(lambdaUrl, {
+  const lambdaResponse = await fetch(lambdaUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -186,16 +188,39 @@ export async function POST(request: NextRequest) {
       console.log('📡 Invoked lambda function:', lambdaUrl);
       
       if (!lambdaResponse.ok) {
-        throw new Error(`Lambda invocation failed: ${lambdaResponse.status} ${lambdaResponse.statusText}`);
+        const errText = await lambdaResponse.text().catch(() => '');
+        throw new Error(`Lambda invocation failed: ${lambdaResponse.status} ${lambdaResponse.statusText} ${errText ? `- ${errText}` : ''}`);
       }
-      
+
       const responseData = await lambdaResponse.text();
       console.log('✅ Lambda invocation response:', responseData);
       
     } catch (lambdaError) {
       console.error('❌ Error invoking Lambda function:', lambdaError);
-      // Continue anyway - simulation is created, just not processed
-      // You might want to update simulation status to 'failed' here
+      // Mark the simulation as failed so the UI doesn't spin forever
+      try {
+        const [updated] = await db
+          .update(simulations)
+          .set({
+            status: 'failed',
+            error: lambdaError instanceof Error ? lambdaError.message : 'Lambda invocation failed',
+            updatedAt: new Date(),
+          })
+          .where(eq(simulations.id, newSimulation.id))
+          .returning();
+
+        // Log activity for failure
+        await db.insert(activityLogs).values({
+          teamId: userWithTeam.teamId,
+          userId: user.id,
+          action: `${ActivityType.FAIL_SIMULATION}: Simulation ${newSimulation.id}`,
+          ipAddress: request.headers.get('x-forwarded-for') || undefined,
+        });
+
+        console.warn('⚠️ Marked simulation as failed due to lambda error', { id: updated?.id });
+      } catch (markFailErr) {
+        console.error('❌ Additionally failed to mark simulation as failed:', markFailErr);
+      }
     }
 
     console.log('📤 Returning simulation response');

@@ -26,7 +26,7 @@ const DrawingPage: React.FC = () => {
       const intervalId = setInterval(() => { 
         invalidateCache(); 
         refetch(); 
-      }, 5000);
+      }, 1000);
 
       return () => clearInterval(intervalId);
     }
