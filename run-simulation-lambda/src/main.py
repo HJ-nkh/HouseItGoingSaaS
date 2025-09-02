@@ -18,17 +18,11 @@ load_dotenv()
 is_development = os.environ.get('API_ENV') == 'development'
 
 
-# Prefer unified DATABASE_URL for consistency with the Next.js app; fallback to discrete vars
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if not DATABASE_URL:
-    user = os.environ.get('POSTGRES_USER')
-    pwd = os.environ.get('POSTGRES_PASSWORD')
-    host = os.environ.get('POSTGRES_HOST')
-    port = os.environ.get('POSTGRES_PORT')
-    dbname = os.environ.get('POSTGRES_DB')
-    if not all([user, pwd, host, port, dbname]):
-        raise RuntimeError('Database configuration missing: set DATABASE_URL or all POSTGRES_* variables')
-    DATABASE_URL = f'postgresql://{user}:{pwd}@{host}:{port}/{dbname}'
+DATABASE_URL = 'postgresql://' + os.environ.get('POSTGRES_USER') + \
+    ':' + os.environ.get('POSTGRES_PASSWORD') + \
+    '@' + os.environ.get('POSTGRES_HOST') + \
+    ':' + os.environ.get('POSTGRES_PORT') + '/' + \
+    os.environ.get('POSTGRES_DB')
 
 Base = declarative_base()
 
@@ -297,11 +291,4 @@ def handler(event, context):
             })
         }
 
-if __name__ == '__main__':
-    # Optional local run helper: only executes when invoked directly, never on Lambda import
-    api_key = os.environ.get('API_KEY')
-    print('Running local handler smoke test...')
-    print('DATABASE_URL configured:', 'yes' if os.environ.get('DATABASE_URL') else 'no (using POSTGRES_*)')
-    print('API_KEY configured:', 'yes' if api_key else 'no')
-    # Note: Adjust IDs before using locally
-    # handler({"body": {"team_id": 1, "simulation_id": 1 }, "headers": { "X-API-Key": api_key } }, {})
+handler({"body": {"team_id": 1, "simulation_id": 19 }, "headers": { "X-API-Key": os.environ.get("API_KEY") } }, {})

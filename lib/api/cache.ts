@@ -95,7 +95,6 @@ export async function fetchWithCache<T>(
       ...options?.headers,
     },
     cache: 'no-store',
-    credentials: 'same-origin',
     ...options,
   })
     .then(async (response) => {
