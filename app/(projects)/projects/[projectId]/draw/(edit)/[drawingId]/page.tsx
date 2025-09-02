@@ -12,16 +12,17 @@ const DrawingPage: React.FC = () => {
   const router = useRouter();
 
   const { drawing, loading } = useDrawing(drawingId);
+  // Only fetch the latest simulation
   const { simulations, refetch, invalidateCache } = useSimulations({}, { drawingId, limit: 1});
 
-	const simulation = simulations?.[0];
+  const latest = simulations?.[0];
 
 	// TODO: When done deleting a drawing, navugate to /projects/[projectId]
 	const { updateDrawing, deleteDrawing } = useDrawingMutations();
 
-  // If a recent simulation is pending or running, poll it every 5 seconds
+  // If the latest simulation is pending or running, poll every second
   useEffect(() => {
-    if (simulation?.status === SimulationStatus.Pending || simulation?.status === SimulationStatus.Running) {
+    if (latest?.status === SimulationStatus.Pending || latest?.status === SimulationStatus.Running) {
       console.info("Simulation pending/running – starting poll loop");
       const intervalId = setInterval(() => { 
         invalidateCache(); 
@@ -30,7 +31,7 @@ const DrawingPage: React.FC = () => {
 
       return () => clearInterval(intervalId);
     }
-  }, [simulation, refetch, invalidateCache]);
+  }, [latest, refetch, invalidateCache]);
 
   if (loading) {
     return null;
@@ -40,7 +41,7 @@ const DrawingPage: React.FC = () => {
     <DrawingBoard
       key={`drawing-board-${drawingId}`}
       drawing={drawing}
-      simulation={simulation}
+  simulation={latest}
   // When a simulation is queued, immediately refetch to show Pending overlay
   onSimulationQueued={refetch}
       onSave={(drawing) => updateDrawing(drawingId, drawing)}

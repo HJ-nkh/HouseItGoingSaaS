@@ -352,8 +352,8 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
         drawing={drawing}
         onDelete={onDelete}
         entitySet={entitySet}
-  simulationId={simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim && !runInProgress ? simulation?.id : undefined}
-  showDownload={simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim && !runInProgress}
+  simulationId={simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim ? simulation?.id : undefined}
+  showDownload={simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim}
   onSimulationQueued={onSimulationQueued}
   onRunStart={() => setRunInProgress(true)}
       />
@@ -383,9 +383,16 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
               </div>
             )}
 
-          {simulation?.status && (simulation.status === SimulationStatus.Pending || simulation.status === SimulationStatus.Running) && (
+          {(simulation?.status && (simulation.status === SimulationStatus.Pending || simulation.status === SimulationStatus.Running)) && (
             <div className="absolute h-full w-full flex justify-center items-center z-40 bg-gray-100/60">
               <PendingIndicator />
+            </div>
+          )}
+
+          {/* Inline banner when the latest run failed */}
+          {simulation?.status === SimulationStatus.Failed && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2 shadow-sm max-w-[90%]">
+              Seneste kørsel fejlede{simulation?.error ? `: ${simulation.error}` : ''}
             </div>
           )}
 
@@ -1115,7 +1122,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
               }
             }}
             selected={analysis}
-            disabled={!(simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim && !runInProgress)}
+            disabled={!(simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim)}
             onClick={() => enableSimulationView()}
           />        </div>
       </div>
