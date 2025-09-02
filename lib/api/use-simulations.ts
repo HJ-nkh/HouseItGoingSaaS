@@ -100,8 +100,6 @@ export function useSimulation(id: number | null, config: UseSimulationsConfig = 
       setError(null);
       const data = await fetchWithCache<Simulation>(`/api/simulations/${id}`, undefined, {
         ttl: config.cacheTime,
-        // When polling is enabled, bypass in-memory cache to force a network fetch
-        skipCache: !!config.refetchInterval,
       });
       setSimulation(data);
     } catch (err) {
@@ -114,14 +112,6 @@ export function useSimulation(id: number | null, config: UseSimulationsConfig = 
   useEffect(() => {
     fetchSimulation();
   }, [fetchSimulation]);
-
-  // Optional polling for a single simulation
-  useEffect(() => {
-    if (config.refetchInterval) {
-      const interval = setInterval(fetchSimulation, config.refetchInterval);
-      return () => clearInterval(interval);
-    }
-  }, [fetchSimulation, config.refetchInterval]);
 
   return {
     simulation,
