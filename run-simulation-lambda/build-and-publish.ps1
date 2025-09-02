@@ -1,9 +1,9 @@
-$ErrorActionPreference = 'Stop'
-
 param(
   [string]$Region = $env:AWS_REGION,
   [string]$DockerPlatform = 'linux/amd64'
 )
+
+$ErrorActionPreference = 'Stop'
 
 if (-not $Region) { $Region = 'eu-north-1' }
 if (-not $DockerPlatform -or ($DockerPlatform -ne 'linux/amd64' -and $DockerPlatform -ne 'linux/arm64')) {
