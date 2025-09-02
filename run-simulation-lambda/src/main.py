@@ -17,23 +17,35 @@ load_dotenv()
 
 is_development = os.environ.get('API_ENV') == 'development'
 
-
-DATABASE_URL = 'postgresql://' + os.environ.get('POSTGRES_USER') + \
-    ':' + os.environ.get('POSTGRES_PASSWORD') + \
-    '@' + os.environ.get('POSTGRES_HOST') + \
-    ':' + os.environ.get('POSTGRES_PORT') + '/' + \
-    os.environ.get('POSTGRES_DB')
-
 Base = declarative_base()
 
-engine = create_engine(DATABASE_URL)
+# Lazy-initialized DB globals to avoid import-time failures
+engine = None
+Session = None
+metadata = None
+projects_table = None
+simulations_table = None
 
-Session = sessionmaker(bind=engine)
-session = Session()
-
-metadata = MetaData()
-projects_table = Table('projects', metadata, autoload_with=engine)
-simulations_table = Table('simulations', metadata, autoload_with=engine)
+def init_db_once():
+    global engine, Session, metadata, projects_table, simulations_table
+    if engine is not None:
+        return
+    missing = [k for k in ['POSTGRES_USER','POSTGRES_PASSWORD','POSTGRES_HOST','POSTGRES_PORT','POSTGRES_DB'] if not os.environ.get(k)]
+    if missing:
+        raise RuntimeError(f"Missing DB environment variables: {', '.join(missing)}")
+    database_url = (
+        'postgresql://' + os.environ['POSTGRES_USER'] +
+        ':' + os.environ['POSTGRES_PASSWORD'] +
+        '@' + os.environ['POSTGRES_HOST'] +
+        ':' + os.environ['POSTGRES_PORT'] + '/' +
+        os.environ['POSTGRES_DB']
+    )
+    # Keep it simple; could set connect timeout via connect_args if needed
+    engine = create_engine(database_url)
+    Session = sessionmaker(bind=engine)
+    metadata = MetaData()
+    projects_table = Table('projects', metadata, autoload_with=engine)
+    simulations_table = Table('simulations', metadata, autoload_with=engine)
 
 
 def handler(event, context):
@@ -67,10 +79,10 @@ def handler(event, context):
                 'statusCode': 400,
                 'body': json.dumps({'error': 'Invalid JSON in request body'})
             }
-    
-    # Extract simulation parameters from body or direct event    simulation_id = body.get('simulation_id') or event.get('simulation_id')
-    simulation_id = body.get('simulation_id') or event.get('simulationId')
-    team_id = body.get('team_id') or event.get('team_id')
+
+    # Extract parameters (support multiple field names)
+    simulation_id = body.get('simulation_id') or event.get('simulation_id') or event.get('simulationId')
+    team_id = body.get('team_id') or event.get('team_id') or event.get('teamId')
 
     if not simulation_id or not team_id:
         return {
@@ -86,27 +98,38 @@ def handler(event, context):
     import base64
     import math
 
-    simulation_query = select(simulations_table).where(simulations_table.c.team_id == team_id).where(simulations_table.c.id == simulation_id)
-    simulation = session.execute(simulation_query).first()
+    # Initialize DB (lazy) and session
+    try:
+        init_db_once()
+        session = Session()
+    except Exception as e:
+        print(f"DB initialization failed: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': 'Server configuration error: DB', 'message': str(e)})
+        }
 
-    if (simulation == None):
+    simulation_query = select(simulations_table).where(simulations_table.c.team_id == team_id).where(simulations_table.c.id == simulation_id)
+    sim_row = session.execute(simulation_query).mappings().first()
+
+    if sim_row is None:
         print("Simulation not found")
         return {
             'statusCode': 404,
             'body': json.dumps({'error': 'Simulation not found'})
         }
 
-    if (simulation.status != "pending" and not is_development):
+    if (sim_row['status'] != "pending" and not is_development):
         print("Simulation not pending")
         return {
             'statusCode': 400,
             'body': json.dumps({'error': 'Simulation is not in pending status'})
         }
 
-    project_query = select(projects_table).where(projects_table.c.id == simulation.project_id)
-    project = session.execute(project_query).first()
+    project_query = select(projects_table).where(projects_table.c.id == sim_row['project_id'])
+    project_row = session.execute(project_query).mappings().first()
 
-    if (project == None):
+    if project_row is None:
         print("Project not found")
         return {
             'statusCode': 404,
@@ -135,10 +158,14 @@ def handler(event, context):
     project.addDeformationCriteriaWood(400, 250)
 
     # TODO: Add beams, walls, supports, loads from simulation entities
-    if isinstance(simulation.entities, dict):
-        entity_set = simulation.entities
+    entities_val = sim_row.get('entities')
+    if isinstance(entities_val, dict):
+        entity_set = entities_val
     else:
-        entity_set = json.loads(simulation.entities)
+        try:
+            entity_set = json.loads(entities_val) if entities_val else {}
+        except Exception:
+            entity_set = {}
 
     # Add members
     model.addMembers(entity_set)
@@ -256,7 +283,7 @@ def handler(event, context):
         })
 
         update_query = update(simulations_table).where(simulations_table.c.id == simulation_id).values(
-            status="completed", end_time=func.now(), result=json.dumps(result, default=default_handler), encoded_s=encoded_s)
+            status="completed", end_time=func.now(), result=json.dumps(result, default=default_handler))
         session.execute(update_query)
         session.commit()
         session.close()
