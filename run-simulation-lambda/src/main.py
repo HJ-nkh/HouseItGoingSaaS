@@ -76,6 +76,15 @@ def init_db_once():
 
 def handler(event, context):
     print("[handler] invoked", flush=True)
+    try:
+        # Print a safe DB host (no creds) to verify environment targeting
+        db_url = os.environ.get('POSTGRES_URL') or os.environ.get('DATABASE_URL') or ''
+        if db_url:
+            from urllib.parse import urlparse
+            _p = urlparse(db_url)
+            print(f"[env] db_host={_p.hostname} db_port={_p.port}")
+    except Exception:
+        pass
     # Validate API key from headers
     headers = event.get('headers', {})
     api_key = headers.get('x-api-key') or headers.get('X-API-Key')
@@ -117,11 +126,15 @@ def handler(event, context):
                 'body': json.dumps({'ok': False, 'db': False, 'message': str(e)})
             }
     
-    # Parse request body if it exists
+    # Parse request body if it exists (handle base64)
     body = {}
     if 'body' in event:
         try:
-            body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
+            payload = event['body']
+            if event.get('isBase64Encoded') is True and isinstance(payload, str):
+                import base64
+                payload = base64.b64decode(payload).decode('utf-8', errors='replace')
+            body = json.loads(payload) if isinstance(payload, str) else payload
         except json.JSONDecodeError:
             return {
                 'statusCode': 400,
@@ -137,6 +150,18 @@ def handler(event, context):
             'statusCode': 400,
             'body': json.dumps({'error': 'Missing simulation_id or team_id'})
         }
+
+    # Normalize to integers to avoid type mismatch in SQL
+    try:
+        simulation_id = int(simulation_id)
+        team_id = int(team_id)
+    except Exception:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': 'simulation_id and team_id must be integers'})
+        }
+
+    print(f"[input] team_id={team_id} simulation_id={simulation_id}")
     
     from lib.serialization import serialize_instance, default_handler
     from Moon2Mars.S import S
@@ -159,12 +184,27 @@ def handler(event, context):
 
     simulation_query = select(simulations_table).where(simulations_table.c.team_id == team_id).where(simulations_table.c.id == simulation_id)
     sim_row = session.execute(simulation_query).mappings().first()
+    if sim_row is None:
+        # Possible read-after-write lag; small retry
+        import time
+        print("[lookup] not found on first attempt, retrying...", flush=True)
+        time.sleep(0.25)
+        sim_row = session.execute(simulation_query).mappings().first()
 
     if sim_row is None:
-        print("Simulation not found")
+        # Extra diagnostics: does the simulation exist by ID at all?
+        try:
+            by_id = session.execute(select(simulations_table).where(simulations_table.c.id == simulation_id)).mappings().first()
+            if by_id is not None:
+                # Found by ID but team mismatch
+                found_team = by_id.get('team_id') if 'team_id' in by_id else None
+                print(f"Simulation exists but team mismatch (expected team_id={team_id}, found team_id={found_team}, simulation_id={simulation_id})")
+        except Exception:
+            pass
+        print(f"Simulation not found (team_id={team_id}, simulation_id={simulation_id})")
         return {
             'statusCode': 404,
-            'body': json.dumps({'error': 'Simulation not found'})
+            'body': json.dumps({'error': 'Simulation not found', 'team_id': team_id, 'simulation_id': simulation_id})
         }
 
     if (sim_row['status'] != "pending" and not is_development):
@@ -386,4 +426,3 @@ def handler(event, context):
             })
         }
 
-#handler({"body": {"team_id": 1, "simulation_id": 19 }, "headers": { "X-API-Key": os.environ.get("API_KEY") } }, {})

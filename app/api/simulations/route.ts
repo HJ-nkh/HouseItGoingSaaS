@@ -153,6 +153,17 @@ export async function POST(request: NextRequest) {
       ipAddress: request.headers.get('x-forwarded-for') || undefined,
     });
 
+    // Diagnostics: confirm the row is visible before invoking Lambda
+    console.log('🧾 Created simulation details:', { id: newSimulation.id, teamId: userWithTeam.teamId });
+    try {
+      const verify = await db.query.simulations.findFirst({
+        where: (s, { eq }) => eq(s.id, newSimulation.id)
+      });
+      console.log('🔎 Visibility check:', { exists: !!verify, id: newSimulation.id, teamId: verify?.teamId });
+    } catch (e) {
+      console.warn('⚠️ Visibility check failed:', e instanceof Error ? e.message : e);
+    }
+
     // Skip lambda invocation in development mode
     if (process.env.NODE_ENV === 'development') {
       console.log('🔧 Development mode: Skipping lambda invocation');
@@ -171,16 +182,27 @@ export async function POST(request: NextRequest) {
         throw new Error('LAMBDA_API_KEY environment variable is not set');
       }
       
+      // Optional small delay to mitigate rare read-after-write races (configurable)
+      const delayMsRaw = process.env.LAMBDA_INVOKE_DELAY_MS;
+      const delayMs = delayMsRaw ? parseInt(delayMsRaw) : 0;
+      if (!Number.isNaN(delayMs) && delayMs > 0) {
+        console.log(`⏱️ Delay before invoking Lambda: ${delayMs} ms`);
+        await new Promise((res) => setTimeout(res, delayMs));
+      }
+
+      const payload = {
+        simulation_id: newSimulation.id,
+        team_id: userWithTeam.teamId,
+      };
+      console.log('📦 Lambda payload:', payload);
+      
       const lambdaResponse = await fetch(lambdaUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': lambdaApiKey,
         },
-        body: JSON.stringify({
-          simulation_id: newSimulation.id,
-          team_id: userWithTeam.teamId,
-        }),
+        body: JSON.stringify(payload),
       });
 
       console.log('📡 Invoked lambda function:', lambdaUrl);
