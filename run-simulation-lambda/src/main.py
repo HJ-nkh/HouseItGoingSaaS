@@ -34,8 +34,15 @@ def init_db_once():
     global engine, Session, metadata, projects_table, simulations_table
     if engine is not None:
         return
-    # Prefer a full DATABASE_URL/POSTGRES_URL if provided
-    database_url = os.environ.get('POSTGRES_URL') or os.environ.get('DATABASE_URL')
+    # Prefer the same var the Next.js app uses: DATABASE_URL (then POSTGRES_URL)
+    source_var = None
+    database_url = None
+    if os.environ.get('DATABASE_URL'):
+        database_url = os.environ.get('DATABASE_URL')
+        source_var = 'DATABASE_URL'
+    elif os.environ.get('POSTGRES_URL'):
+        database_url = os.environ.get('POSTGRES_URL')
+        source_var = 'POSTGRES_URL'
 
     if not database_url:
         # Fall back to discrete vars with multiple naming schemes
@@ -51,7 +58,8 @@ def init_db_once():
         if missing:
             raise RuntimeError(f"Missing DB environment variables: {', '.join(missing)}")
 
-        database_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
+    database_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
+    source_var = 'assembled_from_parts'
 
     # Normalize scheme for SQLAlchemy if env provides postgres:// or postgresql://
     if database_url.startswith('postgres://'):
@@ -67,6 +75,7 @@ def init_db_once():
     except Exception as e:
         raise RuntimeError(f"Invalid database URL: {database_url}. Error: {e}")
     # Keep it simple; could set connect timeout via connect_args if needed
+    print(f"[db] using URL source={source_var}")
     engine = create_engine(database_url)
     # Ensure we always use the expected schema regardless of DB defaults
     try:
@@ -198,10 +207,21 @@ def handler(event, context):
     # DB probe diagnostics
     try:
         sp = session.execute(text("SHOW search_path")).scalar()
+        curr_db = session.execute(text("select current_database()")).scalar()
+        neon_branch = None
+        try:
+            neon_branch = session.execute(text("select current_setting('neon.branch_name', true)")) .scalar()
+        except Exception:
+            pass
         total = session.execute(select(func.count()).select_from(simulations_table)).scalar()
         max_id = session.execute(select(func.max(simulations_table.c.id))).scalar()
         last5 = session.execute(select(simulations_table.c.id).order_by(simulations_table.c.id.desc()).limit(5)).scalars().all()
-        print(f"[probe] search_path={sp} total={total} max_id={max_id} last5={last5}")
+        # Explicitly query public.simulations as well to rule out search_path surprises
+        total_pub = session.execute(text("select count(*) from public.simulations")).scalar()
+        max_pub = session.execute(text("select max(id) from public.simulations")).scalar()
+        # Where do our tables live?
+        table_info = session.execute(text("select table_schema, table_name from information_schema.tables where table_name in ('simulations','projects') order by table_schema, table_name")) .mappings().all()
+        print(f"[probe] db={curr_db} branch={neon_branch} search_path={sp} total={total} max_id={max_id} last5={last5} total_pub={total_pub} max_pub={max_pub} tables={table_info}")
     except Exception as e:
         print(f"[probe] failed: {e}")
 

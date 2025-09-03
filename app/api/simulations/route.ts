@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUser, getUserWithTeam, getSimulationsForUser, getSimulationsForProject, getSimulationsForDrawing } from '@/lib/db/queries';
 import { db } from '@/lib/db/drizzle';
 import { simulations, activityLogs, ActivityType } from '@/lib/db/schema';
+import { and, desc, eq, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -153,6 +154,22 @@ export async function POST(request: NextRequest) {
       ipAddress: request.headers.get('x-forwarded-for') || undefined,
     });
 
+    // Keep only the latest simulation for this drawing and team
+    try {
+      await db
+        .delete(simulations)
+        .where(
+          and(
+            eq(simulations.teamId, userWithTeam.teamId!),
+            eq(simulations.drawingId, validatedData.drawingId),
+            ne(simulations.id, newSimulation.id),
+          ),
+        );
+      console.log('🧹 Removed older simulations for drawing', validatedData.drawingId);
+    } catch (e) {
+      console.warn('⚠️ Failed to remove older simulations:', e instanceof Error ? e.message : e);
+    }
+
     // Diagnostics: confirm the row is visible before invoking Lambda
     console.log('🧾 Created simulation details:', { id: newSimulation.id, teamId: userWithTeam.teamId });
     try {
@@ -160,6 +177,18 @@ export async function POST(request: NextRequest) {
         where: (s, { eq }) => eq(s.id, newSimulation.id)
       });
       console.log('🔎 Visibility check:', { exists: !!verify, id: newSimulation.id, teamId: verify?.teamId });
+      // App-side DB diagnostics to compare with Lambda's probe
+      try {
+        const host = new URL(process.env.DATABASE_URL!).hostname;
+        const last5 = await db.select({ id: simulations.id }).from(simulations).orderBy(desc(simulations.id)).limit(5);
+        const stats = await db.execute(sql`select count(*)::int as count, max(id)::int as "maxId" from public.simulations`);
+        const row = Array.isArray(stats) ? (stats[0] as any) : (stats as any);
+        const count = row?.count;
+        const maxId = row?.maxId;
+        console.log('🧪 App DB view:', { host, count, maxId, last5: last5.map(r => r.id) });
+      } catch (e) {
+        console.warn('⚠️ App DB diagnostics failed:', e instanceof Error ? e.message : e);
+      }
     } catch (e) {
       console.warn('⚠️ Visibility check failed:', e instanceof Error ? e.message : e);
     }
