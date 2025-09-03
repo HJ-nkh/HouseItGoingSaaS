@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from dotenv import load_dotenv
 
 # Delay SQLAlchemy imports until after env validation to reduce import-time failures
-from sqlalchemy import create_engine, func, Table, MetaData
+from sqlalchemy import create_engine, func, Table, MetaData, event, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.sql import select, update
 
@@ -68,6 +68,19 @@ def init_db_once():
         raise RuntimeError(f"Invalid database URL: {database_url}. Error: {e}")
     # Keep it simple; could set connect timeout via connect_args if needed
     engine = create_engine(database_url)
+    # Ensure we always use the expected schema regardless of DB defaults
+    try:
+        def _set_search_path(dbapi_connection, connection_record):
+            try:
+                cur = dbapi_connection.cursor()
+                cur.execute("SET search_path TO public")
+                cur.close()
+            except Exception as e:
+                # Non-fatal; continue with default if this fails
+                print(f"[db] set search_path failed: {e}", flush=True)
+        event.listen(engine, "connect", _set_search_path)
+    except Exception as e:
+        print(f"[db] event listen failed: {e}", flush=True)
     Session = sessionmaker(bind=engine)
     metadata = MetaData()
     projects_table = Table('projects', metadata, autoload_with=engine)
@@ -182,14 +195,32 @@ def handler(event, context):
             'body': json.dumps({'error': 'Server configuration error: DB', 'message': str(e)})
         }
 
+    # DB probe diagnostics
+    try:
+        sp = session.execute(text("SHOW search_path")).scalar()
+        total = session.execute(select(func.count()).select_from(simulations_table)).scalar()
+        max_id = session.execute(select(func.max(simulations_table.c.id))).scalar()
+        last5 = session.execute(select(simulations_table.c.id).order_by(simulations_table.c.id.desc()).limit(5)).scalars().all()
+        print(f"[probe] search_path={sp} total={total} max_id={max_id} last5={last5}")
+    except Exception as e:
+        print(f"[probe] failed: {e}")
+
+    # Lookup with small configurable retry window to handle read-after-write timing
     simulation_query = select(simulations_table).where(simulations_table.c.team_id == team_id).where(simulations_table.c.id == simulation_id)
-    sim_row = session.execute(simulation_query).mappings().first()
-    if sim_row is None:
-        # Possible read-after-write lag; small retry
-        import time
-        print("[lookup] not found on first attempt, retrying...", flush=True)
-        time.sleep(0.25)
+    retries = int(os.environ.get('LOOKUP_RETRIES', '4'))
+    delay_ms = int(os.environ.get('LOOKUP_RETRY_DELAY_MS', '250'))
+    attempt = 0
+    sim_row = None
+    while attempt <= retries:
         sim_row = session.execute(simulation_query).mappings().first()
+        if sim_row is not None:
+            break
+        if attempt == 0:
+            print("[lookup] not found on first attempt, retrying...", flush=True)
+        attempt += 1
+        if attempt <= retries:
+            import time
+            time.sleep(max(0, delay_ms) / 1000.0)
 
     if sim_row is None:
         # Extra diagnostics: does the simulation exist by ID at all?
