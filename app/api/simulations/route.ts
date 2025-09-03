@@ -37,7 +37,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(simulationsList);
+    // Diagnostics to verify DB alignment (compare with Lambda probe)
+    try {
+      const host = new URL(process.env.DATABASE_URL!).hostname;
+      const last5 = await db
+        .select({ id: simulations.id })
+        .from(simulations)
+        .orderBy(desc(simulations.id))
+        .limit(5);
+      const stats = await db.execute(
+        sql`select count(*)::int as count, max(id)::int as "maxId" from public.simulations`
+      );
+      const row = Array.isArray(stats) ? (stats[0] as any) : (stats as any);
+      const count = row?.count;
+      const maxId = row?.maxId;
+      console.log('🧪 App DB view (GET):', { host, count, maxId, last5: last5.map(r => r.id) });
+    } catch (e) {
+      console.warn('⚠️ App DB diagnostics (GET) failed:', e instanceof Error ? e.message : e);
+    }
+
+    // Explicitly disable caching to avoid stale lists from any proxy or edge cache
+    return NextResponse.json(simulationsList, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof Error && error.message === 'User not authenticated') {
       return NextResponse.json(
