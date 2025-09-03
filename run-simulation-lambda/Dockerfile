@@ -34,7 +34,15 @@ ADD https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/latest
 RUN chmod 755 /usr/bin/aws-lambda-rie
 
 COPY bootstrap /var/runtime/bootstrap
-RUN chmod 755 /var/runtime/bootstrap
+# Normalize potential Windows CRLF line endings and UTF-8 BOM, then ensure executable
+RUN set -e; f=/var/runtime/bootstrap; \
+	# Strip UTF-8 BOM if present
+	if [ "$(head -c 3 "$f" | od -An -t x1 | tr -d ' \n')" = "efbbbf" ]; then \
+		tail -c +4 "$f" > "$f.tmp" && mv "$f.tmp" "$f"; \
+	fi; \
+	# Remove CRs from EOLs
+	sed -i 's/\r$//' "$f"; \
+	chmod 755 "$f"
 
 # Enable Python to find packages in the virtual environment
 ENV PYTHONPATH="${LAMBDA_TASK_ROOT}/.venv/lib/python3.12/site-packages:${LAMBDA_TASK_ROOT}:${LAMBDA_TASK_ROOT}/src:${PYTHONPATH}"
