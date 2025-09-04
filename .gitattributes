@@ -1,0 +1,2 @@
+run-simulation-lambda/bootstrap text eol=lf
+generate-report-lambda/bootstrap text eol=lf
