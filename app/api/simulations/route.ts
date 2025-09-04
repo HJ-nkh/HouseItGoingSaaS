@@ -4,6 +4,7 @@ import { db } from '@/lib/db/drizzle';
 import { simulations, activityLogs, ActivityType } from '@/lib/db/schema';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { and, eq, isNull, ne } from 'drizzle-orm';
 
 const createSimulationSchema = z.object({
   projectId: z.coerce.number(),
@@ -129,19 +130,36 @@ export async function POST(request: NextRequest) {
     const jsonString = JSON.stringify(hashableData, Object.keys(hashableData).sort());
     const inputHash = crypto.createHash('sha256').update(jsonString).digest('hex');
 
-    console.log('🆕 Creating new simulation...');
-    // Minimal simulation creation
-    const [newSimulation] = await db
-      .insert(simulations)
-      .values({
-        teamId: userWithTeam.teamId,
-        projectId: validatedData.projectId,
-        drawingId: validatedData.drawingId,
-        entities: validatedData.entities,
-        inputHash: inputHash,
-        status: 'pending' as const,
-      })
-      .returning();
+    console.log('🆕 Creating new simulation (and pruning older for this drawing)...');
+    // Create new simulation and soft-delete previous ones for same team/drawing in a transaction
+    const newSimulation = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(simulations)
+        .values({
+          teamId: userWithTeam.teamId!,
+          projectId: validatedData.projectId,
+          drawingId: validatedData.drawingId,
+          entities: validatedData.entities,
+          inputHash: inputHash,
+          status: 'pending' as const,
+        })
+        .returning();
+
+      // Soft-delete any previous non-deleted simulations for this drawing/team
+      await tx
+        .update(simulations)
+        .set({ deletedAt: new Date() })
+        .where(
+          and(
+            eq(simulations.teamId, userWithTeam.teamId!),
+            eq(simulations.drawingId, validatedData.drawingId),
+            isNull(simulations.deletedAt),
+            ne(simulations.id, created.id)
+          )
+        );
+
+      return created;
+    });
 
     console.log('✅ Simulation created:', newSimulation.id);
 
