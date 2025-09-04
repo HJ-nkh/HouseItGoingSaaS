@@ -1,0 +1,12 @@
+# Exclude local dev files and secrets
+.env
+.env.*
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+Dockerfile*
+README.md
+# keep uv.lock so Dockerfile mount works
+**/.pytest_cache/
+**/.mypy_cache/
