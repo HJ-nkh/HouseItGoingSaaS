@@ -33,9 +33,8 @@ ENV PATH="${LAMBDA_TASK_ROOT}/.venv/bin:$PATH"
 ADD https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/latest/download/aws-lambda-rie /usr/bin/aws-lambda-rie
 RUN chmod 755 /usr/bin/aws-lambda-rie
 
-# Copy bootstrap and normalize line endings (Windows CRLF -> LF) then make executable
 COPY bootstrap /var/runtime/bootstrap
-RUN sed -i 's/\r$//' /var/runtime/bootstrap && chmod 755 /var/runtime/bootstrap
+RUN chmod 755 /var/runtime/bootstrap
 
 # Enable Python to find packages in the virtual environment
 ENV PYTHONPATH="${LAMBDA_TASK_ROOT}/.venv/lib/python3.12/site-packages:${LAMBDA_TASK_ROOT}:${LAMBDA_TASK_ROOT}/src:${PYTHONPATH}"
