@@ -6,6 +6,11 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { and, eq, isNull, ne } from 'drizzle-orm';
 
+// Disable caching for this route in Next/Vercel and internal fetch cache
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 const createSimulationSchema = z.object({
   projectId: z.coerce.number(),
   drawingId: z.coerce.number(),
@@ -37,18 +42,41 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(simulationsList);
+    return NextResponse.json(simulationsList, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store',
+      },
+    });
   } catch (error) {
     if (error instanceof Error && error.message === 'User not authenticated') {
       return NextResponse.json(
         { error: 'Unauthorized' },
-        { status: 401 }
+        {
+          status: 401,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'Surrogate-Control': 'no-store',
+          },
+        }
       );
     }
     console.error('Error fetching simulations:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Surrogate-Control': 'no-store',
+        },
+      }
     );
   }
 }
