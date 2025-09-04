@@ -4,6 +4,12 @@ import { db } from '@/lib/db/drizzle';
 import { simulations, activityLogs, ActivityType } from '@/lib/db/schema';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { and, eq, isNull, ne } from 'drizzle-orm';
+
+// Disable caching for this route in Next/Vercel and internal fetch cache
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 const createSimulationSchema = z.object({
   projectId: z.coerce.number(),
@@ -36,18 +42,41 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(simulationsList);
+    return NextResponse.json(simulationsList, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store',
+      },
+    });
   } catch (error) {
     if (error instanceof Error && error.message === 'User not authenticated') {
       return NextResponse.json(
         { error: 'Unauthorized' },
-        { status: 401 }
+        {
+          status: 401,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'Surrogate-Control': 'no-store',
+          },
+        }
       );
     }
     console.error('Error fetching simulations:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Surrogate-Control': 'no-store',
+        },
+      }
     );
   }
 }
@@ -129,19 +158,36 @@ export async function POST(request: NextRequest) {
     const jsonString = JSON.stringify(hashableData, Object.keys(hashableData).sort());
     const inputHash = crypto.createHash('sha256').update(jsonString).digest('hex');
 
-    console.log('🆕 Creating new simulation...');
-    // Minimal simulation creation
-    const [newSimulation] = await db
-      .insert(simulations)
-      .values({
-        teamId: userWithTeam.teamId,
-        projectId: validatedData.projectId,
-        drawingId: validatedData.drawingId,
-        entities: validatedData.entities,
-        inputHash: inputHash,
-        status: 'pending' as const,
-      })
-      .returning();
+    console.log('🆕 Creating new simulation (and pruning older for this drawing)...');
+    // Create new simulation and soft-delete previous ones for same team/drawing in a transaction
+    const newSimulation = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(simulations)
+        .values({
+          teamId: userWithTeam.teamId!,
+          projectId: validatedData.projectId,
+          drawingId: validatedData.drawingId,
+          entities: validatedData.entities,
+          inputHash: inputHash,
+          status: 'pending' as const,
+        })
+        .returning();
+
+      // Soft-delete any previous non-deleted simulations for this drawing/team
+      await tx
+        .update(simulations)
+        .set({ deletedAt: new Date() })
+        .where(
+          and(
+            eq(simulations.teamId, userWithTeam.teamId!),
+            eq(simulations.drawingId, validatedData.drawingId),
+            isNull(simulations.deletedAt),
+            ne(simulations.id, created.id)
+          )
+        );
+
+      return created;
+    });
 
     console.log('✅ Simulation created:', newSimulation.id);
 

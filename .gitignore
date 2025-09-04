@@ -4,3 +4,4 @@ node_modules
 run-simulation-lambda/test_lambda.py
 
 tsconfig.tsbuildinfo
+run-simulation-lambda/src/__pycache__/main.cpython-312.pyc

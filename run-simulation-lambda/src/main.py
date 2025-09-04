@@ -12,28 +12,78 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, func, Table, MetaData
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.sql import select, update
+from urllib.parse import quote_plus
 
 load_dotenv()
 
 is_development = os.environ.get('API_ENV') == 'development'
 
 
-DATABASE_URL = 'postgresql://' + os.environ.get('POSTGRES_USER') + \
-    ':' + os.environ.get('POSTGRES_PASSWORD') + \
-    '@' + os.environ.get('POSTGRES_HOST') + \
-    ':' + os.environ.get('POSTGRES_PORT') + '/' + \
-    os.environ.get('POSTGRES_DB')
-
 Base = declarative_base()
 
-engine = create_engine(DATABASE_URL)
+# Lazy-initialized DB state
+ENGINE = None
+SessionLocal = None
+metadata = None
+projects_table = None
+simulations_table = None
 
-Session = sessionmaker(bind=engine)
-session = Session()
 
-metadata = MetaData()
-projects_table = Table('projects', metadata, autoload_with=engine)
-simulations_table = Table('simulations', metadata, autoload_with=engine)
+def build_db_dsn() -> str:
+    """Construct a Postgres DSN from DATABASE_URL or POSTGRES_* env vars.
+    Ensures a default port and SSL mode for Neon.
+    """
+    url = os.getenv("DATABASE_URL")
+    if url:
+        # Ensure SSL for Neon if not specified
+        if ("neon.tech" in url or "aws.neon.tech" in url) and "sslmode=" not in url:
+            url += ("&" if "?" in url else "?") + "sslmode=require"
+        # Allow either postgresql:// or postgresql+psycopg2://
+        return url
+
+    host = os.getenv("POSTGRES_HOST")
+    user = os.getenv("POSTGRES_USER")
+    password = os.getenv("POSTGRES_PASSWORD")
+    db = os.getenv("POSTGRES_DB") or "postgres"
+    port = os.getenv("POSTGRES_PORT") or "5432"
+    sslmode = os.getenv("POSTGRES_SSLMODE")
+    if not sslmode and host and ("neon.tech" in host or "aws.neon.tech" in host):
+        sslmode = "require"
+
+    missing = [k for k, v in {
+        "POSTGRES_HOST": host,
+        "POSTGRES_USER": user,
+        "POSTGRES_PASSWORD": password,
+    }.items() if not v]
+    if missing:
+        raise RuntimeError(f"Missing DB env vars: {', '.join(missing)}")
+
+    dsn = f"postgresql://{quote_plus(user)}:{quote_plus(password)}@{host}:{int(port)}/{db}"
+    if sslmode:
+        dsn += f"?sslmode={sslmode}"
+    return dsn
+
+
+def init_db():
+    """Initialize SQLAlchemy engine, metadata, and tables lazily and safely."""
+    global ENGINE, SessionLocal, metadata, projects_table, simulations_table
+    if ENGINE is not None and SessionLocal is not None and projects_table is not None and simulations_table is not None:
+        return
+
+    dsn = build_db_dsn()
+    # Log non-sensitive connection info for diagnostics
+    host = os.getenv("POSTGRES_HOST") or "from-URL"
+    port = os.getenv("POSTGRES_PORT") or ("5432" if ("neon.tech" in dsn or "aws.neon.tech" in dsn) else "")
+    print(f"[env] connecting host={host} port={port}")
+
+    # Create engine; rely on URL sslmode. Enable pool_pre_ping for resiliency.
+    ENGINE = create_engine(dsn, pool_pre_ping=True)
+    SessionLocal = sessionmaker(bind=ENGINE)
+
+    metadata = MetaData()
+    # Autoload tables when engine is ready
+    projects_table = Table('projects', metadata, autoload_with=ENGINE)
+    simulations_table = Table('simulations', metadata, autoload_with=ENGINE)
 
 
 def handler(event, context):
@@ -67,16 +117,28 @@ def handler(event, context):
                 'statusCode': 400,
                 'body': json.dumps({'error': 'Invalid JSON in request body'})
             }
-    
-    # Extract simulation parameters from body or direct event    simulation_id = body.get('simulation_id') or event.get('simulation_id')
-    simulation_id = body.get('simulation_id') or event.get('simulationId')
-    team_id = body.get('team_id') or event.get('team_id')
+
+    # Extract simulation parameters from body or event
+    simulation_id = body.get('simulation_id') or event.get('simulationId') or event.get('simulation_id')
+    team_id = body.get('team_id') or event.get('team_id') or event.get('teamId')
 
     if not simulation_id or not team_id:
         return {
             'statusCode': 400,
             'body': json.dumps({'error': 'Missing simulation_id or team_id'})
         }
+
+    # Ensure DB is initialized and get a session
+    try:
+        init_db()
+    except Exception as e:
+        print(f"DB initialization failed: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': 'Server configuration error', 'message': 'DB init failed'})
+        }
+
+    session = SessionLocal()
     
     from lib.serialization import serialize_instance, default_handler
     from Moon2Mars.S import S
@@ -278,9 +340,13 @@ def handler(event, context):
                 status="failed", end_time=func.now(), error=str(e))
             session.execute(update_query)
             session.commit()
-            session.close()
         except Exception as db_error:
             print(f"Failed to update simulation status: {str(db_error)}")
+        finally:
+            try:
+                session.close()
+            except Exception:
+                pass
         
         return {
             'statusCode': 500,
@@ -291,4 +357,4 @@ def handler(event, context):
             })
         }
 
-handler({"body": {"team_id": 1, "simulation_id": 19 }, "headers": { "X-API-Key": os.environ.get("API_KEY") } }, {})
+#handler({"body": {"team_id": 1, "simulation_id": 1 }, "headers": { "X-API-Key": os.environ.get("API_KEY") } }, {})
