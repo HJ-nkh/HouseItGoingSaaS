@@ -42,7 +42,7 @@ const SimulationsSidebar: React.FC<SimulationsSidebarProps> = ({
   };
   return (
     <div className="py-2 px-1 h-full border-l bg-white" onClick={onClick}>
-      <AnalysisButton key="UR" analysis="UR" label="U" tooltip="Udnyttelser" />
+      <AnalysisButton key="UR" analysis="UR" label="%" tooltip="Udnyttelser" />
       <hr className="my-3 mx-1" />
       <AnalysisButton key="Ve" analysis="Ve" label="u" tooltip="Udbøjninger" />
       <hr className="my-3 mx-1" />

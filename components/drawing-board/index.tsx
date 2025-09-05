@@ -313,6 +313,48 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     }
   }, [simulation?.status]);
 
+  // Proactive polling: When a simulation is pending/running, poll for completion and trigger parent refetch immediately on change
+  useEffect(() => {
+    if (!drawing?.id) return;
+    const isActive = simulation?.status === SimulationStatus.Pending || simulation?.status === SimulationStatus.Running;
+    if (!isActive) return;
+
+    let cancelled = false;
+  let intervalId: any;
+  const poll = async () => {
+      try {
+        const params = new URLSearchParams({ drawingId: String(drawing.id), limit: "1" });
+        const res = await fetch(`/api/simulations?${params.toString()}` as string, {
+          // Ensure we bypass any HTTP caches in production/CDN
+          cache: "no-store",
+          headers: { "cache-control": "no-cache" },
+        });
+        if (!res.ok) return;
+        const list = await res.json();
+        const latest = Array.isArray(list) ? list[0] : null;
+        if (!latest) return;
+        if (latest.status === SimulationStatus.Completed || latest.status === SimulationStatus.Failed) {
+          if (!cancelled) {
+            // Ask parent to refetch so UI updates immediately
+            onSimulationQueued?.();
+      // Stop polling now; effect will re-run when props update
+      if (intervalId) clearInterval(intervalId);
+          }
+        }
+      } catch (_) {
+        // ignore transient errors during polling
+      }
+    };
+
+    // Fast first check, then steady interval
+    poll();
+    intervalId = setInterval(poll, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [drawing?.id, simulation?.status, onSimulationQueued]);
+
   // TODO: Add cursor classes to div when they work
   const SnappingAngle: React.FC = () => {
     if (
@@ -383,7 +425,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
               </div>
             )}
 
-          {simulation?.status && (simulation.status === SimulationStatus.Pending || simulation.status === SimulationStatus.Running) && (
+          {(runInProgress || (simulation?.status && (simulation.status === SimulationStatus.Pending || simulation.status === SimulationStatus.Running))) && (
             <div className="absolute h-full w-full flex justify-center items-center z-40 bg-gray-100/60">
               <PendingIndicator />
             </div>

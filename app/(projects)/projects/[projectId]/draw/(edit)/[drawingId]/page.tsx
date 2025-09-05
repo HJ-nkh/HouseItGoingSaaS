@@ -41,8 +41,8 @@ const DrawingPage: React.FC = () => {
       key={`drawing-board-${drawingId}`}
       drawing={drawing}
       simulation={simulation}
-  // When a simulation is queued, immediately refetch to show Pending overlay
-  onSimulationQueued={refetch}
+  // When a simulation is queued or detected completed, invalidate cache and refetch immediately
+  onSimulationQueued={() => { invalidateCache(); refetch(); }}
       onSave={(drawing) => updateDrawing(drawingId, drawing)}
       onDelete={async () => {
         await deleteDrawing(drawingId);
