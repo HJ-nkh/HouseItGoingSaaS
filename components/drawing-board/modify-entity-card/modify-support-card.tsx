@@ -7,7 +7,6 @@ import {
 import { Select } from "@/components/select";
 import { Support, SupportType } from "../lib/types";
 import CardActionButtons from "@/components/card-action-buttons";
-import NumberInput from "@/components/number-input";
 import { useState, useEffect } from "react";
 import { Constraint, ConstraintType } from "../lib/types";
 import XYConstraintSelect from "./constraint-select/xy-only-select";
@@ -110,10 +109,11 @@ const ModifySupportCard: React.FC<ModifySupportCardProps> = ({
     }
   }, [constraint]);
   return (
-    <Card className="absolute z-30 min-w-fit max-w-md">
+    <Card className="absolute z-30 min-w-fit">
       <CardHeader className="mb-2 font-bold">Understøtning</CardHeader>
 
-      <CardContent>        {isMember && (
+      <CardContent>
+        {isMember && (
           <div className="mb-2">
             <XYConstraintSelect
               constraint={constraint as Constraint}
@@ -124,11 +124,13 @@ const ModifySupportCard: React.FC<ModifySupportCardProps> = ({
               currentY={currentCoordinates.y}
             />
           </div>
-        )}        <div className="flex gap-3 mb-2 items-center">
-          <div className="w-32 text-left flex-shrink-0">Type:</div>
-          <div className="flex-1 min-w-0">
+        )}
+
+        <div className="flex gap-1 mb-2 items-center">
+          <div className="w-16 text-left flex-shrink-0">Type:</div>
+          <div className="w-44">
             <Select
-              className="w-full min-w-fit text-left"
+              className="w-44 h-8 text-left"
               value={support.type}
               onChange={(type) =>
                 onChange({ ...support, type: type as SupportType })
@@ -136,21 +138,63 @@ const ModifySupportCard: React.FC<ModifySupportCardProps> = ({
               options={supportTypeOptions}
             />
           </div>
-        </div>        {support.type === SupportType.Roller && (
-          <div className="flex gap-3 mb-2 items-center">
-            <div className="w-32 text-left flex-shrink-0">Vinkel:</div>
-            <div className="w-24">
-              <NumberInput
-                value={support.angle}
-                onChange={(angle) =>
-                  angle !== undefined && onChange({ ...support, angle })
+        </div>
+
+        <>
+          <div className="flex gap-1 mb-2 items-center">
+            <div className="w-16 text-left flex-shrink-0">Retning:</div>
+            <div className="w-44">
+              {/* Map X/Y to angle (X -> 0°, Y -> 90°), preserve flip (add 180° when flipped) */}
+              <Select
+                className="w-44 h-8 text-left"
+                value={support.angle % 180 === 90 ? "Y" : "X"}
+                onChange={(axis) => {
+                  const flipped = (support.angle ?? 0) >= 180;
+                  const base = axis === "Y" ? 90 : 0;
+                  onChange({ ...support, angle: flipped ? base + 180 : base });
+                }}
+                options={
+                  support.type === SupportType.Roller
+                    ? [
+                        { label: "X", value: "X" },
+                        { label: "Y", value: "Y" },
+                      ]
+                    : [
+                        { label: "X (kun visuelt)", value: "X" },
+                        { label: "Y (kun visuelt)", value: "Y" },
+                      ]
                 }
-                unit="deg"
-                onEnter={() => onSubmit(support)}
               />
             </div>
           </div>
-        )}
+          <div className="flex gap-1 mb-2 items-center">
+            <div className="w-16 text-left flex-shrink-0">Flip:</div>
+            <div className="w-44 flex items-center gap-2">
+              {/* Simple switch using a button; toggles +180° offset */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={(support.angle ?? 0) >= 180}
+                onClick={() => {
+                  const base = (support.angle ?? 0) % 180; // 0 or 90
+                  const flipped = (support.angle ?? 0) >= 180;
+                  onChange({ ...support, angle: flipped ? base : base + 180 });
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  (support.angle ?? 0) >= 180 ? "bg-sky-500" : "bg-gray-300"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                    (support.angle ?? 0) >= 180 ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+              {/* Show (kun visuelt) text after flip for all types; for Roller this is the only visual-only note */}
+              <span className="text-gray-500 text-xs">(kun visuelt)</span>
+            </div>
+          </div>
+        </>
 
         {/* Validation error message */}
         {hasDuplicate && (

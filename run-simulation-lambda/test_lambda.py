@@ -26,10 +26,13 @@ test_context = {}
 
 if __name__ == "__main__":
     print("Testing Lambda function...")
-    try:
-        result = handler(test_event, test_context)
-        print(f"Result: {result}")
-    except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()
+
+    result = handler(test_event, test_context)
+
+    # try:
+    #     result = handler(test_event, test_context)
+    #     print(f"Result: {result}")
+    # except Exception as e:
+    #     print(f"Error: {e}")
+    #     import traceback
+    #     traceback.print_exc()

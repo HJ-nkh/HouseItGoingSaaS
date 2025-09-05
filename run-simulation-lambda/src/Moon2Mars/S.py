@@ -340,7 +340,11 @@ class S():
                         alpha_n = (1+(self.n-1)*psi_0[dom])/self.n
                     else:
                         alpha_n = 1
-                    loadcombMat[:, loadtypesIndices[dom]] *= gamma_Q1*alpha_n*self.KFi   
+                    
+                    if loadtype != 'Standard':
+                        loadcombMat[:, loadtypesIndices[dom]] *= gamma_Q1*alpha_n*self.KFi
+                    else:
+                        loadcombMat[:, loadtypesIndices[dom]] *= 1.0 # Standard lasttype, dvs. ingen lastfaktor eller kombinationsfaktor
 
                     # Øvrige laster                  
                     for loadtype in loadtypesIndices:
@@ -348,7 +352,7 @@ class S():
                             if loadtype == 'Snelast' and dom == 'Vindlast':
                                 loadcombMat[:, loadtypesIndices[loadtype]] *= gamma_Q1*psi_0['Snelast, dom vind']*self.KFi    
                             else:
-                                loadcombMat[:, loadtypesIndices[loadtype]] *= gamma_Q1*psi_0[loadtype]*self.KFi               
+                                loadcombMat[:, loadtypesIndices[loadtype]] *= gamma_Q1*psi_0[loadtype]*self.KFi           
 
 
                     F1_mat = np.matmul(loadcombMat, F1discr)
@@ -400,11 +404,13 @@ class S():
 
             # Ikke-dominerende laster:
             # Primær last
-            if prim != 'Egenlast':
+            if prim not in ('Egenlast', 'Standard'):
                 loadcombMat[:, loadtypesIndices[prim]] *= psi_1[prim]
             # Andre laster                  
             for loadtype in loadtypesIndices:
-                if loadtype != 'Egenlast' and loadtype != prim:
+                if loadtype == 'Standard':
+                    loadcombMat[:, loadtypesIndices[loadtype]] *= 1.0 # Standard lasttype, dvs. ingen lastfaktor eller kombinationsfaktor
+                elif loadtype != 'Egenlast' and loadtype != prim:
                         loadcombMat[:, loadtypesIndices[loadtype]] *= psi_2[loadtype] #Bemærk ikke kombineret med nogen dominerende last, men derimod primær last. Derfor f.eks. ikke anvend "Snelast, dom vind"        
 
             F1_mat = np.matmul(loadcombMat, F1discr)

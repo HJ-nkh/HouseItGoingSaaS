@@ -193,23 +193,33 @@ def handler(event, context):
                 x1,y1,x2,y2 = p1.get('x'),p1.get('y'),p2.get('x'),p2.get('y')
             else:
                 x1,y1,x2,y2 = p2.get('x'),p2.get('y'),p1.get('x'),p1.get('y')
-            t = line_load.get('type'); dx,dy = (x2 or 0)-(x1 or 0),(y2 or 0)-(y1 or 0); c = ((dx or 0)**2+(dy or 0)**2)**0.5 or 1
-            if t == 'Dead': t,fx1,fy1,fx2,fy2 = 'Egenlast',0,-(line_load.get('magnitude1') or 0)*1e3,0,-(line_load.get('magnitude2') or 0)*1e3
-            elif t == 'Live': t,fx1,fy1,fx2,fy2 = 'Nyttelast',0,-(line_load.get('magnitude1') or 0)*1e3,0,-(line_load.get('magnitude2') or 0)*1e3
+            t = line_load.get('type'); dx,dy = (x2)-(x1),(y2)-(y1); c = ((dx)**2+(dy)**2)**0.5
+            if t == 'Dead': t,fx1,fy1,fx2,fy2 = 'Egenlast',0,-(line_load.get('magnitude1'))*1e3,0,-(line_load.get('magnitude2'))*1e3
+            elif t == 'Live': t,fx1,fy1,fx2,fy2 = 'Nyttelast',0,-(line_load.get('magnitude1'))*1e3,0,-(line_load.get('magnitude2'))*1e3
             elif t == 'Snow':
-                t='Snelast'; scale=abs((dx or 0)/max(c,1)); fx1,fy1,fx2,fy2=0,-scale*(line_load.get('magnitude1') or 0)*1e3,0,-scale*(line_load.get('magnitude2') or 0)*1e3
+                t='Snelast'; scale=abs((dx)/c); fx1,fy1,fx2,fy2=0,-scale*(line_load.get('magnitude1'))*1e3,0,-scale*(line_load.get('magnitude2'))*1e3
             elif t == 'Wind':
-                t='Vindlast'; fx1=(line_load.get('magnitude1') or 0)/c*(dy or 0)*1e3; fy1=-(line_load.get('magnitude1') or 0)/c*(dx or 0)*1e3; fx2=(line_load.get('magnitude2') or 0)/c*(dy or 0)*1e3; fy2=-(line_load.get('magnitude2') or 0)/c*(dx or 0)*1e3
+                t='Vindlast'; fx1=(line_load.get('magnitude1'))/c*(dy)*1e3; fy1=-(line_load.get('magnitude1'))/c*(dx)*1e3; fx2=(line_load.get('magnitude2'))/c*(dy)*1e3; fy2=-(line_load.get('magnitude2'))/c*(dx)*1e3
             else:
-                fx1,fy1,fx2,fy2 = 0,-(line_load.get('magnitude1') or 0)*1e3,0,-(line_load.get('magnitude2') or 0)*1e3
+                cosPart = math.cos(math.pi/180*line_load.get('angle').get('value'))
+                sinPart = math.sin(math.pi/180*line_load.get('angle').get('value'))
+                fx1,fy1,fx2,fy2 = -cosPart*(line_load.get('magnitude1'))*1e3,-sinPart*(line_load.get('magnitude1'))*1e3,-cosPart*(line_load.get('magnitude2'))*1e3,-sinPart*(line_load.get('magnitude2'))*1e3
             s.addLineLoad([x1,y1],[x2,y2],[fx1,fy1],[fx2,fy2],t,id)
 
         for id, moment_load in (entity_set.get('momentLoads') or {}).items():
-            x = (moment_load.get('resolved') or {}).get('x'); y = (moment_load.get('resolved') or {}).get('y'); M0 = (moment_load.get('magnitude') or 0)*1e3
+            x = (moment_load.get('resolved') or {}).get('x'); y = (moment_load.get('resolved') or {}).get('y'); M0 = (moment_load.get('magnitude'))*1e3
             s.addMoment([x,y],[M0],moment_load.get('type'),id)
 
         if project.selfweightOnOff:
             s.addSelfweight()
+
+
+    ### FOR DEBUG LOCALLY WITH BREAKPOINTS ONLY - REMOVE AGAIN ###
+    # except Exception as e:
+    #     print(e)
+    # s.run() #test remove again
+    # try:
+
 
         # Run and persist
         try:
@@ -262,5 +272,3 @@ def handler(event, context):
             session.close()
         except Exception:
             pass
-
-# Removed accidental test invocation to avoid running on module import in Lambda

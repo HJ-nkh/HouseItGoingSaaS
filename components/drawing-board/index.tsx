@@ -24,6 +24,7 @@ import {
   resolveDistributedLoadPosition,
   resolvePointLoadPosition,
   resolveMomentLoadPosition,
+  resolveSupportPosition,
 } from "./lib/reduce-history/resolve-position";
 import { aboveOrBelowLine, offsetPointFromLine } from "./lib/geometry";
 import RightAngle from "./right-angle";
@@ -745,6 +746,10 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
             {/* SUPPORTS (beneath distributed loads) */}
             {analysis !== "Ve" && analysis !== "R0" && Object.values(supports).map((support) => {
+              // Hide the regular black support when modifying this support
+              if (state.modifyingEntity?.support?.id === support.id) {
+                return null;
+              }
               const isSelected = state.selectedIds.includes(support.id);
               const strokeWidth = 2.5;
               const size = isSelected
@@ -940,7 +945,22 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                   isHovered={false}
                 />
               </g>
-            )}            {/* REACTIONS (R0) - Global, not per member */}
+            )}
+            {state.modifyingEntity?.support && (
+              <RenderedSupport
+                support={{
+                  ...resolveSupportPosition(
+                    state.modifyingEntity.support,
+                    nodes,
+                    members
+                  ),
+                } as any}
+                strokeWidth={2.5}
+                isSelected={true}
+                size={state.viewBox[3] * 0.04}
+              />
+            )}
+            {/* REACTIONS (R0) - Global, not per member */}
             {simulation &&
               showSimulation &&
               selectedLC &&
