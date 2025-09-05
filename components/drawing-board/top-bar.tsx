@@ -26,6 +26,8 @@ type TopBarProps = {
   onSimulationQueued?: () => void;
   // Called immediately when user clicks Run, before any network calls
   onRunStart?: () => void;
+  // Called with the new simulation id as soon as it's created
+  onSimulationCreated?: (simulationId: string) => void;
 };
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -38,6 +40,7 @@ const TopBar: React.FC<TopBarProps> = ({
   showDownload = false,
   onSimulationQueued,
   onRunStart,
+  onSimulationCreated,
 }) => {
   const params = useParams();
   const projectId = params.projectId as string;
@@ -115,6 +118,10 @@ const TopBar: React.FC<TopBarProps> = ({
                   drawingId: drawing?.id,
                   entities: flipYAxisOnResolvedEntities(entitySet),
                 });
+                // Inform parent about created simulation id immediately (for SSE/poll)
+                if (created?.id) {
+                  onSimulationCreated?.(created.id);
+                }
                 
                 simulationMutations.refetch();
                 // Locally mark drawing as not changed after run

@@ -69,6 +69,8 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
   const [runInProgress, setRunInProgress] = useState(false);
   // Local override of simulation status based on SSE/poll to avoid waiting for parent props
   const [simStatusOverride, setSimStatusOverride] = useState<SimulationStatus | null>(null);
+  // Local created simulation id to start SSE/polling immediately
+  const [localSimulationId, setLocalSimulationId] = useState<string | null>(null);
 
   // Simulations
   const [selectedLimitState, setSelectedLimitState] =
@@ -318,12 +320,14 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
   // Reset local override when switching to a different simulation id
   useEffect(() => {
     setSimStatusOverride(null);
+    setLocalSimulationId(null);
   }, [simulation?.id]);
 
   // Proactive updates: Prefer SSE for immediate updates; fallback to polling until props reflect completion
   useEffect(() => {
-    if (!drawing?.id || !simulation?.id) return;
-    const isActive = simulation?.status === SimulationStatus.Pending || simulation?.status === SimulationStatus.Running;
+  const activeSimulationId = simulation?.id || localSimulationId;
+  if (!drawing?.id || !activeSimulationId) return;
+  const isActive = (simStatusOverride ?? simulation?.status) === SimulationStatus.Pending || (simStatusOverride ?? simulation?.status) === SimulationStatus.Running || runInProgress;
     if (!isActive) return;
 
     let cancelled = false;
@@ -332,7 +336,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
     // Try SSE first
   try {
-      const sseUrl = `/api/simulations/${simulation.id}/events?ts=${Date.now()}`;
+  const sseUrl = `/api/simulations/${activeSimulationId}/events?ts=${Date.now()}`;
   sse = new EventSource(sseUrl);
       sse.onmessage = (ev) => {
         try {
@@ -351,7 +355,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     } catch {}
     const poll = async () => {
       try {
-        const res = await fetch(`/api/simulations/${simulation.id}` as string, {
+  const res = await fetch(`/api/simulations/${activeSimulationId}` as string, {
           // Ensure we bypass any HTTP caches in production/CDN
           cache: "no-store",
           credentials: "same-origin",
@@ -382,7 +386,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
         try { sse.close(); } catch {}
       }
     };
-  }, [drawing?.id, simulation?.id, simulation?.status, onSimulationQueued]);
+  }, [drawing?.id, simulation?.id, simulation?.status, onSimulationQueued, localSimulationId, simStatusOverride, runInProgress]);
 
   // TODO: Add cursor classes to div when they work
   const SnappingAngle: React.FC = () => {
@@ -427,6 +431,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
   showDownload={simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim && !runInProgress}
   onSimulationQueued={onSimulationQueued}
   onRunStart={() => setRunInProgress(true)}
+  onSimulationCreated={(id) => setLocalSimulationId(id)}
       />
       <div className="h-full flex">
         <div className="h-full">
