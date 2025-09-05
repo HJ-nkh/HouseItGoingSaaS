@@ -67,6 +67,8 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 }) => {
   const svgRef = useRef(null);
   const [runInProgress, setRunInProgress] = useState(false);
+  // Local override of simulation status based on SSE/poll to avoid waiting for parent props
+  const [simStatusOverride, setSimStatusOverride] = useState<SimulationStatus | null>(null);
 
   // Simulations
   const [selectedLimitState, setSelectedLimitState] =
@@ -313,6 +315,11 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     }
   }, [simulation?.status]);
 
+  // Reset local override when switching to a different simulation id
+  useEffect(() => {
+    setSimStatusOverride(null);
+  }, [simulation?.id]);
+
   // Proactive updates: Prefer SSE for immediate updates; fallback to polling until props reflect completion
   useEffect(() => {
     if (!drawing?.id || !simulation?.id) return;
@@ -324,13 +331,16 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     let sse: EventSource | null = null;
 
     // Try SSE first
-    try {
+  try {
       const sseUrl = `/api/simulations/${simulation.id}/events?ts=${Date.now()}`;
-      sse = new EventSource(sseUrl);
+  sse = new EventSource(sseUrl);
       sse.onmessage = (ev) => {
         try {
           const data = JSON.parse(ev.data);
           if (data?.status === SimulationStatus.Completed || data?.status === SimulationStatus.Failed) {
+    // Clear pending overlay immediately
+    setRunInProgress(false);
+      setSimStatusOverride(data.status);
             onSimulationQueued?.();
           }
         } catch {}
@@ -348,10 +358,12 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
           headers: { "cache-control": "no-cache" },
         });
         if (!res.ok) return;
-        const latest = await res.json();
-        if (latest?.status === SimulationStatus.Completed || latest?.status === SimulationStatus.Failed) {
+    const latest = await res.json();
+    if (latest?.status === SimulationStatus.Completed || latest?.status === SimulationStatus.Failed) {
           if (!cancelled) {
             // Ask parent to refetch so UI updates ASAP; keep polling until props reflect it
+      setRunInProgress(false);
+            setSimStatusOverride(latest.status);
             onSimulationQueued?.();
           }
         }
@@ -442,7 +454,10 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
               </div>
             )}
 
-          {(runInProgress || (simulation?.status && (simulation.status === SimulationStatus.Pending || simulation.status === SimulationStatus.Running))) && (
+          {(runInProgress || (
+            (simStatusOverride ?? simulation?.status) &&
+            ((simStatusOverride ?? simulation?.status) === SimulationStatus.Pending || (simStatusOverride ?? simulation?.status) === SimulationStatus.Running)
+          )) && (
             <div className="absolute h-full w-full flex justify-center items-center z-40 bg-gray-100/60">
               <PendingIndicator />
             </div>
@@ -464,17 +479,12 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                 <div className="w-full">
                   <ScaleSimulationCard
                     scale={
-                      analysis === "Ve"
-                        ? scaleVe
-                        : analysis === "F1"
-                        ? scaleF1
-                        : analysis === "F2"
-                        ? scaleF2
-                        : analysis === "M"
-                        ? scaleM
-                        : analysis === "R0"
-                        ? scaleR0
-                        : scaleF1 // default case
+                      analysis === "Ve" ? scaleVe :
+                      analysis === "F1" ? scaleF1 :
+                      analysis === "F2" ? scaleF2 :
+                      analysis === "M" ? scaleM :
+                      analysis === "R0" ? scaleR0 :
+                      scaleF1 // default case
                     }
                     setScale={
                       analysis === "Ve"
