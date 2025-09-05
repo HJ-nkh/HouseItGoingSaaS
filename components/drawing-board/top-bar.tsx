@@ -9,7 +9,8 @@ import { isValidDrawing } from "./lib/validate-drawing";
 import { flipYAxisOnResolvedEntities } from "./lib/flip-y-axis";
 // import { useCreateReport, useSimulationReport } from "@/lib/api/reports";
 import { downloadFile } from "@/lib/utils";
-import { CreateDrawingData, useReportMutations, useReports, useSimulationsWithMutations } from "@/lib/api";
+import { CreateDrawingData, useReportMutations, useReports } from "@/lib/api";
+import { useSimulationMutations } from "@/lib/api/use-simulations";
 import { useParams, useRouter } from "next/navigation";
 import { Download, Triangle, Archive, Trash2 } from "lucide-react";
 import { RxChevronLeft } from "react-icons/rx";
@@ -48,7 +49,7 @@ const TopBar: React.FC<TopBarProps> = ({
 
   const router = useRouter();
 
-  const simulationMutations = useSimulationsWithMutations();
+  const simulationMutations = useSimulationMutations();
   const reportMutations = useReportMutations();
 
   const downloadReport = async (reportId: string) => {
@@ -122,8 +123,6 @@ const TopBar: React.FC<TopBarProps> = ({
                 if (created?.id) {
                   onSimulationCreated?.(created.id);
                 }
-                
-                simulationMutations.refetch();
                 // Locally mark drawing as not changed after run
                 // (the onSave above already persisted hasChanges: false)
                 // Parent controls props; local state will reflect via DrawingBoard onSave wrapper

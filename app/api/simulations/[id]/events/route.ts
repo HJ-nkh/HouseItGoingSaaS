@@ -73,8 +73,8 @@ export async function GET(
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-store, no-cache, must-revalidate',
+  'Content-Type': 'text/event-stream; charset=utf-8',
+  'Cache-Control': 'no-store, no-cache, must-revalidate, no-transform',
   Connection: 'keep-alive',
   'X-Accel-Buffering': 'no',
     },

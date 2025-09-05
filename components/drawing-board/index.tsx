@@ -355,15 +355,32 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     } catch {}
     const poll = async () => {
       try {
-  const res = await fetch(`/api/simulations/${activeSimulationId}` as string, {
-          // Ensure we bypass any HTTP caches in production/CDN
-          cache: "no-store",
-          credentials: "same-origin",
-          headers: { "cache-control": "no-cache" },
-        });
-        if (!res.ok) return;
-    const latest = await res.json();
-    if (latest?.status === SimulationStatus.Completed || latest?.status === SimulationStatus.Failed) {
+        // Prefer polling the specific id; if not available or fails, poll by drawingId limit=1
+        let latest: any = null;
+        if (activeSimulationId) {
+          const res = await fetch(`/api/simulations/${activeSimulationId}` as string, {
+            cache: "no-store",
+            credentials: "same-origin",
+            headers: { "cache-control": "no-cache" },
+          });
+          if (res.ok) {
+            latest = await res.json();
+          }
+        }
+        if (!latest && drawing?.id) {
+          const params = new URLSearchParams({ drawingId: String(drawing.id), limit: "1" });
+          const resList = await fetch(`/api/simulations?${params.toString()}` as string, {
+            cache: "no-store",
+            credentials: "same-origin",
+            headers: { "cache-control": "no-cache" },
+          });
+          if (resList.ok) {
+            const arr = await resList.json();
+            latest = Array.isArray(arr) ? arr[0] : null;
+          }
+        }
+
+        if (latest?.status === SimulationStatus.Completed || latest?.status === SimulationStatus.Failed) {
           if (!cancelled) {
             // Ask parent to refetch so UI updates ASAP; keep polling until props reflect it
       setRunInProgress(false);
