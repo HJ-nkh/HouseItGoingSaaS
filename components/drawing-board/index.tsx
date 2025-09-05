@@ -313,32 +313,45 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     }
   }, [simulation?.status]);
 
-  // Proactive polling: When a simulation is pending/running, poll for completion and trigger parent refetch immediately on change
+  // Proactive updates: Prefer SSE for immediate updates; fallback to polling until props reflect completion
   useEffect(() => {
-    if (!drawing?.id) return;
+    if (!drawing?.id || !simulation?.id) return;
     const isActive = simulation?.status === SimulationStatus.Pending || simulation?.status === SimulationStatus.Running;
     if (!isActive) return;
 
     let cancelled = false;
-  let intervalId: any;
-  const poll = async () => {
+    let intervalId: any;
+    let sse: EventSource | null = null;
+
+    // Try SSE first
+    try {
+      sse = new EventSource(`/api/simulations/${simulation.id}/events`);
+      sse.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data?.status === SimulationStatus.Completed || data?.status === SimulationStatus.Failed) {
+            onSimulationQueued?.();
+          }
+        } catch {}
+      };
+      sse.onerror = () => {
+        // If SSE errors, the polling below will handle updates
+      };
+    } catch {}
+    const poll = async () => {
       try {
-        const params = new URLSearchParams({ drawingId: String(drawing.id), limit: "1" });
-        const res = await fetch(`/api/simulations?${params.toString()}` as string, {
+        const res = await fetch(`/api/simulations/${simulation.id}` as string, {
           // Ensure we bypass any HTTP caches in production/CDN
           cache: "no-store",
+          credentials: "same-origin",
           headers: { "cache-control": "no-cache" },
         });
         if (!res.ok) return;
-        const list = await res.json();
-        const latest = Array.isArray(list) ? list[0] : null;
-        if (!latest) return;
-        if (latest.status === SimulationStatus.Completed || latest.status === SimulationStatus.Failed) {
+        const latest = await res.json();
+        if (latest?.status === SimulationStatus.Completed || latest?.status === SimulationStatus.Failed) {
           if (!cancelled) {
-            // Ask parent to refetch so UI updates immediately
+            // Ask parent to refetch so UI updates ASAP; keep polling until props reflect it
             onSimulationQueued?.();
-      // Stop polling now; effect will re-run when props update
-      if (intervalId) clearInterval(intervalId);
           }
         }
       } catch (_) {
@@ -352,8 +365,11 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     return () => {
       cancelled = true;
       clearInterval(intervalId);
+      if (sse) {
+        try { sse.close(); } catch {}
+      }
     };
-  }, [drawing?.id, simulation?.status, onSimulationQueued]);
+  }, [drawing?.id, simulation?.id, simulation?.status, onSimulationQueued]);
 
   // TODO: Add cursor classes to div when they work
   const SnappingAngle: React.FC = () => {

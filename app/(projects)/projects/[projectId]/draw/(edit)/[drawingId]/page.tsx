@@ -24,8 +24,8 @@ const DrawingPage: React.FC = () => {
     if (simulation?.status === SimulationStatus.Pending || simulation?.status === SimulationStatus.Running) {
       console.info("Simulation pending/running – starting poll loop");
       const intervalId = setInterval(() => { 
-        invalidateCache(); 
-        refetch(); 
+        invalidateCache();
+        refetch();
       }, 5000);
 
       return () => clearInterval(intervalId);
