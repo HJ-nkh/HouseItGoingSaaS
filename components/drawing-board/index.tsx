@@ -308,14 +308,12 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     }
   }, [drawing?.hasChanges]);
 
-  // Keep local run flag in sync with simulation prop
+  // Keep local run flag in sync with simulation prop unless we have a local terminal override
   useEffect(() => {
-    if (simulation?.status === SimulationStatus.Pending || simulation?.status === SimulationStatus.Running) {
-      setRunInProgress(true);
-    } else {
-      setRunInProgress(false);
-    }
-  }, [simulation?.status]);
+    if (simStatusOverride) return; // don't fight local override
+    const isRunning = simulation?.status === SimulationStatus.Pending || simulation?.status === SimulationStatus.Running;
+    setRunInProgress(!!isRunning);
+  }, [simulation?.status, simStatusOverride]);
 
   // Reset local override when switching to a different simulation id
   useEffect(() => {
@@ -429,6 +427,9 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     );
   };
 
+  // Resolve effective status to drive UI consistently (prevents flicker)
+  const effectiveStatus: SimulationStatus | null = (simStatusOverride ?? simulation?.status) ?? (runInProgress ? SimulationStatus.Pending : null);
+
   // TODO: Position entity cards (adding and modifying) based on selection card size
   return (
     <div className="h-full w-full flex flex-col">
@@ -447,7 +448,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
   simulationId={simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim && !runInProgress ? simulation?.id : undefined}
   showDownload={simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim && !runInProgress}
   onSimulationQueued={onSimulationQueued}
-  onRunStart={() => setRunInProgress(true)}
+  onRunStart={() => { setSimStatusOverride(null); setLocalSimulationId(null); setRunInProgress(true); }}
   onSimulationCreated={(id) => setLocalSimulationId(id)}
       />
       <div className="h-full flex">
@@ -476,10 +477,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
               </div>
             )}
 
-          {(runInProgress || (
-            (simStatusOverride ?? simulation?.status) &&
-            ((simStatusOverride ?? simulation?.status) === SimulationStatus.Pending || (simStatusOverride ?? simulation?.status) === SimulationStatus.Running)
-          )) && (
+          {(effectiveStatus === SimulationStatus.Pending || effectiveStatus === SimulationStatus.Running) && (
             <div className="absolute h-full w-full flex justify-center items-center z-40 bg-gray-100/60">
               <PendingIndicator />
             </div>
