@@ -12,7 +12,7 @@ const DrawingPage: React.FC = () => {
   const router = useRouter();
 
   const { drawing, loading } = useDrawing(drawingId);
-  const { simulations, refetch, invalidateCache } = useSimulations({}, { drawingId, limit: 1});
+  const { simulations, refetch, invalidateCache } = useSimulations({ refetchOnWindowFocus: true }, { drawingId, limit: 1});
 
 	const simulation = simulations?.[0];
 

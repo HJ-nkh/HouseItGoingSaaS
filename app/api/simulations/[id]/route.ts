@@ -224,7 +224,7 @@ export async function PUT(
       }
     }
 
-    return NextResponse.json(updatedSimulation);
+  return NextResponse.json(updatedSimulation, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

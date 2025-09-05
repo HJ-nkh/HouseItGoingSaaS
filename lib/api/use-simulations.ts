@@ -39,6 +39,7 @@ export function useSimulations(config: UseSimulationsConfig = {}, queryParams?: 
       const url = `/api/simulations${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
       const data = await fetchWithCache<Simulation[]>(url, undefined, {
         ttl: config.cacheTime,
+        skipCache: true, // always fetch fresh on refetch and to avoid stale caches
       });
       setSimulations(data);
     } catch (err) {
@@ -100,6 +101,7 @@ export function useSimulation(id: number | null, config: UseSimulationsConfig = 
       setError(null);
       const data = await fetchWithCache<Simulation>(`/api/simulations/${id}`, undefined, {
         ttl: config.cacheTime,
+        skipCache: true,
       });
       setSimulation(data);
     } catch (err) {

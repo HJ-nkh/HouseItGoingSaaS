@@ -325,7 +325,8 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
     // Try SSE first
     try {
-      sse = new EventSource(`/api/simulations/${simulation.id}/events`);
+      const sseUrl = `/api/simulations/${simulation.id}/events?ts=${Date.now()}`;
+      sse = new EventSource(sseUrl);
       sse.onmessage = (ev) => {
         try {
           const data = JSON.parse(ev.data);
