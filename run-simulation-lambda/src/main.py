@@ -214,11 +214,11 @@ def handler(event, context):
             s.addSelfweight()
 
 
-    ## FOR DEBUG LOCALLY WITH BREAKPOINTS ONLY - REMOVE AGAIN ###
-    except Exception as e:
-        print(e)
-    s.run() #test remove again
-    try:
+    # ## FOR DEBUG LOCALLY WITH BREAKPOINTS ONLY - REMOVE AGAIN ###
+    # except Exception as e:
+    #     print(e)
+    # s.run() #test remove again
+    # try:
 
 
         # Run and persist
