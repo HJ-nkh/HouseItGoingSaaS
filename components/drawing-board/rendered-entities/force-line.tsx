@@ -485,7 +485,8 @@ export const Reactions: React.FC<ReactionsProps> = ({
                     resolved: { x, y },
                   }}
                   onClick={handleClick}
-                  strokeWidth={isSelected ? viewBox[3] * 0.006 : viewBox[3] * 0.004}
+                  strokeWidth={isSelected ? viewBox[3] * 0.006 : viewBox[3] * 0.003}
+                  color={isSelected ? "yellow" : "grey"}
                   size={viewBox[3] * scale * 100}
                   isSelected={isSelected}
                   isHovered={false}
@@ -521,7 +522,8 @@ export const Reactions: React.FC<ReactionsProps> = ({
                     resolved: { x, y },
                   }}
                   onClick={handleClick}
-                  strokeWidth={isSelected ? viewBox[3] * 0.006 : viewBox[3] * 0.004}
+                  strokeWidth={isSelected ? viewBox[3] * 0.006 : viewBox[3] * 0.003}
+                  color={isSelected ? "yellow" : "grey"}
                   size={viewBox[3] * scale * 100}
                   isSelected={isSelected}
                   isHovered={false}
