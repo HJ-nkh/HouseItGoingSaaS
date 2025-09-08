@@ -13,6 +13,7 @@ type PointLoadProps = {
   size: number;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  color?: string; // NEW: override stroke color (tailwind stroke-* or raw CSS color)
 };
 
 const RenderedPointLoad: React.FC<PointLoadProps> = ({
@@ -25,23 +26,38 @@ const RenderedPointLoad: React.FC<PointLoadProps> = ({
   size,
   onMouseEnter,
   onMouseLeave,
+  color, // NEW
 }) => {
   if (!load.magnitude) {
     return null;
   }
 
   // Check if load.id contains "pl" and set stroke accordingly
-  let stroke = load.id.includes("pl") 
-    ? loadTypeColors.stroke[load.type] 
-    : "stroke-gray-400"
+  // Base stroke selection (unchanged default logic)
+  let stroke = load.id.includes("pl")
+    ? loadTypeColors.stroke[load.type]
+    : "stroke-gray-400";
 
+  // Apply color override if provided (before hover/selection so those still dominate)
+  let inlineStrokeColor: string | undefined;
+  if (color) {
+    if (color.startsWith("stroke-")) {
+      stroke = color; // tailwind class form
+    } else {
+      // raw css color => use inline stroke attr (clear class so no conflict)
+      stroke = "";
+      inlineStrokeColor = color;
+    }
+  }
 
   if (isHovered) {
     stroke = "stroke-sky-400";
+    inlineStrokeColor = undefined;
   }
 
   if (isSelected) {
     stroke = "stroke-sky-600";
+    inlineStrokeColor = undefined;
   }
   const point = load.resolved;
   const radians = ((load.angle?.value ?? 90) * Math.PI) / 180;
@@ -133,6 +149,7 @@ const RenderedPointLoad: React.FC<PointLoadProps> = ({
         y2={y2}
         strokeWidth={strokeWidth*1.5}
         className={stroke}
+        stroke={inlineStrokeColor}
         pointerEvents="none"
       />
       
@@ -144,6 +161,7 @@ const RenderedPointLoad: React.FC<PointLoadProps> = ({
         y2={endY + arrowheadSize * Math.sin(arrowAngle + 0.7)}
         strokeWidth={strokeWidth*1.5}
         className={stroke}
+        stroke={inlineStrokeColor}
         pointerEvents="none"
       />
       <line
@@ -153,6 +171,7 @@ const RenderedPointLoad: React.FC<PointLoadProps> = ({
         y2={endY + arrowheadSize * Math.sin(arrowAngle - 0.7)}
         strokeWidth={strokeWidth*1.5}
         className={stroke}
+        stroke={inlineStrokeColor}
         pointerEvents="none"
       />
     </g>

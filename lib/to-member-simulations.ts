@@ -55,7 +55,7 @@ export const toMemberSimulations = (
 
   const R0: { type: string[]; coor: [number, number][]; forces: Record<string, Record<string, [number, number, number][]>> } = {
     type: result?.FEMModel.R0_types,
-    coor: result?.FEMModel.R0_coor,
+    coor: result?.FEMModel.R0_coor.map((c) => [c[0], -c[1]] as [number, number]),
     forces: {},
   };
   for (const ls of ["ULS", "SLS", "ALS"] as const) {
