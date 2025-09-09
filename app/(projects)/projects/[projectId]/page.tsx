@@ -165,13 +165,13 @@ export default function ProjectPage() {
                             disabled={reportsMutLoading}
                             onClick={async () => {
                               try {
-                                const { downloadUrl } = await getDownloadUrl(r.id);
+                                const { downloadUrl, filename } = await getDownloadUrl(r.id) as any;
                                 if (downloadUrl) {
                                   const raw = (r.title || 'rapport').trim();
                                   const base = raw.replace(/\s+/g, '-').replace(/[^A-Za-z0-9.-]+/g, '') || 'rapport';
                                   const a = document.createElement('a');
                                   a.href = downloadUrl;
-                                  a.download = `${base}.docx`;
+                                  a.download = filename || `${base}.docx`;
                                   document.body.appendChild(a);
                                   a.click();
                                   a.remove();

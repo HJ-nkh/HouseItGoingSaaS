@@ -61,8 +61,8 @@ const TopBar: React.FC<TopBarProps> = ({
   };
 
   const downloadReport = async (reportId: string) => {
-    const { downloadUrl } = await reportMutations.getDownloadUrl(reportId);
-    downloadFile(downloadUrl, `${makeFilename()}.docx`);
+    const { downloadUrl, filename } = await reportMutations.getDownloadUrl(reportId) as any;
+    downloadFile(downloadUrl, filename || `${makeFilename()}.docx`);
   };
 
   const { reports } = useReports({}, { simulationId });
