@@ -7,7 +7,8 @@ import { z } from 'zod';
 const createDrawingSchema = z.object({
   projectId: z.coerce.number(),
   title: z.string().min(1).max(255),
-  history: z.any(),
+  // Make history optional to avoid 500 if client sends null/undefined; we'll default it
+  history: z.any().optional(),
   hasChanges: z.boolean().optional().default(false),
   isTemplate: z.boolean().optional().default(false),
 });
@@ -79,6 +80,24 @@ export async function POST(request: NextRequest) {
 
     const validatedData = createDrawingSchema.parse(body);
 
+    // Normalize / default history so DB not-null constraint is satisfied
+    const safeHistory = ((): any => {
+      if (validatedData.history === null || validatedData.history === undefined) {
+        return { entities: [], actions: [] };
+      }
+      return validatedData.history;
+    })();
+
+    // Quick serializability check to surface clearer 400 instead of PG error
+    try {
+      JSON.stringify(safeHistory);
+    } catch {
+      return NextResponse.json(
+        { error: 'History must be JSON serializable' },
+        { status: 400 }
+      );
+    }
+
     // Verify the project belongs to the user's team
     const projectCheck = await db.query.projects.findFirst({
       where: (projects, { eq, and }) => and(
@@ -100,7 +119,7 @@ export async function POST(request: NextRequest) {
         teamId: userWithTeam.teamId,
         projectId: validatedData.projectId,
         title: validatedData.title,
-        history: validatedData.history,
+        history: safeHistory,
         hasChanges: validatedData.hasChanges,
         isTemplate: validatedData.isTemplate,
       })
@@ -119,6 +138,13 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid input', details: error.errors },
+        { status: 400 }
+      );
+    }
+    // Surface Postgres not-null violation more clearly if it still occurs for some reason
+    if (error instanceof Error && /null value in column "history"/i.test(error.message)) {
+      return NextResponse.json(
+        { error: 'History is required' },
         { status: 400 }
       );
     }
