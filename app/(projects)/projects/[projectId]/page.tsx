@@ -167,9 +167,11 @@ export default function ProjectPage() {
                               try {
                                 const { downloadUrl } = await getDownloadUrl(r.id);
                                 if (downloadUrl) {
+                                  const raw = (r.title || 'rapport').trim();
+                                  const base = raw.replace(/\s+/g, '-').replace(/[^A-Za-z0-9.-]+/g, '') || 'rapport';
                                   const a = document.createElement('a');
                                   a.href = downloadUrl;
-                                  a.download = (r.title || 'report') + '.docx';
+                                  a.download = `${base}.docx`;
                                   document.body.appendChild(a);
                                   a.click();
                                   a.remove();

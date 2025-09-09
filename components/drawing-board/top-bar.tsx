@@ -52,10 +52,17 @@ const TopBar: React.FC<TopBarProps> = ({
   const simulationMutations = useSimulationMutations();
   const reportMutations = useReportMutations();
 
+  const makeFilename = () => {
+    const raw = (drawing?.title || title || 'rapport').trim();
+    return raw
+      .replace(/\s+/g, '-')      // spaces -> dashes
+      .replace(/[^A-Za-z0-9.-]+/g, '') // strip other chars
+      || 'rapport';
+  };
+
   const downloadReport = async (reportId: string) => {
     const { downloadUrl } = await reportMutations.getDownloadUrl(reportId);
-    const baseName = (drawing?.title || title || 'report').trim().replace(/[^A-Za-z0-9._ -]+/g, '_');
-    downloadFile(downloadUrl, `${baseName}.docx`);
+    downloadFile(downloadUrl, `${makeFilename()}.docx`);
   };
 
   const { reports } = useReports({}, { simulationId });
@@ -91,8 +98,7 @@ const TopBar: React.FC<TopBarProps> = ({
                     const res = await reportMutations.createReport({ simulationId, title });
                     reportId = res.id;
                     if (res.downloadUrl) {
-                      const baseName = (drawing?.title || title || 'report').trim().replace(/[^A-Za-z0-9._ -]+/g, '_');
-                      downloadFile(res.downloadUrl, `${baseName}.docx`);
+                      downloadFile(res.downloadUrl, `${makeFilename()}.docx`);
                       return;
                     }
                   }
