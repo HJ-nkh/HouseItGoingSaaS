@@ -54,7 +54,8 @@ const TopBar: React.FC<TopBarProps> = ({
 
   const downloadReport = async (reportId: string) => {
     const { downloadUrl } = await reportMutations.getDownloadUrl(reportId);
-    downloadFile(downloadUrl, `report-${reportId}.docx`);
+    const baseName = (drawing?.title || title || 'report').trim().replace(/[^A-Za-z0-9._ -]+/g, '_');
+    downloadFile(downloadUrl, `${baseName}.docx`);
   };
 
   const { reports } = useReports({}, { simulationId });
@@ -90,7 +91,8 @@ const TopBar: React.FC<TopBarProps> = ({
                     const res = await reportMutations.createReport({ simulationId, title });
                     reportId = res.id;
                     if (res.downloadUrl) {
-                      downloadFile(res.downloadUrl, `report-${reportId}.docx`);
+                      const baseName = (drawing?.title || title || 'report').trim().replace(/[^A-Za-z0-9._ -]+/g, '_');
+                      downloadFile(res.downloadUrl, `${baseName}.docx`);
                       return;
                     }
                   }

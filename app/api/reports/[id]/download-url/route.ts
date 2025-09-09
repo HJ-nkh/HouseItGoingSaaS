@@ -28,7 +28,7 @@ export async function GET(
     const { id } = await params;
     const reportId = id;
 
-    console.log(`Getting download url for report ${reportId}`);
+  console.log(`[report-download] request reportId=${reportId}`);
 
     const report = await getReportById(reportId);
     if (!report) {
@@ -57,8 +57,15 @@ export async function GET(
     }
 
   // Prefer stored s3Key (exact path used at generation time) else fall back to deterministic key
-  const reportKey = (report as any).s3Key || generateReportKey(userWithTeam.teamId, report.projectId, report.id);
-  const downloadUrl = await generatePresignedUrl(bucketName, reportKey, 900); // 15 min expiration
+    const reportKey = (report as any).s3Key || generateReportKey(userWithTeam.teamId, report.projectId, report.id);
+    console.log(`[report-download] using key=${reportKey} storedKey=${(report as any).s3Key ? 'yes' : 'no'}`);
+    let downloadUrl: string;
+    try {
+      downloadUrl = await generatePresignedUrl(bucketName, reportKey, 900); // 15 min expiration
+    } catch (e) {
+      console.error('[report-download] presign failed for key', reportKey, e);
+      return NextResponse.json({ error: 'Failed to generate URL' }, { status: 500 });
+    }
     
     // Log the download activity
     await db.insert(activityLogs).values({
@@ -78,7 +85,7 @@ export async function GET(
       }
     });
   } catch (error) {
-    console.error('Error generating download URL:', error);
+    console.error('[report-download] unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }
