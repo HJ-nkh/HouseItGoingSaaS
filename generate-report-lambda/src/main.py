@@ -1,9 +1,9 @@
 import sys
 import os
 import json
+from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode, quote_plus
 
-# Append the path to the "src" folder and its parent folder to the system path
-# This is necessary for running on AWS Lambda
+# Append the path to the "src" folder and its parent folder to the system path (Lambda friendly)
 sys.path.append(os.path.dirname(__file__))
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -18,23 +18,59 @@ load_dotenv()
 is_development = os.environ.get('API_ENV') == 'development'
 
 
-DATABASE_URL = 'postgresql://' + os.environ.get('POSTGRES_USER') + \
-    ':' + os.environ.get('POSTGRES_PASSWORD') + \
-    '@' + os.environ.get('POSTGRES_HOST') + \
-    ':' + os.environ.get('POSTGRES_PORT') + '/' + \
-    os.environ.get('POSTGRES_DB')
+def build_db_dsn() -> str:
+    """Build a Postgres DSN from DATABASE_URL or POSTGRES_* vars (mirrors run-simulation lambda)."""
+    url = os.getenv('DATABASE_URL')
+    if url:
+        parsed = urlparse(url)
+        scheme = parsed.scheme or 'postgresql'
+        if scheme == 'postgres':
+            scheme = 'postgresql'
+        q = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        host = parsed.hostname or ''
+        if (('neon.tech' in host) or ('aws.neon.tech' in host)) and 'sslmode' not in q:
+            q['sslmode'] = 'require'
+        return urlunparse((scheme, parsed.netloc, parsed.path, parsed.params, urlencode(q), parsed.fragment))
+
+    host = os.getenv('POSTGRES_HOST') or ''
+    user = os.getenv('POSTGRES_USER') or ''
+    password = os.getenv('POSTGRES_PASSWORD') or ''
+    db_raw = os.getenv('POSTGRES_DB') or 'postgres'
+    port = os.getenv('POSTGRES_PORT') or '5432'
+    sslmode = os.getenv('POSTGRES_SSLMODE')
+
+    if '?' in db_raw:
+        db_name, existing_query = db_raw.split('?', 1)
+    else:
+        db_name, existing_query = db_raw, ''
+
+    if host and '?' in host:
+        host = host.split('?', 1)[0]
+
+    q = {}
+    if existing_query:
+        q.update(dict(parse_qsl(existing_query, keep_blank_values=True)))
+    if sslmode and 'sslmode' not in q:
+        q['sslmode'] = sslmode
+    if (('neon.tech' in host) or ('aws.neon.tech' in host)) and 'sslmode' not in q:
+        q['sslmode'] = 'require'
+
+    netloc = f"{quote_plus(user)}:{quote_plus(password)}@{host}:{int(port)}"
+    return urlunparse(('postgresql', netloc, f'/{db_name}', '', urlencode(q), ''))
+
 
 Base = declarative_base()
 
-engine = create_engine(DATABASE_URL)
-
+DSN = build_db_dsn()
+print(f"[generate-report] Using DSN={DSN}")
+engine = create_engine(DSN, pool_pre_ping=True)
 Session = sessionmaker(bind=engine)
 session = Session()
 
 metadata = MetaData()
 projects_table = Table('projects', metadata, autoload_with=engine)
 simulations_table = Table('simulations', metadata, autoload_with=engine)
-reports_table = Table("reports", metadata, autoload_with=engine)
+reports_table = Table('reports', metadata, autoload_with=engine)
 
 
 # Call with the following event:
@@ -89,35 +125,41 @@ def handler(event, context):
     team_id = body.get('team_id') or event.get('team_id')
 
     # TODO: Validate against team_id
-    simulation_query = select(simulations_table).where(simulations_table.c.id == simulation_id)
-    simulation = session.execute(simulation_query).first()
+    simulation_row = session.execute(select(simulations_table).where(simulations_table.c.id == simulation_id)).first()
+    if not simulation_row:
+        return { 'statusCode': 404, 'body': json.dumps({'error': 'Simulation not found'}) }
+    sim = simulation_row._mapping
 
-    if simulation is None:
-        print(f"Simulation {simulation_id} not found")
-        raise ValueError(f"Simulation {simulation_id} not found")
+    project_row = session.execute(
+        select(projects_table).where(projects_table.c.team_id == team_id).where(projects_table.c.id == sim['project_id'])
+    ).first()
+    if not project_row:
+        return { 'statusCode': 404, 'body': json.dumps({'error': 'Project not found or not in team'}) }
+    proj = project_row._mapping
+    print(f"Found project: {proj['id']}")
 
-    project_query = select(projects_table).where(projects_table.c.team_id == team_id).where(projects_table.c.id == simulation.project_id)
-    project = session.execute(project_query).first()
+    requested_title = body.get('title') or 'Report'
 
-    print(f"Found project: {project.id}")
+    report_meta = create_report(team_id, proj['id'], requested_title)
+    print(f"report_id: {report_meta['report_id']}")
 
-    # Create the report and get the id
-    report_id = create_report(team_id, project.id)
-
-    print(f"report_id: {report_id}")
-
-    # Temp
-    title = "Sample report"
-
-    # Create the report in the database
     insert_query = insert(reports_table).values(
-        simulation_id=simulation_id, id=report_id, title=title, team_id=team_id,
-        project_id=simulation.project_id, drawing_id=simulation.drawing_id
+        simulation_id=simulation_id,
+        id=report_meta['report_id'],
+        title=requested_title,
+        team_id=team_id,
+        project_id=sim['project_id'],
+        drawing_id=sim.get('drawing_id')
     )
     session.execute(insert_query)
     session.commit()
 
-    return {"report_id": report_id}
+    return {
+        'statusCode': 200,
+        'body': json.dumps({
+            'report_id': report_meta['report_id'],
+            's3_key': report_meta['s3_key'],
+            'download_url': report_meta['download_url']
+        })
+    }
 
-
-handler({ "body": { "team_id": 1, "simulation_id": 1 }, "headers": { "x-api-key": os.environ.get('API_KEY') } }, {})

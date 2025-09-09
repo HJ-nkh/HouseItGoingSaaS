@@ -39,34 +39,35 @@ def save_plot(
         str: Path where the figure was saved (local path or S3 URL)
     """
     filepath = get_img_filepath(filename)
-
     bucket_name = os.getenv('REPORTS_BUCKET_NAME')
+    dev_local = not bucket_name
 
-    if not bucket_name:
-        raise ValueError("bucket_name is required for production environment")
-    
-    # Save to S3
     try:
-        buf = io.BytesIO()
-        fig.savefig(buf, format='png', dpi=dpi, bbox_inches='tight')
-        buf.seek(0)
-        
-        # Upload to S3
-        s3_client = boto3.client('s3')
-        s3_client.upload_fileobj(
-            buf,
-            bucket_name,
-            filepath,
-            ExtraArgs={'ContentType': content_type}
-        )
-        
-        return f"https://{bucket_name}.s3.amazonaws.com/{filepath}"
-        
+        if dev_local:
+            # Local/temp save path
+            local_dir = '/tmp' if not is_development else output_dir
+            os.makedirs(local_dir, exist_ok=True)
+            local_path = os.path.join(local_dir, os.path.basename(filepath))
+            fig.savefig(local_path, format='png', dpi=dpi, bbox_inches='tight')
+            return local_path
+        else:
+            buf = io.BytesIO()
+            fig.savefig(buf, format='png', dpi=dpi, bbox_inches='tight')
+            buf.seek(0)
+            s3_client = boto3.client('s3')
+            s3_client.upload_fileobj(
+                buf,
+                bucket_name,
+                filepath,
+                ExtraArgs={'ContentType': content_type}
+            )
+            return f"https://{bucket_name}.s3.amazonaws.com/{filepath}"
     except Exception as e:
-        print(f"Error saving to S3: {str(e)}")
+        print(f"Error saving plot: {e}")
         raise
     finally:
-        buf.close()
+        if 'buf' in locals():
+            buf.close()
 
 def download_plot(filename: str) -> str:
     """
@@ -81,19 +82,27 @@ def download_plot(filename: str) -> str:
     temp_image_path = f"/tmp/{os.path.basename(filename)}"
 
     filepath = get_img_filepath(filename)
-
     bucket_name = os.getenv('REPORTS_BUCKET_NAME')
+    dev_local = not bucket_name
 
-    if not bucket_name:
-        raise ValueError("bucket_name is required for production environment")
-    
-    # Load from S3
     try:
-        s3_client = boto3.client('s3')
-        s3_client.download_file(bucket_name, filepath, temp_image_path)
-        return temp_image_path
+        if dev_local:
+            # Already saved locally via save_plot
+            # Return a path we can open (assume same name in /tmp if Lambda)
+            candidate_local = f"/tmp/{os.path.basename(filepath)}"
+            if os.path.exists(candidate_local):
+                return candidate_local
+            # As fallback, if running locally in dev, look inside output_dir
+            candidate_dev = os.path.join(output_dir, os.path.basename(filepath))
+            if os.path.exists(candidate_dev):
+                return candidate_dev
+            raise FileNotFoundError(f"Plot not found locally: {candidate_local}")
+        else:
+            s3_client = boto3.client('s3')
+            s3_client.download_file(bucket_name, filepath, temp_image_path)
+            return temp_image_path
     except Exception as e:
-        print(f"Error loading from S3: {str(e)}")
+        print(f"Error loading plot: {e}")
         raise
 
 def create_sample_plot() -> plt.Figure:

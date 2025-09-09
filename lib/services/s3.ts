@@ -2,12 +2,20 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 // Initialize S3 client
+// Avoid supplying empty/expired creds; let default provider chain resolve (e.g. IAM role) when not explicitly set.
+const explicitAccessKey = process.env.AWS_ACCESS_KEY_ID;
+const explicitSecret = process.env.AWS_SECRET_ACCESS_KEY;
+const explicitSession = process.env.AWS_SESSION_TOKEN;
+
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-  },
+  region: process.env.AWS_REGION || 'eu-north-1',
+  credentials: (explicitAccessKey && explicitSecret)
+    ? {
+        accessKeyId: explicitAccessKey,
+        secretAccessKey: explicitSecret,
+        sessionToken: explicitSession, // include if present (STS)
+      }
+    : undefined,
 });
 
 /**

@@ -42,5 +42,11 @@ ENV PYTHONPATH="${LAMBDA_TASK_ROOT}/.venv/lib/python3.12/site-packages:${LAMBDA_
 
 ENV PYTHONDONTWRITEBYTECODE=1
 
+# Ensure matplotlib can write its config/cache (Lambda FS is read-only except /tmp)
+ENV MPLCONFIGDIR=/tmp/matplotlib
+
+# (Optional) You can override this at deploy time; placeholder aids local testing
+# ENV REPORTS_BUCKET_NAME=your-bucket-name
+
 ENTRYPOINT ["/var/runtime/bootstrap"]
 CMD ["src.main.handler"]

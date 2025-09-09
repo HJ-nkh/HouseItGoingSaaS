@@ -19,8 +19,10 @@ def make_report_filename(team_id, project_id, report_id):
 def make_figure_filename(team_id, project_id, report_id, fig_name):
     return f"{team_id}/{project_id}/{report_id}/{fig_name}"
 
-def create_report(team_id, project_id):
+def create_report(team_id, project_id, title: str | None = None):
     template_path = "./src/report_template_steel.docx"
+    if not os.path.exists(template_path):
+        raise FileNotFoundError(f"Report template not found at {template_path}")
     doc = DocxTemplate(template_path)
     report_id = str(uuid.uuid4())
 
@@ -37,7 +39,7 @@ def create_report(team_id, project_id):
     fig2  = create_sample_plot()
     save_plot(fig2, filename_2)
 
-    context = {'title': 'Document with Multiple Plots'}
+    context = {'title': title or 'Report'}
 
     # Download plots from S3
     temp_filepath_1 = download_plot(filename_1)
@@ -57,17 +59,20 @@ def create_report(team_id, project_id):
     doc.render(context)
 
     filename = make_report_filename(team_id, project_id, report_id)
-    
-    # Save to buffer
-    save_document(doc, filename)
+    storage_ref, presigned_url = save_document(doc, filename)
 
-    return report_id
+    return {
+        'report_id': report_id,
+        's3_key': filename,
+        'storage_ref': storage_ref,
+        'download_url': presigned_url,
+    }
 
     
 def save_document(
     doc: DocxTemplate, 
     filename: str,
-) -> str:
+) -> tuple[str, str | None]:
     """
     Saves a docx document either locally or to S3 based on API_ENV
     
@@ -76,32 +81,34 @@ def save_document(
         filename: Name of file to save
     
     Returns:
-        str: Path where document was saved (local path or S3 URL)
+    tuple[path_or_uri, presigned_url_or_none]
     """
     bucket_name = os.getenv('REPORTS_BUCKET_NAME')
-
-    if not bucket_name:
-        raise ValueError("bucket_name is required for production environment")
+    dev_local = not bucket_name  # fallback path for development when bucket missing
     
     # Save to S3
     try:
-        # Save to buffer first
-        buf = io.BytesIO()
-        doc.save(buf)
-        buf.seek(0)
-        
-        # Upload to S3
-        s3_client = boto3.client('s3')
-        s3_client.upload_fileobj(
-            buf,
-            bucket_name,
-            filename,
-        )
-        
-        return f"https://{bucket_name}.s3.amazonaws.com/{filename}"
-        
+        if dev_local:
+            # Write to /tmp in Lambda (ephemeral) or local filesystem when developing
+            local_path = f"/tmp/{os.path.basename(filename)}"
+            doc.save(local_path)
+            return local_path, None
+        else:
+            buf = io.BytesIO()
+            doc.save(buf)
+            buf.seek(0)
+            s3_client = boto3.client('s3')
+            s3_client.upload_fileobj(buf, bucket_name, filename)
+            # Generate short-lived presigned URL for immediate download (15 min)
+            presigned = s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': bucket_name, 'Key': filename},
+                ExpiresIn=900
+            )
+            return f"s3://{bucket_name}/{filename}", presigned
     except Exception as e:
-        print(f"Error saving to S3: {str(e)}")
+        print(f"Error saving report document: {e}")
         raise
     finally:
-        buf.close()
+        if 'buf' in locals():
+            buf.close()
