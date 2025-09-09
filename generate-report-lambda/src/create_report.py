@@ -59,7 +59,7 @@ def create_report(team_id, project_id, title: str | None = None):
     doc.render(context)
 
     filename = make_report_filename(team_id, project_id, report_id)
-    storage_ref, presigned_url = save_document(doc, filename)
+    storage_ref, presigned_url = save_document(doc, filename, display_title=title or 'Report')
 
     return {
         'report_id': report_id,
@@ -72,6 +72,7 @@ def create_report(team_id, project_id, title: str | None = None):
 def save_document(
     doc: DocxTemplate, 
     filename: str,
+    display_title: str | None = None,
 ) -> tuple[str, str | None]:
     """
     Saves a docx document either locally or to S3 based on API_ENV
@@ -112,9 +113,22 @@ def save_document(
                 # Continue; presign may still work if eventual consistency (rare) but log it
             presigned = None
             if os.getenv('DISABLE_INLINE_PRESIGN', 'false').lower() not in ('1','true','yes'):  # only generate if not disabled
+                # Sanitize display filename
+                import re
+                base = (display_title or 'report').strip()
+                base = re.sub(r'\s+', '-', base)
+                base = re.sub(r'[^A-Za-z0-9.-]+', '', base)
+                if not base:
+                    base = 'report'
+                response_disposition = f'attachment; filename="{base}.docx"'
                 presigned = s3_client.generate_presigned_url(
                     'get_object',
-                    Params={'Bucket': bucket_name, 'Key': filename},
+                    Params={
+                        'Bucket': bucket_name,
+                        'Key': filename,
+                        'ResponseContentDisposition': response_disposition,
+                        'ResponseContentType': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    },
                     ExpiresIn=int(os.getenv('INLINE_PRESIGN_TTL_SECONDS', '900'))
                 )
             return f"s3://{bucket_name}/{filename}", presigned
