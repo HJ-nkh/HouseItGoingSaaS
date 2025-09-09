@@ -109,5 +109,11 @@ export type Simulation = {
 
 export type Report = {
   id: string;
-  // TODO: other fields?
-}
+  projectId?: number | string;
+  drawingId?: number | string;
+  simulationId?: number | string;
+  title?: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  downloadUrl?: string; // transient
+};
