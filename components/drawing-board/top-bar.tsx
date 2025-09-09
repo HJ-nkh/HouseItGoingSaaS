@@ -87,13 +87,13 @@ const TopBar: React.FC<TopBarProps> = ({
                   let reportId = report?.id;
 
                   if (!reportId) {
-                    const res = await reportMutations.createReport({
-                      simulationId
-                    });
-
+                    const res = await reportMutations.createReport({ simulationId, title });
                     reportId = res.id;
+                    if (res.downloadUrl) {
+                      downloadFile(res.downloadUrl, `report-${reportId}.docx`);
+                      return;
+                    }
                   }
-
                   downloadReport(reportId);
                 }}
               >

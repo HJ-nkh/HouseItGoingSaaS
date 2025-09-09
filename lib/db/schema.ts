@@ -95,6 +95,7 @@ export const invitations = pgTable('invitations', {
 export const projects = pgTable('projects', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
+  s3Key: text('s3_key'),
   address: text('address'),
   teamId: integer('team_id')
     .notNull()

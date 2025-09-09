@@ -149,7 +149,8 @@ def handler(event, context):
         title=requested_title,
         team_id=team_id,
         project_id=sim['project_id'],
-        drawing_id=sim.get('drawing_id')
+        drawing_id=sim.get('drawing_id'),
+        s3_key=report_meta.get('s3_key')
     )
     session.execute(insert_query)
     session.commit()

@@ -99,12 +99,13 @@ def save_document(
             buf.seek(0)
             s3_client = boto3.client('s3')
             s3_client.upload_fileobj(buf, bucket_name, filename)
-            # Generate short-lived presigned URL for immediate download (15 min)
-            presigned = s3_client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': bucket_name, 'Key': filename},
-                ExpiresIn=900
-            )
+            presigned = None
+            if os.getenv('DISABLE_INLINE_PRESIGN', 'false').lower() not in ('1','true','yes'):  # only generate if not disabled
+                presigned = s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': bucket_name, 'Key': filename},
+                    ExpiresIn=int(os.getenv('INLINE_PRESIGN_TTL_SECONDS', '900'))
+                )
             return f"s3://{bucket_name}/{filename}", presigned
     except Exception as e:
         print(f"Error saving report document: {e}")
