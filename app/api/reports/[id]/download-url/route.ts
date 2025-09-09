@@ -56,8 +56,9 @@ export async function GET(
       );
     }
 
-    const reportKey = generateReportKey(userWithTeam.teamId, report.projectId, report.id);
-    const downloadUrl = await generatePresignedUrl(bucketName, reportKey, 3600); // 1 hour expiration
+  // Prefer stored s3Key (exact path used at generation time) else fall back to deterministic key
+  const reportKey = (report as any).s3Key || generateReportKey(userWithTeam.teamId, report.projectId, report.id);
+  const downloadUrl = await generatePresignedUrl(bucketName, reportKey, 900); // 15 min expiration
     
     // Log the download activity
     await db.insert(activityLogs).values({
@@ -67,7 +68,15 @@ export async function GET(
       ipAddress: undefined,
     });
 
-    return NextResponse.json({ downloadUrl });
+    return new NextResponse(JSON.stringify({ downloadUrl }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   } catch (error) {
     console.error('Error generating download URL:', error);
     return NextResponse.json(

@@ -164,6 +164,7 @@ export const reports = pgTable('reports', {
     .notNull()
     .references(() => simulations.id),
   title: text('title').notNull(),
+  s3Key: text('s3_key'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),

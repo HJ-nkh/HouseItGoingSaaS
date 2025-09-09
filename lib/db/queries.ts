@@ -653,6 +653,7 @@ export async function getReportById(reportId: string) {
       projectId: reports.projectId,
       drawingId: reports.drawingId,
       simulationId: reports.simulationId,
+  s3Key: reports.s3Key,
       project: {
         id: projects.id,
         title: projects.title,
@@ -724,11 +725,19 @@ export async function softDeleteDrawing(drawingId: number) {
     throw new Error('User not associated with a team');
   }
 
-  return await db
+  const existing = await db.query.drawings.findFirst({
+    where: (d, { eq }) => eq(d.id, drawingId),
+    columns: { id: true, projectId: true, teamId: true, deletedAt: true }
+  });
+  if (!existing || existing.teamId !== userWithTeam.teamId || existing.deletedAt) {
+    throw new Error('Drawing not found or access denied');
+  }
+  const now = new Date();
+  const result = await db
     .update(drawings)
     .set({
-      deletedAt: new Date(),
-      updatedAt: new Date(),
+      deletedAt: now,
+      updatedAt: now,
     })
     .where(
       and(
@@ -736,6 +745,8 @@ export async function softDeleteDrawing(drawingId: number) {
         isNull(drawings.deletedAt)
       )
     );
+  await db.update(projects).set({ updatedAt: now }).where(eq(projects.id, existing.projectId));
+  return result;
 }
 
 export async function softDeleteSimulation(simulationId: number) {
@@ -749,11 +760,19 @@ export async function softDeleteSimulation(simulationId: number) {
     throw new Error('User not associated with a team');
   }
 
-  return await db
+  const existing = await db.query.simulations.findFirst({
+    where: (s, { eq }) => eq(s.id, simulationId),
+    columns: { id: true, projectId: true, teamId: true, deletedAt: true }
+  });
+  if (!existing || existing.teamId !== userWithTeam.teamId || existing.deletedAt) {
+    throw new Error('Simulation not found or access denied');
+  }
+  const now = new Date();
+  const result = await db
     .update(simulations)
     .set({
-      deletedAt: new Date(),
-      updatedAt: new Date(),
+      deletedAt: now,
+      updatedAt: now,
     })
     .where(
       and(
@@ -762,6 +781,8 @@ export async function softDeleteSimulation(simulationId: number) {
         isNull(simulations.deletedAt)
       )
     );
+  await db.update(projects).set({ updatedAt: now }).where(eq(projects.id, existing.projectId));
+  return result;
 }
 
 export async function softDeleteReport(reportId: string) {
