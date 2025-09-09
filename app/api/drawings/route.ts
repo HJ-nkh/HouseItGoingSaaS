@@ -82,10 +82,19 @@ export async function POST(request: NextRequest) {
 
     // Normalize / default history so DB not-null constraint is satisfied
     const safeHistory = ((): any => {
-      if (validatedData.history === null || validatedData.history === undefined) {
+      let h = validatedData.history;
+      if (h === null || h === undefined || h === '') {
         return { entities: [], actions: [] };
       }
-      return validatedData.history;
+      if (typeof h === 'string') {
+        try {
+          h = JSON.parse(h);
+        } catch {
+          // If it's a plain string that's not JSON, wrap it so we still store something structured
+          h = { entities: [], actions: [], raw: h };
+        }
+      }
+      return h;
     })();
 
     // Quick serializability check to surface clearer 400 instead of PG error
@@ -135,6 +144,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(newDrawing, { status: 201 });
   } catch (error) {
+    const debug = process.env.DRAWINGS_DEBUG === '1';
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid input', details: error.errors },
@@ -150,7 +160,9 @@ export async function POST(request: NextRequest) {
     }
     console.error('Error creating drawing:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      debug && error instanceof Error
+        ? { error: 'Internal Server Error', message: error.message, stack: error.stack }
+        : { error: 'Internal Server Error' },
       { status: 500 }
     );
   }
