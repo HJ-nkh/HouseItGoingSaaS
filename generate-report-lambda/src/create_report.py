@@ -98,7 +98,18 @@ def save_document(
             doc.save(buf)
             buf.seek(0)
             s3_client = boto3.client('s3')
-            s3_client.upload_fileobj(buf, bucket_name, filename)
+            extra_args = {}
+            # Allow enabling bucket-owner-full-control ACL if cross-account ownership issues suspected
+            if os.getenv('REPORT_OBJECT_ACL'):
+                extra_args['ACL'] = os.getenv('REPORT_OBJECT_ACL')
+            s3_client.upload_fileobj(buf, bucket_name, filename, ExtraArgs=extra_args if extra_args else None)
+
+            # Immediate HEAD to surface AccessDenied early (helps debugging presign failures)
+            try:
+                s3_client.head_object(Bucket=bucket_name, Key=filename)
+            except Exception as head_err:
+                print(f"[report][warn] HEAD after upload failed: {head_err}")
+                # Continue; presign may still work if eventual consistency (rare) but log it
             presigned = None
             if os.getenv('DISABLE_INLINE_PRESIGN', 'false').lower() not in ('1','true','yes'):  # only generate if not disabled
                 presigned = s3_client.generate_presigned_url(
