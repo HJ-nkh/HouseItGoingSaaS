@@ -10,7 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   const navItems = [
-    { href: '/', icon: Users, label: 'Projects' },
+    { href: '/', icon: Users, label: 'Projekter' },
   ];
 
   if (pathname.includes('/draw')) {
