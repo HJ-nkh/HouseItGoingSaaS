@@ -1,0 +1,9 @@
+DATABASE_URL=postgres://postgres:postgres@localhost:54322/postgres
+STRIPE_SECRET_KEY=sk_test_51RTLLkPZ4jA5wTjBMeqFnRzkJAcpFJHN4JzxEzXIvqerNtaOGul5c7KzUYFFIng1GH5cKu4AqkZEDj0JckA9y3OX00qDTJ9aey
+STRIPE_WEBHOOK_SECRET=whsec_f52b15e397a50d744c5db71b5d7f5b161e37934451667ad87ad8e7226277055c
+BASE_URL=http://localhost:3000
+AUTH_SECRET=39ab1435316e849dcfe1bd1abda55c5fe1adf6b0ab8729198af2604910ceebed
+LAMBDA_API_KEY=6e7ce879-8c29-4281-8adb-3831425d423f
+RUN_SIMULATION_LAMBDA_URL=https://l5j7hop6yn66xzh3qs4grtc3ei0djqrd.lambda-url.eu-north-1.on.aws/
+GENERATE_REPORT_LAMBDA_URL=https://your-lambda-url-for-generating-report
+REPORTS_BUCKET_NAME=your-reports-bucket-name

@@ -20,9 +20,15 @@ def make_figure_filename(team_id, project_id, report_id, fig_name):
     return f"{team_id}/{project_id}/{report_id}/{fig_name}"
 
 def create_report(team_id, project_id, title: str | None = None):
-    template_path = "./src/report_template_steel.docx"
+    # Resolve template relative to this file so script can be run from repo root or lambda root
+    here = os.path.dirname(__file__)
+    candidate_paths = [
+        os.path.join(here, 'report_template_steel.docx'),               # src/report_template_steel.docx
+        os.path.join(os.getcwd(), 'src', 'report_template_steel.docx'), # CWD/src/report_template_steel.docx
+    ]
+    template_path = next((p for p in candidate_paths if os.path.exists(p)), candidate_paths[0])
     if not os.path.exists(template_path):
-        raise FileNotFoundError(f"Report template not found at {template_path}")
+        raise FileNotFoundError(f"Report template not found. Looked in: {candidate_paths}")
     doc = DocxTemplate(template_path)
     report_id = str(uuid.uuid4())
 
@@ -34,16 +40,22 @@ def create_report(team_id, project_id, title: str | None = None):
     filename_2 = make_figure_filename(team_id, project_id, report_id, fig_name_2)
 
     fig = create_sample_plot()
-    save_plot(fig, filename_1)
+    path1 = save_plot(fig, filename_1)
 
     fig2  = create_sample_plot()
-    save_plot(fig2, filename_2)
+    path2 = save_plot(fig2, filename_2)
 
     context = {'title': title or 'Report'}
 
-    # Download plots from S3
-    temp_filepath_1 = download_plot(filename_1)
-    temp_filepath_2 = download_plot(filename_2)
+    bucket_name = os.getenv('REPORTS_BUCKET_NAME')
+    if bucket_name:
+        # Need to download from S3
+        temp_filepath_1 = download_plot(filename_1)
+        temp_filepath_2 = download_plot(filename_2)
+    else:
+        # Already local files; use returned paths
+        temp_filepath_1 = path1
+        temp_filepath_2 = path2
 
     # Create inline image references
     image = InlineImage(doc, temp_filepath_1, width=Mm(150))
