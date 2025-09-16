@@ -7,6 +7,7 @@ import uuid
 import io
 import boto3
 import numpy as np
+import json
 from plots import download_plot_descriptor
 from PIL import Image
 from Steel_fire import steeltempfire
@@ -97,12 +98,51 @@ def create_report(s, team_id, project_id, title: str | None = None):
         raise FileNotFoundError(f"Report template not found. Looked in: {candidate_paths}")
     doc = DocxTemplate(template_path)
 
-    # s is now a serialized JSON-compatible dict; wrap it to support attribute access
-    # Keep existing structure: s expected to be {'s': ...}
-    s_raw = s.get('s') if isinstance(s, dict) else s
-    s = _wrap_struct(s_raw)
+    # Normalize encoded_s input (can be dict, JSON string, or legacy forms)
+    def _normalize_state(payload):
+        # Helpful type log for diagnostics (safe/no secrets)
+        try:
+            print(f"[create_report] normalize incoming type={type(payload).__name__}")
+        except Exception:
+            pass
 
-    project = s.project
+        if payload is None:
+            raise ValueError("encoded_s is None")
+
+        # If payload is a JSON string, parse it
+        if isinstance(payload, str):
+            # Try to parse JSON string first
+            try:
+                parsed = json.loads(payload)
+                payload = parsed
+            except Exception:
+                # Likely a legacy base64 pickle or malformed
+                raise ValueError("encoded_s is a string and not valid JSON; this looks like a legacy blob. Re-run the simulation to produce JSON state.")
+
+        if isinstance(payload, dict):
+            # Handle our current schema first
+            if 'state' in payload and isinstance(payload['state'], (dict, list)):
+                return payload['state']
+            # Back-compat with older test harnesses
+            if 's' in payload and isinstance(payload['s'], (dict, list)):
+                return payload['s']
+            # Detect hard legacy marker we used during migration
+            if 'legacy_base64_pickle' in payload:
+                raise ValueError("encoded_s contains legacy_base64_pickle. Re-run the simulation to generate JSON state.")
+            # If it already looks like a plain state object, return as-is
+            return payload
+
+        # Unexpected type
+        raise TypeError(f"Unsupported encoded_s type: {type(payload).__name__}")
+
+    # Produce attribute-access wrapper for state
+    state = _normalize_state(s)
+    s = _wrap_struct(state)
+
+    # Access project (will raise AttributeError if missing)
+    project = getattr(s, 'project', None)
+    if project is None:
+        raise KeyError("State missing 'project' section after normalization. Ensure simulation stores project in encoded_s.state.project")
         
     #member = s.member
     ECmembers = s.loadCombinations[list(s.loadCombinations.keys())[0]]
