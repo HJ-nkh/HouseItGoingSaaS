@@ -140,7 +140,10 @@ def handler(event, context):
 
     requested_title = body.get('title') or 'Report'
 
-    report_meta = create_report(team_id, proj['id'], requested_title)
+    #Get colon from simulation encoded_s
+    s = sim.get('encoded_s')
+
+    report_meta = create_report(s, team_id, proj['id'], requested_title)
     print(f"report_id: {report_meta['report_id']}")
 
     insert_query = insert(reports_table).values(

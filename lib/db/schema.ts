@@ -143,6 +143,7 @@ export const simulations = pgTable('simulations', {
   entities: jsonb('entities'),
   inputHash: text('input_hash').notNull(),
   result: jsonb('result'),
+  meta: jsonb('meta'),
   encodedS: bytea('encoded_s'), // Pickle-serialized Python S class object stored as binary data
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
