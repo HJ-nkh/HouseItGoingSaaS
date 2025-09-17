@@ -8,6 +8,8 @@ import io
 import boto3
 import numpy as np
 import json
+import zipfile
+import re
 from plots import download_plot_descriptor
 from PIL import Image
 from Steel_fire import steeltempfire
@@ -86,17 +88,31 @@ def ignore(x):
 def make_report_filename(team_id, project_id, report_id):
     return f"{team_id}/{project_id}/{report_id}.docx"
 
+def _sanitize_filename_base(name: str, default: str = 'report') -> str:
+    """Sanitize a string to be safe for filenames (keeps letters, numbers, . _ -)."""
+    try:
+        s = name if isinstance(name, str) else ('' if name is None else str(name))
+    except Exception:
+        s = ''
+    s = s.strip()
+    s = re.sub(r'\s+', '-', s)
+    s = re.sub(r'[^A-Za-z0-9._-]+', '', s)
+    return s or default
+
 def create_report(s, team_id, project_id, title: str | None = None):
-    # Resolve template relative to this file so script can be run from repo root or lambda root
-    here = os.path.dirname(__file__)
-    candidate_paths = [
-        os.path.join(here, 'report_templates','Bjaelkeeftervisning_staal.docx'),               # src/report_template_steel.docx
-        os.path.join(os.getcwd(), 'src', 'report_templates','Bjaelkeeftervisning_staal.docx'), # CWD/src/report_template_steel.docx
-    ]
-    template_path = next((p for p in candidate_paths if os.path.exists(p)), candidate_paths[0])
-    if not os.path.exists(template_path):
-        raise FileNotFoundError(f"Report template not found. Looked in: {candidate_paths}")
-    doc = DocxTemplate(template_path)
+
+    def get_template_path(reportName: str) -> str   :
+        # Resolve template relative to this file so script can be run from repo root or lambda root
+        here = os.path.dirname(__file__)
+        candidate_paths = [
+            os.path.join(here, 'report_templates', f'{reportName}.docx'),               # src/report_template_steel.docx
+            os.path.join(os.getcwd(), 'src', 'report_templates', f'{reportName}.docx'), # CWD/src/report_template_steel.docx
+        ]
+        template_path = next((p for p in candidate_paths if os.path.exists(p)), candidate_paths[0])
+        if not os.path.exists(template_path):
+            raise FileNotFoundError(f"Report template not found. Looked in: {candidate_paths}")
+
+        return template_path
 
     # Normalize encoded_s input (can be dict, JSON string, or legacy forms)
     def _normalize_state(payload):
@@ -155,25 +171,22 @@ def create_report(s, team_id, project_id, title: str | None = None):
     # plots.sectionForceColor(s, s.model, ECmembers, project.projectNumber, 'F2', loadcombPlots)
     # plots.sectionForceColor(s, s.model, ECmembers, project.projectNumber, 'M', loadcombPlots)
 
+    reports: list[dict] = []
+    zip_entries: list[tuple[str, bytes]] = []
+
     for i, m in enumerate(ECmembers):
 
         report_id = str(uuid.uuid4())
 
         context = {}
+        # Collect all plot filenames for this member; we'll evict cache once after rendering/saving
+        image_filenames: list[str] = []
 
-        filename, path = plots.staticPlot(s.model, ECmembers, i, team_id, project_id, report_id)
-        context['IMGstatisksystem'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
+        # Preserve the original member beam name for file naming (before any reassignment to m below)
+        member_beamname = _sanitize_filename_base(str(m.beamname), f'member-{i+1}')
 
-        color = [4/255,10/255,161/255]
-        mat = s.sectionResults[i]['UR_loadcomb_mat_ULS']
-        URnames = s.sectionResults[i]['URnames_ULS']
-        URcombnames = s.sectionResults[0]['LoadCombnames_ULS']
-        
         membertype = m.beamtype
         memberprop = m.beamprop
-
-        filename, path = plots.URmat(mat, URnames, URcombnames, color, i, team_id, project_id, report_id)
-        context['IMGmatrixUR'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
         
         last = []
         for ii in range(s.numOfLoads):
@@ -201,10 +214,17 @@ def create_report(s, team_id, project_id, title: str | None = None):
         if membertype == 'Stål':
             if 'HE' in memberprop['profile'] or 'IP' in memberprop['profile'] or 'UN' in memberprop['profile']:
                 if 'HE' in memberprop['profile'] or 'IP' in memberprop['profile']:
-                    reportType = 'Bjælkeeftervisning_stål'
+                    
+                    reportType = 'beam_steel'
+                    template_path = get_template_path(reportType)
+                    doc = DocxTemplate(template_path)
+
                 elif 'UN' in memberprop['profile']:
-                    reportType = 'Bjælkeeftervisning_UNP_stål'
-            
+                    
+                    reportType = 'beam_steel_UNP'
+                    template_path = get_template_path(reportType)
+                    doc = DocxTemplate(template_path)
+
                 context.update({'last' : last,
                             'Vej' : project.road,
                             'By' : project.city,
@@ -259,7 +279,9 @@ def create_report(s, team_id, project_id, title: str | None = None):
                 UR_boejningsmoment625 = m.UR_boejningsmoment625
 
                 filename, path = plots.plotSectionForcesMember(s, s.member_discr[i], 'ULS', critLoadComb, team_id, project_id, report_id)
+                image_filenames.append(filename)
                 context['IMGsnitkraftBojning'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
+                
                 #image_paths['IMGsnitkraftBojning'] = ImagePath + "Member" + str(i+1) + critLoadComb + ".png"
                 
                 context.update({'critLoadCombBoejning' : critLoadComb,                                                               
@@ -274,7 +296,9 @@ def create_report(s, team_id, project_id, title: str | None = None):
                 UR_forskydning626 = m.UR_forskydning626
 
                 filename, path = plots.plotSectionForcesMember(s, s.member_discr[i], 'ULS', critLoadComb, team_id, project_id, report_id)
+                image_filenames.append(filename)
                 context['IMGsnitkraftForskydning'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
+                
                 
                 context.update({'critLoadCombForskydning' : critLoadComb, 
                             'A_v' : num2deci(m.A_v*10**6),
@@ -290,7 +314,9 @@ def create_report(s, team_id, project_id, title: str | None = None):
                 UR_Tryk631 = m.UR_Tryk631
 
                 filename, path = plots.plotSectionForcesMember(s, s.member_discr[i], 'ULS', critLoadComb, team_id, project_id, report_id)
+                image_filenames.append(filename)
                 context['IMGsnitkraftTryk'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
+                
                 
                 context.update({'critLoadCombTryk' : critLoadComb,
                             'soejletilfaelde' : m.soejletilfaelde,
@@ -334,7 +360,9 @@ def create_report(s, team_id, project_id, title: str | None = None):
                 UR_lokaleTvaergaaendeKraefter617 = m.UR_lokaleTvaergaaendeKraefter617
 
                 filename, path = plots.plotSectionForcesMember(s, s.member_discr[i], 'ULS', critLoadComb, team_id, project_id, report_id)
+                image_filenames.append(filename)
                 context['IMGsnitkraftKropsforstaerkning'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
+                
 
                 
                 context.update({'critLoadCombKropsforstaerkning' : critLoadComb,         
@@ -441,7 +469,9 @@ def create_report(s, team_id, project_id, title: str | None = None):
                         
             
             elif 'RH' in memberprop['profile']:
-                reportType = 'Søjleeftervisning_RHS_stål'
+                reportType = 'column_steel_RHS'
+                template_path = get_template_path(reportType)
+                doc = DocxTemplate(template_path)
                 
                 critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb_ULS']['Tryk - DS/EN 1993-1-1 6.3.1']
                 ECmembers = s.loadCombinations['ULS'][critLoadComb]
@@ -529,13 +559,19 @@ def create_report(s, team_id, project_id, title: str | None = None):
         
         elif membertype == 'Træ':
             if 'GL' in memberprop['strength class']:
-                reportType = 'Bjælkeeftervisning_træ'
+                reportType = 'beam_wood'
+                template_path = get_template_path(reportType)
+                doc = DocxTemplate(template_path)
                 
                 print('Report not implemented for Glue Laminated')
             
                 
             elif 'C' in memberprop['strength class'] or 'T' in memberprop['strength class']:
-                reportType = 'Bjælkeeftervisning_træ'
+
+                reportType = 'beam_wood'
+                template_path = get_template_path(reportType)
+                doc = DocxTemplate(template_path)
+                
                 material = 'Konstruktionstræ'
                 
                 m = ECmembers[i]
@@ -569,12 +605,13 @@ def create_report(s, team_id, project_id, title: str | None = None):
                             'k_def' : num2deci(m.k_def),
                             }
                 # ------------------------------------ Forskydning ----------------------------------------------#
-                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb']['UR_forskydning617']
-                ECmembers = s.loadCombinations[critLoadComb]
+                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb_ULS']['Forskydning - DS/EN 1995 6.1.7']
+                ECmembers = s.loadCombinations['ULS'][critLoadComb]
                 m = ECmembers[i]
 
-                plots.plotSectionForcesMember(s, project.projectNumber, critLoadComb)
-                image_paths['IMGsnitkraftForskydning'] = ImagePath + "Member" + str(i+1) + critLoadComb + ".png"
+                filename, path = plots.plotSectionForcesMember(s, s.member_discr[i], 'ULS', critLoadComb, team_id, project_id, report_id)
+                image_filenames.append(filename)
+                context['IMGsnitkraftForskydning'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
                 
                 context.update({'critLoadCombForskydning' : critLoadComb,         
                             'k_cr' : num2deci(m.k_cr),
@@ -583,16 +620,15 @@ def create_report(s, team_id, project_id, title: str | None = None):
                             'tau' : num2deci(m.tau*10**-6),
                             'f_vd' : num2deci(m.f_vd*10**-6),
                             'UR_forskydning617' : num2percent(m.UR_forskydning617)})
-                
 
                 # -------------------------------------- Bøjning ----------------------------------------------#
-                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb']['UR_boejning616']
-                ECmembers = s.loadCombinations[critLoadComb]
+                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb_ULS']['Bøjning - DS/EN 1995 6.1.6']
+                ECmembers = s.loadCombinations['ULS'][critLoadComb]
                 m = ECmembers[i]
 
-                image_paths['IMGsnitkraftBojning'] = ImagePath + "Member" + str(i+1) + critLoadComb + ".png"
-                if not os.path.exists(image_paths['IMGsnitkraftBojning']):
-                    plots.plotSectionForcesMember(s, project.projectNumber, critLoadComb)
+                filename, path = plots.plotSectionForcesMember(s, s.member_discr[i], 'ULS', critLoadComb, team_id, project_id, report_id)
+                image_filenames.append(filename)
+                context['IMGsnitkraftBojning'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
                 
                 context.update({'critLoadCombBoejning' : critLoadComb,         
                             'k_hm' : num2deci(m.k_hm),
@@ -602,13 +638,13 @@ def create_report(s, team_id, project_id, title: str | None = None):
                             'UR_boejning616' : num2percent(m.UR_boejning616)})
                 
                 # ------------------------------------ Traek -------------------------------------------------#
-                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb']['UR_traekParalleltMedFibrene612']
-                ECmembers = s.loadCombinations[critLoadComb]
+                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb_ULS']['Træk parallelt med fibrene - DS/EN 1995 6.1.2']
+                ECmembers = s.loadCombinations['ULS'][critLoadComb]
                 m = ECmembers[i]
 
-                image_paths['IMGsnitkraftTraek'] = ImagePath + "Member" + str(i+1) + critLoadComb + ".png"
-                if not os.path.exists(image_paths['IMGsnitkraftTraek']):
-                    plots.plotSectionForcesMember(s, project.projectNumber, critLoadComb)
+                filename, path = plots.plotSectionForcesMember(s, s.member_discr[i], 'ULS', critLoadComb, team_id, project_id, report_id)
+                image_filenames.append(filename)
+                context['IMGsnitkraftTraek'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
                 
                 context.update({'critLoadCombTraek' : critLoadComb,         
                             'k_ht' : num2deci(m.k_ht),
@@ -618,13 +654,13 @@ def create_report(s, team_id, project_id, title: str | None = None):
                             'UR_traekParalleltMedFibrene612' : num2percent(m.UR_traekParalleltMedFibrene612)})
                 
                 # ------------------------------------ Tryk --------------------------------------------------#
-                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb']['UR_trykParalleltMedFibrene614']
-                ECmembers = s.loadCombinations[critLoadComb]
+                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb_ULS']['Tryk parallelt med fibrene - DS/EN 1995 6.1.4']
+                ECmembers = s.loadCombinations['ULS'][critLoadComb]
                 m = ECmembers[i]
 
-                image_paths['IMGsnitkraftTryk'] = ImagePath + "Member" + str(i+1) + critLoadComb + ".png"
-                if not os.path.exists(image_paths['IMGsnitkraftTryk']):
-                    plots.plotSectionForcesMember(s, project.projectNumber, critLoadComb)
+                filename, path = plots.plotSectionForcesMember(s, s.member_discr[i], 'ULS', critLoadComb, team_id, project_id, report_id)
+                image_filenames.append(filename)
+                context['IMGsnitkraftTryk'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
                 
                 context.update({'critLoadCombTraek' : critLoadComb,         
                             'N_cEd' : num2deci(m.N_cEd*10**-3),
@@ -633,13 +669,13 @@ def create_report(s, team_id, project_id, title: str | None = None):
                             'UR_trykParalleltMedFibrene614' : num2percent(m.UR_trykParalleltMedFibrene614)})
                 
                 # ------------------------------------ Træk og boejning --------------------------------------#
-                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb']['UR_boejningOgTraek623']
-                ECmembers = s.loadCombinations[critLoadComb]
+                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb_ULS']['Kombineret bøjning og aksialt træk - DS/EN 1995 6.2.3']
+                ECmembers = s.loadCombinations['ULS'][critLoadComb]
                 m = ECmembers[i]
 
-                image_paths['IMGsnitkraftTraekOgBoejning'] = ImagePath + "Member" + str(i+1) + critLoadComb + ".png"
-                if not os.path.exists(image_paths['IMGsnitkraftTraekOgBoejning']):
-                    plots.plotSectionForcesMember(s, project.projectNumber, critLoadComb)
+                filename, path = plots.plotSectionForcesMember(s, s.member_discr[i], 'ULS', critLoadComb, team_id, project_id, report_id)
+                image_filenames.append(filename)
+                context['IMGsnitkraftTraekOgBoejning'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
                 
                 context.update({'critLoadCombBoejningOgTraek' : critLoadComb,         
                             'UR_traekParalleltMedFibrene612' : num2percent(m.UR_traekParalleltMedFibrene612),
@@ -647,13 +683,13 @@ def create_report(s, team_id, project_id, title: str | None = None):
                             'UR_boejningOgTraek623' : num2percent(m.UR_boejningOgTraek623)})
                 
                 # ------------------------------------ Tryk og boejning --------------------------------------#
-                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb']['UR_boejningOgTryk624']
-                ECmembers = s.loadCombinations[critLoadComb]
+                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb_ULS']['Kombineret bøjning og aksialt tryk - DS/EN 1995 6.2.4']
+                ECmembers = s.loadCombinations['ULS'][critLoadComb]
                 m = ECmembers[i]
 
-                image_paths['IMGsnitkraftTrykOgBoejning'] = ImagePath + "Member" + str(i+1) + critLoadComb + ".png"
-                if not os.path.exists(image_paths['IMGsnitkraftTrykOgBoejning']):
-                    plots.plotSectionForcesMember(s, project.projectNumber, critLoadComb)
+                filename, path = plots.plotSectionForcesMember(s, s.member_discr[i], 'ULS', critLoadComb, team_id, project_id, report_id)
+                image_filenames.append(filename)
+                context['IMGsnitkraftTrykOgBoejning'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
                 
                 context.update({'critLoadCombBoejningOgTryk' : critLoadComb,         
                             'UR_trykParalleltMedFibrene614' : num2percent(m.UR_trykParalleltMedFibrene614),
@@ -736,7 +772,23 @@ def create_report(s, team_id, project_id, title: str | None = None):
         desired_height = 80  # Desired height in mm
 
         filename, path = plots.plotSectionForcesMemberEnvelope(s, s.member_discr[i], 'ULS', team_id, project_id, report_id)
+        image_filenames.append(filename)
         context['IMGsectionForceEnvelope'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
+
+        filename, path = plots.staticPlot(s.model, ECmembers, i, team_id, project_id, report_id)
+        image_filenames.append(filename)
+        context['IMGstatisksystem'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
+        
+
+        color = [4/255,10/255,161/255]
+        mat = s.sectionResults[i]['UR_loadcomb_mat_ULS']
+        URnames = s.sectionResults[i]['URnames_ULS']
+        URcombnames = s.sectionResults[0]['LoadCombnames_ULS']
+
+        filename, path = plots.URmat(mat, URnames, URcombnames, color, i, team_id, project_id, report_id)
+        image_filenames.append(filename)
+        context['IMGmatrixUR'] = InlineImage(doc, download_plot_descriptor(filename), width=Mm(120))
+        
 
 
         # for key, image_path in image_paths.items():
@@ -778,13 +830,118 @@ def create_report(s, team_id, project_id, title: str | None = None):
 
         doc.render(context)
         filename_report = make_report_filename(team_id, project_id, report_id)
-        storage_ref, presigned_url = save_document(doc, filename_report, display_title=title or 'Report')
 
+        # Save individual doc (S3 or local) and also capture bytes for ZIP
+        # Use the beam name as the suggested download filename
+        display_title_member = member_beamname
+        storage_ref, presigned_url = save_document(doc, filename_report, display_title=display_title_member)
+
+        # Capture bytes for zip archive
+        try:
+            _buf = io.BytesIO()
+            doc.save(_buf)
+            _buf.seek(0)
+            zip_entries.append((f"{member_beamname}.docx", _buf.getvalue()))
+        finally:
+            try:
+                _buf.close()
+            except Exception:
+                pass
+
+        reports.append({
+            'member_index': i,
+            'report_id': report_id,
+            's3_key': filename_report,
+            'storage_ref': storage_ref,
+            'download_url': presigned_url,
+        })
+
+        # Evict all cached plot images for this member now that the doc has been rendered and saved
+        for _fn in image_filenames:
+            try:
+                plots.evict_plot_cache(_fn)
+            except Exception:
+                pass
+
+    # After generating individual reports, also create a single ZIP for convenient download
+    if not reports:
+        raise ValueError('No members found to generate reports')
+
+    # Build ZIP in-memory
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+        for name, data in zip_entries:
+            # Ensure unique names in case of collisions
+            base, ext = os.path.splitext(name)
+            candidate = name
+            cnt = 1
+            while candidate in zf.namelist():
+                candidate = f"{base}-{cnt}{ext}"
+                cnt += 1
+            zf.writestr(candidate, data)
+    zip_buf.seek(0)
+
+    # Derive a friendly base title
+    base_title = (title or 'reports').strip()
+    base_title = re.sub(r'\s+', '-', base_title)
+    base_title = re.sub(r'[^A-Za-z0-9.-]+', '', base_title) or 'reports'
+
+    # Save ZIP to S3 or locally, mirroring save_document behavior
+    bundle_report_id = str(uuid.uuid4())
+    bucket_name = os.getenv('REPORTS_BUCKET_NAME')
+    dev_local = not bucket_name
+    zip_storage_ref: str
+    zip_presigned_url: Optional[str] = None
+    zip_s3_key: Optional[str] = None
+    if dev_local:
+        base_dir = '/tmp' if os.getenv('AWS_LAMBDA_FUNCTION_NAME') else os.path.join(os.getcwd(), 'output')
+        os.makedirs(base_dir, exist_ok=True)
+        zip_local_name = f"{base_title}-{bundle_report_id[:8]}.zip"
+        zip_local_path = os.path.join(base_dir, zip_local_name)
+        with open(zip_local_path, 'wb') as f:
+            f.write(zip_buf.getvalue())
+        zip_storage_ref = zip_local_path
+    else:
+        s3_client = boto3.client('s3')
+        zip_key = f"{team_id}/{project_id}/{bundle_report_id}.zip"
+        extra_args = {'ContentType': 'application/zip'}
+        if os.getenv('REPORT_OBJECT_ACL'):
+            extra_args['ACL'] = os.getenv('REPORT_OBJECT_ACL')
+        s3_client.put_object(Bucket=bucket_name, Key=zip_key, Body=zip_buf.getvalue(), **extra_args)
+        # Best effort HEAD
+        try:
+            s3_client.head_object(Bucket=bucket_name, Key=zip_key)
+        except Exception as head_err:
+            print(f"[report][warn] HEAD after ZIP upload failed: {head_err}")
+        # Presign
+        response_disposition = f'attachment; filename="{base_title}.zip"'
+        zip_presigned_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': bucket_name,
+                'Key': zip_key,
+                'ResponseContentDisposition': response_disposition,
+                'ResponseContentType': 'application/zip'
+            },
+            ExpiresIn=int(os.getenv('INLINE_PRESIGN_TTL_SECONDS', '900'))
+        )
+        zip_storage_ref = f"s3://{bucket_name}/{zip_key}"
+        zip_s3_key = zip_key
+
+    # Primary download points to ZIP, while returning the individual reports as well
     return {
-        'report_id': report_id,
-        's3_key': filename_report,
-        'storage_ref': storage_ref,
-        'download_url': presigned_url,
+        'reports': reports,
+        'zip': {
+            'report_id': bundle_report_id,
+            's3_key': zip_s3_key,
+            'storage_ref': zip_storage_ref,
+            'download_url': zip_presigned_url,
+        },
+        # Back-compat convenience: make top-level fields point to the ZIP bundle
+        'report_id': bundle_report_id,
+        's3_key': zip_s3_key,
+        'storage_ref': zip_storage_ref,
+        'download_url': zip_presigned_url,
     }
 
     

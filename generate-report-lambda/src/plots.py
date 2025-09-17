@@ -11,6 +11,13 @@ import boto3
 import os
 import io
 from typing import Optional
+import warnings
+from matplotlib.collections import LineCollection
+try:
+    from scipy.interpolate import CubicSpline, interp1d
+except Exception:
+    CubicSpline = None  # type: ignore
+    interp1d = None  # type: ignore
 from dotenv import load_dotenv
 
 import supports
@@ -18,11 +25,19 @@ import discretize
 
 load_dotenv()
 
+# Suppress noisy matplotlib warnings that don't affect output but spam logs
+warnings.filterwarnings(
+    "ignore",
+    message=r".*fixed y limits to fulfill fixed data aspect.*",
+    category=UserWarning,
+)
+
 # In-memory cache keyed by logical filename/key
 PLOT_CACHE: dict[str, bytes] = {}
+PLOT_CACHE_ENABLED = os.getenv('PLOT_CACHE_ENABLED', 'true').lower() in ('1', 'true', 'yes')
 
 # Max size to keep images purely in-memory (in MB). Above this, fall back to /tmp
-PLOT_INMEMORY_MAX_MB = int(os.getenv('PLOT_INMEMORY_MAX_MB', '8'))
+PLOT_INMEMORY_MAX_MB = int(os.getenv('PLOT_INMEMORY_MAX_MB', '64'))
 PLOT_INMEMORY_MAX_BYTES = PLOT_INMEMORY_MAX_MB * 1024 * 1024
 
 output_dir = 'output'
@@ -60,7 +75,8 @@ def save_plot(
         # If the rendered image is small enough, keep in memory
         if len(data) <= PLOT_INMEMORY_MAX_BYTES:
             if dev_local:
-                PLOT_CACHE[filepath] = data
+                if PLOT_CACHE_ENABLED:
+                    PLOT_CACHE[filepath] = data
                 return filepath
             else:
                 # Upload to S3 from memory
@@ -72,7 +88,8 @@ def save_plot(
                     ExtraArgs={'ContentType': content_type}
                 )
                 # Cache small images in memory for reuse within same invocation
-                PLOT_CACHE[filepath] = data
+                if PLOT_CACHE_ENABLED:
+                    PLOT_CACHE[filepath] = data
                 return f"https://{bucket_name}.s3.amazonaws.com/{filepath}"
 
         # Otherwise, fall through to /tmp path fallback below
@@ -116,6 +133,11 @@ def save_plot(
     except Exception as e:
         print(f"Error saving plot to /tmp: {e}")
         raise
+    finally:
+        try:
+            plt.close(fig)
+        except Exception:
+            pass
 
 def download_plot_descriptor(filename: str) -> io.BytesIO:
     """
@@ -161,8 +183,14 @@ def download_plot_descriptor(filename: str) -> io.BytesIO:
     obj = s3_client.get_object(Bucket=bucket_name, Key=key)
     data = obj['Body'].read()
     # Optionally populate cache for subsequent reads
-    PLOT_CACHE[filepath] = data
+    if PLOT_CACHE_ENABLED:
+        PLOT_CACHE[filepath] = data
     return io.BytesIO(data)
+
+def evict_plot_cache(filename: str) -> bool:
+    """Remove a plot entry from the in-memory cache, if present. Returns True if removed."""
+    filepath = get_img_filepath(filename)
+    return PLOT_CACHE.pop(filepath, None) is not None
 
 ### ----------------------------------------------- Helper functions -----------------------------------------------------------
 
@@ -454,7 +482,7 @@ def staticPlot(model, member, highligtedBeamIndex, team_id, project_id, report_i
             ax = supports.simple_support(X[node,0], X[node,1], dx/80, 0, ax)
  
     
-    ax.axis('equal')
+    ax.set_aspect('equal', adjustable='box')
     ax.margins(0.25,0.25)
     plt.grid()  
     
@@ -557,7 +585,7 @@ def sectionForce(self, s, model, member, projectNumber, forceType, loadcomb):
         elif node_constraints[node] == [0, 1] or node_constraints[node] == [1, 0]:
             ax = supports.simple_support(X[node,0], X[node,1], dx/20, 0, ax)
     
-    ax.axis('equal')
+    ax.set_aspect('equal', adjustable='box')
     ax.margins(0.25,0.25)  
     
     # if dx < 2:
@@ -655,7 +683,7 @@ def sectionForceColor(self, s, model, member, projectNumber, forceType, loadcomb
         elif node_constraints[node] == [0, 1] or node_constraints[node] == [1, 0]:
             ax = supports.simple_support(X[node,0], X[node,1], dx/20, 0, ax)
     
-    ax.axis('equal')
+    ax.set_aspect('equal', adjustable='box')
     ax.margins(0.25,0.25)  
     
     # if dx < 2:
@@ -731,10 +759,10 @@ def getDeformation(self, beam):
         # Plot deformations
         ax.plot(Xs[0, :], Xs[1, :], color='b')
 
-    ax.axis('equal')
+    ax.set_aspect('equal', adjustable='box')
     ax.margins(0.05, 0.05)
     ax.set_title("Deformation")
-    ax.set_aspect('equal', adjustable='datalim')
+    ax.set_aspect('equal', adjustable='box')
     plt.show()
     plt.draw()
 
@@ -815,9 +843,14 @@ def plotSectionForcesMember(s, member, ls, loadcomb, team_id, project_id, report
         
         SFfine = s.loadCombinationsFE_discr[ls][sectionForceType][loadcomb][flattened_index]
 
-        scale = 1/np.max(np.abs(SFfine))*member['L']/6
+        # Robust scaling: avoid divide-by-zero and NaNs when SFfine is all zeros
+        max_abs = np.max(np.abs(SFfine)) if SFfine.size else 0.0
+        if max_abs <= 1e-12:
+            scale = 0.0
+        else:
+            scale = (1.0 / max_abs) * member['L'] / 6.0
         x_loc_discr = s.X_loc_discr[flattened_index]
-        XY = np.dot(np.transpose(member['AuBeam']), [x_loc_discr,scale*SFfine])
+        XY = np.dot(np.transpose(member['AuBeam']), [x_loc_discr, scale * SFfine])
 
 
         max_SF_idx = np.argmax(SFfine)
@@ -930,7 +963,7 @@ def plotSectionForcesMember(s, member, ls, loadcomb, team_id, project_id, report
 
 
     for ax, xlabel, title in zip(axs, xlabels, titles):
-        ax.axis('equal')
+        ax.set_aspect('equal', adjustable='box')
         ax.set_xlim([global_min_x, global_max_x])
         ax.set_ylim([global_min_y, global_max_y])
         ax.set_xlabel(xlabel)

@@ -7,7 +7,7 @@ Created on Mon Apr 18 16:38:43 2022
 
 import numpy as np
 from Moon2Mars.EC3 import EC3base, EC3calc
-from Moon2Mars.EC5 import EC5
+from Moon2Mars.EC5 import EC5base, EC5calc
 from Moon2Mars.EC6 import EC6
 from scipy.interpolate import CubicSpline
 import copy as copy
@@ -247,7 +247,6 @@ class S():
             self.R0_type[i] = 'x' if self.model.U[i]%3 == 0 else 'y' if self.model.U[i]%3 == 1 else 'r'
             self.R0_coordinates[i,:] = self.model.X[np.floor(self.model.U[i]/3).astype(int),:] # R0 er i x, y eller r retning, afhængig af U. U er 0,1 eller 2 for hhv. x,y,r retning. R0_coordinates er det element som R0 er i, dvs. 0,1,2 for hhv. x,y,r retning
 
-        aaa=1
         ########################################################## --------------- LIMIT STATES ------------- ###############################################################
 
         # --------- Calculate section forces for each load combination using superposition-principle on section forces etc. --------- #
@@ -622,14 +621,14 @@ class S():
 
         self.initMemberECobj = [None]*len(self.member_discr)
         
-        for comb in self.loadCombinationsFE_discr['ULS']['F1']:
-            self.loadCombinations['ULS'][comb] = self.getURvalues(comb, 'ULS')
+        for comb in loadcombMatDict_ULS:
+            self.loadCombinations['ULS'][comb] = self.getURvalues(comb, 'ULS', loadcombMatDict_ULS)
 
-        for comb in self.loadCombinationsFE_discr['SLS']['F1']:
-            self.loadCombinations['SLS'][comb] = self.getURvalues(comb, 'SLS')
+        for comb in loadcombMatDict_SLS:
+            self.loadCombinations['SLS'][comb] = self.getURvalues(comb, 'SLS', loadcombMatDict_SLS)
 
-        for comb in self.loadCombinationsFE_discr['ALS']['F1']:
-            self.loadCombinations['ALS'][comb] = self.getURvalues(comb, 'ALS') #ALS er ikke implementeret endnu, så vi bruger ULS. Først nødvendigt når kipning skal medtages, da der så skal itereres mht. ståltemp og udnyttelse
+        for comb in loadcombMatDict_ALS:
+            self.loadCombinations['ALS'][comb] = self.getURvalues(comb, 'ALS', loadcombMatDict_ALS) #ALS er ikke implementeret endnu, så vi bruger ULS. Først nødvendigt når kipning skal medtages, da der så skal itereres mht. ståltemp og udnyttelse
 
 
        #______________________________________________________________________________________________________________________#
@@ -844,99 +843,11 @@ class S():
             section['loadIds'] = self.loadIds
             self.sectionResults.append(section)
 
-        tempIndices_ULS = [
-            idx
-            for member in self.sectionResultsMember
-            for idx in member['UR_loadcomb_top_indices_ULS']
-        ]
-        unique_vals_ULS, _ = np.unique(tempIndices_ULS, return_index=True)
-
-        tempIndices_SLS = [
-            idx
-            for member in self.sectionResultsMember
-            for idx in member['UR_loadcomb_top_indices_SLS']
-        ]
-        unique_vals_SLS, _ = np.unique(tempIndices_SLS, return_index=True)
-
-        tempIndices_ALS = [
-            idx
-            for member in self.sectionResultsMember
-            for idx in member['UR_loadcomb_top_indices_ALS']
-        ]
-        unique_vals_ALS, _ = np.unique(tempIndices_ALS, return_index=True)
-
-        for i in range(len(self.sectionResultsMember)):
-            section = {}
-            UR_CriticalLoadComb_ULS = {}
-            UR_CriticalLoadComb_SLS = {}
-            UR_CriticalLoadComb_ALS = {}
-
-            section['URnames_ULS'] = self.sectionResultsFull[i]['URnames_ULS']
-            section['LoadCombnames_ULS'] = list(np.array(self.sectionResultsFull[i]['LoadCombnames_ULS'])[unique_vals_ULS])
-            section['UR_loadcomb_mat_ULS'] = self.sectionResultsFull[i]['UR_loadcomb_mat_ULS'][:,unique_vals_ULS]
-
-            section['URnames_SLS'] = self.sectionResultsFull[i]['URnames_SLS']
-            section['LoadCombnames_SLS'] = list(np.array(self.sectionResultsFull[i]['LoadCombnames_SLS'])[unique_vals_SLS])
-            section['UR_loadcomb_mat_SLS'] = self.sectionResultsFull[i]['UR_loadcomb_mat_SLS'][:,unique_vals_SLS]
-
-            section['URnames_ALS'] = self.sectionResultsFull[i]['URnames_ALS']
-            section['LoadCombnames_ALS'] = list(np.array(self.sectionResultsFull[i]['LoadCombnames_ALS'])[unique_vals_ALS])
-            section['UR_loadcomb_mat_ALS'] = self.sectionResultsFull[i]['UR_loadcomb_mat_ALS'][:,unique_vals_ALS]
-
-            if not section['UR_loadcomb_mat_ULS'].size==0:
-                maxArg_ULS = np.argmax(section['UR_loadcomb_mat_ULS'],1)
-            if not section['UR_loadcomb_mat_ULS'].size==0:
-                for ii in range(len(maxArg_ULS)):
-                    UR_CriticalLoadComb_ULS[section['URnames_ULS'][ii]] = section['LoadCombnames_ULS'][maxArg_ULS[ii]]
-
-
-            if not section['UR_loadcomb_mat_SLS'].size==0:
-                maxArg_SLS = np.argmax(section['UR_loadcomb_mat_SLS'],1)
-            if not section['UR_loadcomb_mat_SLS'].size==0:
-                for ii in range(len(maxArg_SLS)):
-                    UR_CriticalLoadComb_SLS[section['URnames_SLS'][ii]] = section['LoadCombnames_SLS'][maxArg_SLS[ii]]
-
-
-            if not section['UR_loadcomb_mat_ALS'].size==0:
-                maxArg_ALS = np.argmax(section['UR_loadcomb_mat_ALS'],1)
-            if not section['UR_loadcomb_mat_ALS'].size==0:
-                for ii in range(len(maxArg_ALS)):
-                    UR_CriticalLoadComb_ALS[section['URnames_ALS'][ii]] = section['LoadCombnames_ALS'][maxArg_ALS[ii]]
-
-
-            section['UR_CriticalLoadComb_ULS'] = UR_CriticalLoadComb_ULS
-            section['UR_CriticalLoadComb_SLS'] = UR_CriticalLoadComb_SLS
-            section['UR_CriticalLoadComb_ALS'] = UR_CriticalLoadComb_ALS
-
-
-            loadcombMatDict_reduced = {}
-            for loadcomb in section['LoadCombnames_ULS']:
-                loadcombMatDict_reduced[loadcomb] = loadcombMatDict_ULS[loadcomb]
-            section['loadcombMatDict_ULS'] = loadcombMatDict_reduced
-
-
-            loadcombMatDict_reduced = {}
-            for loadcomb in section['LoadCombnames_SLS']:
-                loadcombMatDict_reduced[loadcomb] = loadcombMatDict_SLS[loadcomb]
-            section['loadcombMatDict_SLS'] = loadcombMatDict_reduced 
-
-
-            loadcombMatDict_reduced = {}
-            for loadcomb in section['LoadCombnames_ALS']:
-                loadcombMatDict_reduced[loadcomb] = loadcombMatDict_ALS[loadcomb]
-            section['loadcombMatDict_ALS'] = loadcombMatDict_reduced           
-            
-            
-            section['loadIds'] = self.loadIds
-            self.sectionResults.append(section)
-
-        aaa=1
-
 
 ##########################################################################################################################
    
 
-    def getURvalues(self, lc, typeOfState):
+    def getURvalues(self, lc, typeOfState, loadcombMatDict):
         memberList = []
         for i in range(len(self.member_discr)):
             member = self.member_discr[i]
@@ -946,6 +857,8 @@ class S():
             if self.initMemberECobj[i] == None:
                 if member['membertype'] == 'Stål':
                     self.initMemberECobj[i] = EC3base(self, member)
+                if member['membertype'] == 'Træ':
+                    self.initMemberECobj[i] = EC5base(self, member)
                 elif member['membertype'] == 'Murværk':
                     self.initMemberECobj[i] = EC6(self.model, member, self.project)
 
@@ -954,7 +867,7 @@ class S():
             if member['membertype'] == 'Stål':
                 ECcalcObj = EC3calc(ECbaseObj)      # object containing methods for calculations
             elif member['membertype'] == 'Træ':
-                ECcalcObj = EC5(self, member)
+                ECcalcObj = EC5calc(ECbaseObj, lc, loadcombMatDict, typeOfState)      # object containing methods for calculations
             elif member['membertype'] == 'Murværk':
                 ECcalcObj = EC3calc(ECbaseObj)      # object containing methods for calculations
 
@@ -992,7 +905,6 @@ class S():
                     memberList.append(ECcalcObj)
 
             elif member['membertype'] == 'Træ':
-                ECcalcObj.dom = lc
                 if typeOfState == 'ULS' or typeOfState == 'ALS':
                     ECcalcObj.boejning616(1)
                     ECcalcObj.forskydning617()

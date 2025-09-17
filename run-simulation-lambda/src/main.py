@@ -218,6 +218,7 @@ def handler(event, context):
 
     # Execution phase
     # Run and persist
+
     try:
         s.run()
         members = { b['id']: b for b in s.member_discr }
