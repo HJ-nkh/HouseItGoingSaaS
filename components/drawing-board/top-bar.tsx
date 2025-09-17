@@ -12,7 +12,7 @@ import { downloadFile } from "@/lib/utils";
 import { CreateDrawingData, useReportMutations, useReports } from "@/lib/api";
 import { useSimulationMutations } from "@/lib/api/use-simulations";
 import { useParams, useRouter } from "next/navigation";
-import { Download, Triangle, Archive, Trash2 } from "lucide-react";
+import { Download, Triangle, Archive, Trash2, Loader2 } from "lucide-react";
 import { RxChevronLeft } from "react-icons/rx";
 
 type TopBarProps = {
@@ -85,6 +85,14 @@ const TopBar: React.FC<TopBarProps> = ({
         )}
         {drawing && (
           <>
+            {reportMutations.loading && (
+              <div className="text-sm text-gray-500 italic flex items-center gap-2 mr-1">
+                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                <span>
+                  Dokumentation udarbejdes – dette kan tage lidt tid. Du kan fortsætte arbejdet imens.
+                </span>
+              </div>
+            )}
             {showDownload && simulationId && (
               <Button
                 variant="default"
