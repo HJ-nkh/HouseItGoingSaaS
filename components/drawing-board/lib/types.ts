@@ -8,6 +8,7 @@ export enum Tool {
   DistributedLoad = "DistributedLoad",
   MomentLoad = "MomentLoad",
   Support = "Support",
+  WindCalculator = "WindCalculator",
 }
 
 export enum Entity {
@@ -48,6 +49,14 @@ export type Action = {
   };
 };
 
+export type LoadGroup = {
+  id: string;
+  name: string;
+  type: LoadType;
+  loadIds: string[];
+  visible: boolean;
+};
+
 export type DrawingState = {
   history: Action[];
   tool: Tool;
@@ -79,6 +88,8 @@ export type DrawingState = {
   createNewNode: boolean;
   startNodeId: string | null;
   startMemberId: string | null;
+  loadGroups: LoadGroup[];
+  nextGroupNumber: number;
   showEntities: {
     distributedLoadsButton: boolean;
     pointLoadsButton: boolean;
@@ -111,6 +122,8 @@ export type DrawingState = {
       [LoadType.Dead]: boolean;
       [LoadType.Live]: boolean;
     };
+    groups: { [groupId: string]: boolean };
+    activeGroupId: string | null;
   };
   showSimulation: boolean;
   hasChanges: boolean;
@@ -135,6 +148,26 @@ export type WindCalculatorSettings = {
   terrainCategory: '0' | '1' | '2' | '3' | '4';
   formFactor: 'main_structure' | 'small_elements';
   windDirection: number;
+  // Wind calculator construction elements and load area
+  selectedLineId?: number | null;
+  lastopland?: number;
+  terrainHeight?: number;
+  constructionDots?: Array<{
+    x: number;
+    y: number;
+    side: 'top' | 'right' | 'bottom' | 'left';
+    progress: number;
+    lineId: number;
+  }>;
+  constructionLines?: Array<{
+    x: number;
+    y: number;
+    side: 'top' | 'right' | 'bottom' | 'left' | 'inside';
+    progress: number;
+    lineId: number;
+    length: number;
+    rotation: number;
+  }>;
 };
 
 export enum ConstraintType {

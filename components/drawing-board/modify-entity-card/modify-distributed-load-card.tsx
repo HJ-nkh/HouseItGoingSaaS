@@ -14,11 +14,6 @@ import ConstraintSelect from "./constraint-select/xy-only-select";
 import { getDisabledConstraintTypes } from "../lib/validate-side-mounted-node";
 import { resolveDistributedLoadPosition } from "../lib/reduce-history/resolve-position";
 import { useState } from "react";
-import HouseOutline from "../../house-outline";
-import HouseCompassView from "../../house-compass-view";
-import HouseCompassViewZones from "../house-compass-view-zones";
-// Import wind calculation functionality
-import { useWindCalculations } from "../lib/wind-calculations";
 
 // Extended interface for DistributedLoad with additional calculation properties
 interface ExtendedDistributedLoad extends DistributedLoad {
@@ -102,42 +97,19 @@ const FormFactorOptions = [
 type ModifyDistributedLoadCardProps = {
   load: DistributedLoad;
   entitySet: EntitySet;
-  windCalculatorSettings?: {
-    houseHeight?: number;
-    houseWidth?: number;
-    houseDepth?: number;
-    houseRotation: number;
-    roofType: 'flat' | 'monopitch' | 'duopitch' | 'hipped';
-    flatRoofEdgeType: 'sharp' | 'parapet' | 'rounded' | 'beveled';
-    parapetHeight?: number;
-    edgeRadius?: number;
-    bevelAngle?: number;
-    roofPitch?: number;
-    hippedMainPitch?: number;
-    hippedHipPitch?: number;
-    distanceToSea: 'more_than_25km' | 'less_than_25km';
-    terrainCategory: '0' | '1' | '2' | '3' | '4';
-    formFactor: 'main_structure' | 'small_elements';
-    windDirection: number;
-  };
-  onWindCalculatorSettingsChange?: (settings: Partial<NonNullable<ModifyDistributedLoadCardProps['windCalculatorSettings']>>) => void;
   onChange: (load: ExtendedDistributedLoad) => void;
   onSubmit: (load: DistributedLoad) => void;
   onClose: () => void;
   onDelete?: () => void;
-  houseRotation?: number;
 };
 
 const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
   load,
   entitySet,
-  windCalculatorSettings,
-  onWindCalculatorSettingsChange,
   onChange,
   onSubmit,
   onClose,
   onDelete,
-  houseRotation = 0,
 }) => {  const onEnter = () => onSubmit(load as DistributedLoad);
     // State for c/c distance and area load calculations
   // Initialize from load properties if they exist
@@ -145,166 +117,15 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
   const [ccDistance, setCcDistance] = useState<number | undefined>(extendedLoad.ccDistance);
   const [areaLoad, setAreaLoad] = useState<number | undefined>(extendedLoad.areaLoad);
   
-  // State for house rotation - use shared wind calculator settings with fallback
-  const [currentHouseRotation, setCurrentHouseRotation] = useState<number>(
-    extendedLoad.houseRotation ?? windCalculatorSettings?.houseRotation ?? houseRotation ?? 0
-  );
-  
   // State for wind loads (pressure and suction)
   const [ccDistanceSuction, setCcDistanceSuction] = useState<number | undefined>(extendedLoad.ccDistanceSuction);
   const [areaLoadSuction, setAreaLoadSuction] = useState<number | undefined>(extendedLoad.areaLoadSuction);
-  
-  // State for wind calculator tabs
-  const [windCalculatorTab, setWindCalculatorTab] = useState<'inputs' | 'zones'>('inputs');
-  
-  // State for 3D house model inputs (wind loads only) - initialize from shared settings with fallbacks
-  const [houseHeight, setHouseHeight] = useState<number | undefined>(
-    extendedLoad.houseHeight ?? windCalculatorSettings?.houseHeight
-  );
-  const [houseWidth, setHouseWidth] = useState<number | undefined>(
-    extendedLoad.houseWidth ?? windCalculatorSettings?.houseWidth
-  );
-  const [houseDepth, setHouseDepth] = useState<number | undefined>(
-    extendedLoad.houseDepth ?? windCalculatorSettings?.houseDepth
-  );
-  const [roofType, setRoofType] = useState<'flat' | 'monopitch' | 'duopitch' | 'hipped'>(
-    extendedLoad.roofType ?? windCalculatorSettings?.roofType ?? 'duopitch'
-  );
-  
-  // State for flat roof edge settings - initialize from shared settings with fallbacks
-  const [flatRoofEdgeType, setFlatRoofEdgeType] = useState<'sharp' | 'parapet' | 'rounded' | 'beveled'>(
-    extendedLoad.flatRoofEdgeType ?? windCalculatorSettings?.flatRoofEdgeType ?? 'sharp'
-  );
-  const [parapetHeight, setParapetHeight] = useState<number | undefined>(
-    extendedLoad.parapetHeight ?? windCalculatorSettings?.parapetHeight
-  );
-  const [edgeRadius, setEdgeRadius] = useState<number | undefined>(
-    extendedLoad.edgeRadius ?? windCalculatorSettings?.edgeRadius
-  );
-  const [bevelAngle, setBevelAngle] = useState<number | undefined>(
-    extendedLoad.bevelAngle ?? windCalculatorSettings?.bevelAngle
-  );
-  const [roofPitch, setRoofPitch] = useState<number | undefined>(
-    extendedLoad.roofPitch ?? windCalculatorSettings?.roofPitch
-  );
-  const [hippedMainPitch, setHippedMainPitch] = useState<number | undefined>(
-    extendedLoad.hippedMainPitch ?? windCalculatorSettings?.hippedMainPitch
-  );
-  const [hippedHipPitch, setHippedHipPitch] = useState<number | undefined>(
-    extendedLoad.hippedHipPitch ?? windCalculatorSettings?.hippedHipPitch
-  );
-  
-  // State for wind calculation parameters - initialize from shared settings with fallbacks
-  const [distanceToSea, setDistanceToSea] = useState<'more_than_25km' | 'less_than_25km'>(
-    extendedLoad.distanceToSea ?? windCalculatorSettings?.distanceToSea ?? 'more_than_25km'
-  );
-  const [terrainCategory, setTerrainCategory] = useState<'0' | '1' | '2' | '3' | '4'>(
-    extendedLoad.terrainCategory ?? windCalculatorSettings?.terrainCategory ?? '2'
-  );
-  const [formFactor, setFormFactor] = useState<'main_structure' | 'small_elements'>(
-    extendedLoad.formFactor ?? windCalculatorSettings?.formFactor ?? 'main_structure'
-  );
-  const [windDirection, setWindDirection] = useState<number>(
-    extendedLoad.windDirection ?? windCalculatorSettings?.windDirection ?? 0
-  );
   
   // State for second set of wind load inputs
   const [ccDistance2, setCcDistance2] = useState<number | undefined>(extendedLoad.ccDistance2);
   const [areaLoad2, setAreaLoad2] = useState<number | undefined>(extendedLoad.areaLoad2);
   const [ccDistanceSuction2, setCcDistanceSuction2] = useState<number | undefined>(extendedLoad.ccDistanceSuction2);
   const [areaLoadSuction2, setAreaLoadSuction2] = useState<number | undefined>(extendedLoad.areaLoadSuction2);
-  
-  // Helper function to update both the load and shared wind calculator settings
-  const updateWindCalculatorSetting = <K extends string>(
-    key: K,
-    value: any
-  ) => {
-    // Update the load
-    onChange({
-      ...load,
-      [key]: value,
-    } as ExtendedDistributedLoad);
-    
-    // Update the shared settings if available
-    if (onWindCalculatorSettingsChange) {
-      onWindCalculatorSettingsChange({ [key]: value });
-    }
-  };
-
-  // Sync local state with shared wind calculator settings when they change
-  React.useEffect(() => {
-    if (windCalculatorSettings) {
-      // Always use shared settings when load values are undefined (applies to new loads and loads without explicit values)
-      if (extendedLoad.houseHeight === undefined) {
-        setHouseHeight(windCalculatorSettings.houseHeight);
-      }
-      if (extendedLoad.houseWidth === undefined) {
-        setHouseWidth(windCalculatorSettings.houseWidth);
-      }
-      if (extendedLoad.houseDepth === undefined) {
-        setHouseDepth(windCalculatorSettings.houseDepth);
-      }
-      if (extendedLoad.houseRotation === undefined) {
-        setCurrentHouseRotation(windCalculatorSettings.houseRotation ?? 0);
-      }
-      if (extendedLoad.roofType === undefined) {
-        setRoofType(windCalculatorSettings.roofType ?? 'duopitch');
-      }
-      if (extendedLoad.flatRoofEdgeType === undefined) {
-        setFlatRoofEdgeType(windCalculatorSettings.flatRoofEdgeType ?? 'sharp');
-      }
-      if (extendedLoad.parapetHeight === undefined) {
-        setParapetHeight(windCalculatorSettings.parapetHeight);
-      }
-      if (extendedLoad.edgeRadius === undefined) {
-        setEdgeRadius(windCalculatorSettings.edgeRadius);
-      }
-      if (extendedLoad.bevelAngle === undefined) {
-        setBevelAngle(windCalculatorSettings.bevelAngle);
-      }
-      if (extendedLoad.roofPitch === undefined) {
-        setRoofPitch(windCalculatorSettings.roofPitch);
-      }
-      if (extendedLoad.hippedMainPitch === undefined) {
-        setHippedMainPitch(windCalculatorSettings.hippedMainPitch);
-      }
-      if (extendedLoad.hippedHipPitch === undefined) {
-        setHippedHipPitch(windCalculatorSettings.hippedHipPitch);
-      }
-      if (extendedLoad.distanceToSea === undefined) {
-        setDistanceToSea(windCalculatorSettings.distanceToSea ?? 'more_than_25km');
-      }
-      if (extendedLoad.terrainCategory === undefined) {
-        setTerrainCategory(windCalculatorSettings.terrainCategory ?? '2');
-      }
-      if (extendedLoad.formFactor === undefined) {
-        setFormFactor(windCalculatorSettings.formFactor ?? 'main_structure');
-      }
-      if (extendedLoad.windDirection === undefined) {
-        setWindDirection(windCalculatorSettings.windDirection ?? 0);
-      }
-    }
-  }, [windCalculatorSettings, load.id]); // Re-sync when wind calculator settings change or when switching to a different load
-  
-  // Wind calculations hook for automatic calculation
-  const windCalculations = useWindCalculations({
-    houseHeight,
-    houseWidth,
-    houseDepth,
-    roofType,
-    roofPitch,
-    hippedMainPitch,
-    hippedHipPitch,
-    flatRoofEdgeType,
-    parapetHeight,
-    edgeRadius,
-    bevelAngle,
-    distanceToSea,
-    terrainCategory,
-    formFactor,
-    windDirection,
-    autoCalculate: load.type === LoadType.Wind && Boolean(houseHeight && houseWidth && houseDepth), // Only auto-calculate for wind loads when dimensions are set
-  });
 
   // Function to calculate and set magnitudes
   const calculateMagnitudes = (newCcDistance?: number, newAreaLoad?: number) => {
@@ -493,15 +314,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
   return (
     <Card 
       className="absolute z-30" 
-      style={{ 
-        width: load.type === LoadType.Wind ? '1200px' : '340px',
-        ...(load.type === LoadType.Wind ? {
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)'
-        } : {})
-      }}
+      style={{ width: load.type === LoadType.Wind ? '500px' : '340px' }}
     >
       <CardHeader>
         <span className="font-bold">Linjelast</span>
@@ -509,7 +322,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
       <CardContent>
         <div className="flex gap-4">
           {/* Left section - main inputs */}
-          <div className="flex-shrink-0" style={{ width: load.type === LoadType.Wind ? '454px' : '340px' }}>
+          <div className="flex-shrink-0" style={{ width: load.type === LoadType.Wind ? '500px' : '340px' }}>
             <div className="flex gap-3 mb-2 items-center">
               <div className="w-32 text-left flex-shrink-0">Type:</div>
               <div className="w-38 flex-shrink-0">
@@ -526,68 +339,11 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                       angle = { relativeTo: "member", value: 90 };
                     }
                     
-                    // When changing to wind type, use shared wind calculation settings
                     const updatedLoad: ExtendedDistributedLoad = {
                       ...load,
                       angle,
                       type: ltype as LoadType,
                     };
-                    
-                    // If switching to wind type, populate with shared wind calculator settings
-                    if (ltype === LoadType.Wind) {
-                      if (windCalculatorSettings) {
-                        updatedLoad.houseHeight = windCalculatorSettings.houseHeight;
-                        updatedLoad.houseWidth = windCalculatorSettings.houseWidth;
-                        updatedLoad.houseDepth = windCalculatorSettings.houseDepth;
-                        updatedLoad.houseRotation = windCalculatorSettings.houseRotation;
-                        updatedLoad.roofType = windCalculatorSettings.roofType;
-                        updatedLoad.flatRoofEdgeType = windCalculatorSettings.flatRoofEdgeType;
-                        updatedLoad.parapetHeight = windCalculatorSettings.parapetHeight;
-                        updatedLoad.edgeRadius = windCalculatorSettings.edgeRadius;
-                        updatedLoad.bevelAngle = windCalculatorSettings.bevelAngle;
-                        updatedLoad.roofPitch = windCalculatorSettings.roofPitch;
-                        updatedLoad.hippedMainPitch = windCalculatorSettings.hippedMainPitch;
-                        updatedLoad.hippedHipPitch = windCalculatorSettings.hippedHipPitch;
-                        updatedLoad.distanceToSea = windCalculatorSettings.distanceToSea;
-                        updatedLoad.terrainCategory = windCalculatorSettings.terrainCategory;
-                        updatedLoad.formFactor = windCalculatorSettings.formFactor;
-                        updatedLoad.windDirection = windCalculatorSettings.windDirection;
-                        
-                        // Also update local state immediately to reflect the shared settings
-                        setHouseHeight(windCalculatorSettings.houseHeight);
-                        setHouseWidth(windCalculatorSettings.houseWidth);
-                        setHouseDepth(windCalculatorSettings.houseDepth);
-                        setCurrentHouseRotation(windCalculatorSettings.houseRotation ?? 0);
-                        setRoofType(windCalculatorSettings.roofType ?? 'duopitch');
-                        setFlatRoofEdgeType(windCalculatorSettings.flatRoofEdgeType ?? 'sharp');
-                        setParapetHeight(windCalculatorSettings.parapetHeight);
-                        setEdgeRadius(windCalculatorSettings.edgeRadius);
-                        setBevelAngle(windCalculatorSettings.bevelAngle);
-                        setRoofPitch(windCalculatorSettings.roofPitch);
-                        setHippedMainPitch(windCalculatorSettings.hippedMainPitch);
-                        setHippedHipPitch(windCalculatorSettings.hippedHipPitch);
-                        setDistanceToSea(windCalculatorSettings.distanceToSea ?? 'more_than_25km');
-                        setTerrainCategory(windCalculatorSettings.terrainCategory ?? '2');
-                        setFormFactor(windCalculatorSettings.formFactor ?? 'main_structure');
-                        setWindDirection(windCalculatorSettings.windDirection ?? 0);
-                      }
-                      
-                      // Keep the load-specific properties (Zone 1 and 2 inputs)
-                      updatedLoad.ccDistance = ccDistance;
-                      updatedLoad.areaLoad = areaLoad;
-                      updatedLoad.ccDistanceSuction = ccDistanceSuction;
-                      updatedLoad.areaLoadSuction = areaLoadSuction;
-                      updatedLoad.ccDistance2 = ccDistance2;
-                      updatedLoad.areaLoad2 = areaLoad2;
-                      updatedLoad.ccDistanceSuction2 = ccDistanceSuction2;
-                      updatedLoad.areaLoadSuction2 = areaLoadSuction2;
-                      updatedLoad.magnitude1Suction = extendedLoad.magnitude1Suction;
-                      updatedLoad.magnitude2Suction = extendedLoad.magnitude2Suction;
-                      updatedLoad.magnitude1Suction2 = extendedLoad.magnitude1Suction2;
-                      updatedLoad.magnitude2Suction2 = extendedLoad.magnitude2Suction2;
-                      updatedLoad.magnitude1_2 = extendedLoad.magnitude1_2;
-                      updatedLoad.magnitude2_2 = extendedLoad.magnitude2_2;
-                    }
                     
                     onChange(updatedLoad);
                   }}
@@ -624,9 +380,9 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
             {/* Wind load specific inputs with pressure/suction columns */}
             {load.type === LoadType.Wind ? (
               <>
-                {/* Zone 1 label and Header row */}
+                {/* Header row */}
                 <div className="flex gap-3 mb-2 items-center">
-                  <div className="w-32 text-left flex-shrink-0 font-bold">Zone 1</div>
+                  <div className="w-32 text-left flex-shrink-0"></div>
                   <div className="w-38 flex-shrink-0 text-center font-semibold">Tryk</div>
                   <div className="w-38 flex-shrink-0 text-center font-semibold">Sug</div>
                 </div>
@@ -896,10 +652,12 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
               <div className="text-red-500 text-sm mb-2">
                 En linjelast af denne type og størrelse findes allerede på denne position
               </div>
-            )}        <div className="flex gap-3 mb-2 items-center">
-              <div className="w-32 text-left flex-shrink-0">Start:</div>
-              <div className={load.type === LoadType.Wind ? "w-79 flex-shrink-0" : "w-38 flex-shrink-0"}>
-                <ConstraintSelect
+            )}
+
+        <div className="flex gap-3 mb-2 items-center">
+          <div className="w-32 text-left flex-shrink-0">Start:</div>
+          <div className="w-38 flex-shrink-0">
+            <ConstraintSelect
                   constraint={load.onMember.constraintStart}
                   setConstraint={(constraintStart) =>
                     onChange({
@@ -914,9 +672,9 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
               </div>
             </div>
             <div className="flex gap-3 items-center">
-              <div className="w-32 text-left flex-shrink-0">Slut:</div>
-              <div className={load.type === LoadType.Wind ? "w-79 flex-shrink-0" : "w-38 flex-shrink-0"}>
-                <ConstraintSelect
+          <div className="w-32 text-left flex-shrink-0">Slut:</div>
+          <div className="w-38 flex-shrink-0">
+            <ConstraintSelect
                   constraint={load.onMember.constraintEnd}
                   setConstraint={(constraintEnd) =>
                     onChange({
@@ -929,593 +687,9 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                   currentY={endCoordinates.y}
                 />
               </div>
-            </div>
-
-            {/* Second set of wind load inputs - only for Wind type */}
-            {load.type === LoadType.Wind && (
-              <>
-                {/* Grey separator between zones */}
-                <div className="mt-4 mb-4 border-t border-gray-300"></div>
-                
-                {/* Zone 2 label and Header row */}
-                <div className="flex gap-3 mb-2 items-center">
-                  <div className="w-32 text-left flex-shrink-0 font-bold">Zone 2</div>
-                  <div className="w-38 flex-shrink-0 text-center font-semibold">Tryk</div>
-                  <div className="w-38 flex-shrink-0 text-center font-semibold">Sug</div>
-                </div>
-                
-                {/* C/C afstand row */}
-                <div className="flex gap-3 mb-2 items-center">
-                  <div className="w-32 text-left flex-shrink-0">C/C afstand:</div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={ccDistance2}
-                      onChange={(value) => {
-                        setCcDistance2(value);
-                        calculateMagnitudes2(value, areaLoad2);
-                      }}
-                      unit="m"
-                      placeholder="valgfrit"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={ccDistanceSuction2}
-                      onChange={(value) => {
-                        setCcDistanceSuction2(value);
-                        calculateSuctionMagnitudes2(value, areaLoadSuction2);
-                      }}
-                      unit="m"
-                      placeholder="valgfrit"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                </div>
-
-                {/* Fladelast row */}
-                <div className="flex gap-3 mb-2 items-center">
-                  <div className="w-32 text-left flex-shrink-0">Fladelast:</div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={areaLoad2}
-                      onChange={(value) => {
-                        setAreaLoad2(value);
-                        calculateMagnitudes2(ccDistance2, value);
-                      }}
-                      unit="kN/m²"
-                      placeholder="valgfrit"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={areaLoadSuction2}
-                      onChange={(value) => {
-                        setAreaLoadSuction2(value);
-                        calculateSuctionMagnitudes2(ccDistanceSuction2, value);
-                      }}
-                      unit="kN/m²"
-                      placeholder="valgfrit"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                </div>
-
-                {/* Linjelast (start) row */}
-                <div className="flex gap-3 mb-2 items-center">
-                  <div className="w-32 text-left flex-shrink-0">Linjelast (start):</div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={extendedLoad.magnitude1_2}
-                      onChange={(magnitude1_2) => {
-                        setCcDistance2(undefined);
-                        setAreaLoad2(undefined);
-                        const newMag1_2 = magnitude1_2;
-                        let newMag2_2 = extendedLoad.magnitude2_2;
-                        if (newMag1_2 !== undefined && newMag1_2 !== 0 && (newMag2_2 === 0 || newMag2_2 === undefined)) {
-                          newMag2_2 = newMag1_2;
-                        }
-                        const updatedLoad: ExtendedDistributedLoad = { ...load, magnitude1_2: newMag1_2, magnitude2_2: newMag2_2 };
-                        delete updatedLoad.ccDistance2;
-                        delete updatedLoad.areaLoad2;
-                        onChange(updatedLoad);
-                      }}
-                      unit="kN/m"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={extendedLoad.magnitude1Suction2}
-                      onChange={(magnitude1Suction2) => {
-                        setCcDistanceSuction2(undefined);
-                        setAreaLoadSuction2(undefined);
-                        
-                        const newMag1Suction2 = magnitude1Suction2;
-                        let newMag2Suction2 = extendedLoad.magnitude2Suction2;
-                        
-                        if (newMag1Suction2 !== undefined && newMag1Suction2 !== 0 && (newMag2Suction2 === 0 || newMag2Suction2 === undefined)) {
-                          newMag2Suction2 = newMag1Suction2;
-                        }
-                        
-                        const updatedLoad: ExtendedDistributedLoad = { 
-                          ...load, 
-                          magnitude1Suction2: newMag1Suction2, 
-                          magnitude2Suction2: newMag2Suction2 
-                        };
-                        delete updatedLoad.ccDistanceSuction2;
-                        delete updatedLoad.areaLoadSuction2;
-                        
-                        onChange(updatedLoad);
-                      }}
-                      unit="kN/m"
-                      placeholder="valgfrit"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                </div>
-
-                {/* Linjelast (slut) row */}
-                <div className="flex gap-3 mb-2 items-center">
-                  <div className="w-32 text-left flex-shrink-0">Linjelast (slut):</div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={extendedLoad.magnitude2_2}
-                      onChange={(magnitude2_2) => {
-                        setCcDistance2(undefined);
-                        setAreaLoad2(undefined);
-                        const newMag2_2 = magnitude2_2;
-                        const mag1_2 = extendedLoad.magnitude1_2;
-                        if (mag1_2 !== undefined && mag1_2 !== 0 && newMag2_2 !== undefined && newMag2_2 !== 0 && Math.sign(mag1_2) !== Math.sign(newMag2_2)) {
-                          return;
-                        }
-                        const updatedLoad: ExtendedDistributedLoad = { ...load, magnitude2_2: newMag2_2 };
-                        delete updatedLoad.ccDistance2;
-                        delete updatedLoad.areaLoad2;
-                        onChange(updatedLoad);
-                      }}
-                      unit="kN/m"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={extendedLoad.magnitude2Suction2}
-                      onChange={(magnitude2Suction2) => {
-                        setCcDistanceSuction2(undefined);
-                        setAreaLoadSuction2(undefined);
-                        
-                        const newMag2Suction2 = magnitude2Suction2;
-                        const mag1Suction2 = extendedLoad.magnitude1Suction2;
-                        
-                        if (mag1Suction2 !== undefined && mag1Suction2 !== 0 && newMag2Suction2 !== undefined && newMag2Suction2 !== 0 && Math.sign(mag1Suction2) !== Math.sign(newMag2Suction2)) {
-                          return;
-                        }
-                        
-                        const updatedLoad: ExtendedDistributedLoad = { ...load, magnitude2Suction2: newMag2Suction2 };
-                        delete updatedLoad.ccDistanceSuction2;
-                        delete updatedLoad.areaLoadSuction2;
-                        
-                        onChange(updatedLoad);
-                      }}
-                      unit="kN/m"
-                      placeholder="valgfrit"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                </div>
-
-                {/* Slut coordinate only */}
-                <div className="flex gap-3 items-center">
-                  <div className="w-32 text-left flex-shrink-0">Slut:</div>
-                  <div className="w-79 flex-shrink-0">
-                    <ConstraintSelect
-                      constraint={load.onMember.constraintEnd}
-                      setConstraint={(constraintEnd) =>
-                        onChange({
-                          ...load,
-                          onMember: { ...load.onMember, constraintEnd },
-                        })
-                      }
-                      disabledConstraintTypes={disabledConstraintTypes}
-                      currentX={endCoordinates.x}
-                      currentY={endCoordinates.y}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
           </div>
+        </div>
 
-          {/* Vertical separator and right section for wind loads */}
-          {load.type === LoadType.Wind && (
-            <>
-              {/* Vertical gray separator */}
-              <div className="w-px bg-gray-300 mx-2"></div>
-              
-              {/* Right section with 3D model inputs and house model */}
-              <div className="flex-1 min-w-0">
-                <div className="mb-4">
-                  <h3 className="font-semibold mb-3 text-center">Vindlastberegner</h3>
-                  
-                  {/* Tab navigation */}
-                  <div className="flex border-b border-gray-200 mb-4">
-                    <button
-                      onClick={() => setWindCalculatorTab('inputs')}
-                      className={`px-4 py-2 text-sm font-medium ${
-                        windCalculatorTab === 'inputs'
-                          ? 'border-b-2 border-blue-500 text-blue-600'
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      Indstillinger
-                    </button>
-                    <button
-                      onClick={() => setWindCalculatorTab('zones')}
-                      className={`px-4 py-2 text-sm font-medium ${
-                        windCalculatorTab === 'zones'
-                          ? 'border-b-2 border-blue-500 text-blue-600'
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      Vindzoner
-                    </button>
-                  </div>
-                  
-                  {windCalculatorTab === 'inputs' && (
-                    <>
-                      {/* Horizontal layout: inputs on left, compass view on right */}
-                      <div className="flex gap-4">
-                        {/* Left side: Wind load inputs */}
-                        <div className="flex-1 space-y-3">
-                        {/* Roof type dropdown */}
-                        <div className="flex gap-3 items-center">
-                          <div className="w-24 text-left flex-shrink-0">Tagtype:</div>
-                          <div className="flex-1">
-                            <Select
-                              className="w-full border rounded text-left"
-                              value={roofType}
-                              onChange={(value) => {
-                                if (!value) return;
-                                const newRoofType = value as 'flat' | 'monopitch' | 'duopitch' | 'hipped';
-                                setRoofType(newRoofType);
-                                updateWindCalculatorSetting('roofType', newRoofType);
-                              }}
-                              options={RoofTypeOptions}
-                            />
-                          </div>
-                        </div>
-                    
-                    {/* Roof pitch dropdown - only show when monopitch is selected */}
-                    {roofType === 'monopitch' && (
-                      <div className="flex gap-3 items-center">
-                        <div className="w-24 text-left flex-shrink-0">Hældning:</div>
-                        <div className="flex-1">
-                          <NumberInput
-                            value={roofPitch}
-                            onChange={(value) => {
-                              setRoofPitch(value);
-                              updateWindCalculatorSetting('roofPitch', value);
-                            }}
-                            unit="°"
-                            placeholder="taghældning"
-                            onEnter={onEnter}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Roof pitch dropdown - only show when duopitch is selected */}
-                    {roofType === 'duopitch' && (
-                      <div className="flex gap-3 items-center">
-                        <div className="w-24 text-left flex-shrink-0">Hældning:</div>
-                        <div className="flex-1">
-                          <NumberInput
-                            value={roofPitch}
-                            onChange={(value) => {
-                              setRoofPitch(value);
-                              updateWindCalculatorSetting('roofPitch', value);
-                            }}
-                            unit="°"
-                            placeholder="taghældning"
-                            onEnter={onEnter}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Roof pitch dropdowns - only show when hipped roof is selected */}
-                    {roofType === 'hipped' && (
-                      <>
-                        <div className="flex gap-3 items-center">
-                          <div className="w-24 text-left flex-shrink-0">Hældning 1:</div>
-                          <div className="flex-1">
-                            <NumberInput
-                              value={hippedMainPitch}
-                              onChange={(value) => {
-                                setHippedMainPitch(value);
-                                updateWindCalculatorSetting('hippedMainPitch', value);
-                              }}
-                              unit="°"
-                              placeholder="hældning langs facaderne"
-                              onEnter={onEnter}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex gap-3 items-center">
-                          <div className="w-24 text-left flex-shrink-0">Hældning 2:</div>
-                          <div className="flex-1">
-                            <NumberInput
-                              value={hippedHipPitch}
-                              onChange={(value) => {
-                                setHippedHipPitch(value);
-                                updateWindCalculatorSetting('hippedHipPitch', value);
-                              }}
-                              unit="°"
-                              placeholder="hældning på valmene"
-                              onEnter={onEnter}
-                            />
-                          </div>
-                        </div>
-                      </>
-                    )}
-                    
-                    {/* Flat roof edge type dropdown - only show when flat roof is selected */}
-                    {roofType === 'flat' && (
-                      <div className="flex gap-3 items-center">
-                        <div className="w-24 text-left flex-shrink-0">Tagkant:</div>
-                        <div className="flex-1">
-                          <Select
-                            className="w-full border rounded text-left"
-                            value={flatRoofEdgeType}
-                            onChange={(value) => {
-                              if (!value) return;
-                              const newEdgeType = value as 'sharp' | 'parapet' | 'rounded' | 'beveled';
-                              setFlatRoofEdgeType(newEdgeType);
-                              updateWindCalculatorSetting('flatRoofEdgeType', newEdgeType);
-                            }}
-                            options={FlatRoofEdgeTypeOptions}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Conditional input based on flat roof edge type */}
-                    {roofType === 'flat' && flatRoofEdgeType === 'parapet' && (
-                      <div className="flex gap-3 items-center">
-                        <div className="w-24 text-left flex-shrink-0">Brystning:</div>
-                        <div className="flex-1">
-                          <NumberInput
-                            value={parapetHeight}
-                            onChange={(value) => {
-                              setParapetHeight(value);
-                              updateWindCalculatorSetting('parapetHeight', value);
-                            }}
-                            unit="m"
-                            placeholder="brystningshøjde"
-                            onEnter={onEnter}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {roofType === 'flat' && flatRoofEdgeType === 'rounded' && (
-                      <div className="flex gap-3 items-center">
-                        <div className="w-24 text-left flex-shrink-0">Radius:</div>
-                        <div className="flex-1">
-                          <NumberInput
-                            value={edgeRadius}
-                            onChange={(value) => {
-                              setEdgeRadius(value);
-                              updateWindCalculatorSetting('edgeRadius', value);
-                            }}
-                            unit="m"
-                            placeholder="tagkant radius"
-                            onEnter={onEnter}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {roofType === 'flat' && flatRoofEdgeType === 'beveled' && (
-                      <div className="flex gap-3 items-center">
-                        <div className="w-24 text-left flex-shrink-0">Hældning:</div>
-                        <div className="flex-1">
-                          <NumberInput
-                            value={bevelAngle}
-                            onChange={(value) => {
-                              setBevelAngle(value);
-                              updateWindCalculatorSetting('bevelAngle', value);
-                            }}
-                            unit="°"
-                            placeholder="tagkant hældning"
-                            onEnter={onEnter}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="flex gap-3 items-center">
-                      <div className="w-24 text-left flex-shrink-0">Højde:</div>
-                      <div className="flex-1">
-                        <NumberInput
-                          value={houseHeight}
-                          onChange={(value) => {
-                            setHouseHeight(value);
-                            updateWindCalculatorSetting('houseHeight', value);
-                          }}
-                          unit="m"
-                          placeholder="højde"
-                          onEnter={onEnter}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-3 items-center">
-                      <div className="w-24 text-left flex-shrink-0">Bredde:</div>
-                      <div className="flex-1">
-                        <NumberInput
-                          value={houseWidth}
-                          onChange={(value) => {
-                            setHouseWidth(value);
-                            updateWindCalculatorSetting('houseWidth', value);
-                          }}
-                          unit="m"
-                          placeholder="bredde"
-                          onEnter={onEnter}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-3 items-center">
-                      <div className="w-24 text-left flex-shrink-0">Dybde:</div>
-                      <div className="flex-1">
-                        <NumberInput
-                          value={houseDepth}
-                          onChange={(value) => {
-                            setHouseDepth(value);
-                            updateWindCalculatorSetting('houseDepth', value);
-                          }}
-                          unit="m"
-                          placeholder="dybde"
-                          onEnter={onEnter}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-3 items-center">
-                      <div className="w-24 text-left flex-shrink-0">Afstand vesterhavet:</div>
-                      <div className="flex-1">
-                        <Select
-                          className="w-full border rounded text-left"
-                          value={distanceToSea}
-                          onChange={(value) => {
-                            if (!value) return;
-                            const newDistanceToSea = value as 'more_than_25km' | 'less_than_25km';
-                            setDistanceToSea(newDistanceToSea);
-                            updateWindCalculatorSetting('distanceToSea', newDistanceToSea);
-                          }}
-                          options={DistanceToSeaOptions}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-3 items-center">
-                      <div className="w-24 text-left flex-shrink-0">Terrænkat.:</div>
-                      <div className="flex-1">
-                        <Select
-                          className="w-full border rounded text-left"
-                          value={terrainCategory}
-                          onChange={(value) => {
-                            if (!value) return;
-                            const newTerrainCategory = value as '0' | '1' | '2' | '3' | '4';
-                            setTerrainCategory(newTerrainCategory);
-                            updateWindCalculatorSetting('terrainCategory', newTerrainCategory);
-                          }}
-                          options={TerrainCategoryOptions}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-3 items-center">
-                      <div className="w-24 text-left flex-shrink-0">Formfaktorer:</div>
-                      <div className="flex-1">
-                        <Select
-                          className="w-full border rounded text-left"
-                          value={formFactor}
-                          onChange={(value) => {
-                            if (!value) return;
-                            const newFormFactor = value as 'main_structure' | 'small_elements';
-                            setFormFactor(newFormFactor);
-                            updateWindCalculatorSetting('formFactor', newFormFactor);
-                          }}
-                          options={FormFactorOptions}
-                        />
-                      </div>
-                    </div>
-                        </div>
-                        
-                        {/* Right side: Compass view */}
-                        <div className="flex-1 min-w-0">
-                          <div className="h-80 w-full">
-                            <HouseCompassView
-                              width={houseWidth ?? 10}
-                              depth={houseDepth ?? 6}
-                              height={houseHeight ?? 8}
-                              roofType={roofType}
-                              flatRoofEdgeType={flatRoofEdgeType}
-                              parapetHeight={parapetHeight}
-                              edgeRadius={edgeRadius}
-                              bevelAngle={bevelAngle}
-                              roofPitch={roofPitch}
-                              hippedMainPitch={hippedMainPitch}
-                              hippedHipPitch={hippedHipPitch}
-                              rotation={currentHouseRotation}
-                              onRotationChange={(rotation) => {
-                                setCurrentHouseRotation(rotation);
-                                updateWindCalculatorSetting('houseRotation', rotation);
-                              }}
-                            />
-                          </div>
-                          
-                          {/* House rotation angle display */}
-                          <div className="mt-2 text-center">
-                            <div className="inline-block bg-blue-50 px-3 py-1 rounded border text-sm font-medium text-gray-700">
-                              Hus vinkel: {Math.round(currentHouseRotation)}°
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* 3D House Model */}
-                      <div className="h-48 w-full border rounded bg-gray-50">
-                        <HouseOutline
-                          width={houseWidth ?? 10}
-                          height={houseHeight ?? 8}
-                          depth={houseDepth ?? 6}
-                          roofType={roofType}
-                          flatRoofEdgeType={flatRoofEdgeType}
-                          parapetHeight={parapetHeight}
-                          edgeRadius={edgeRadius}
-                          bevelAngle={bevelAngle}
-                          roofPitch={roofPitch}
-                          hippedMainPitch={hippedMainPitch}
-                          hippedHipPitch={hippedHipPitch}
-                        />
-                      </div>
-                    </>
-                  )}
-                  
-                  {windCalculatorTab === 'zones' && (
-                    <div className="space-y-4">
-                      {/* House compass view for zones */}
-                      <div className="w-120 h-120 mx-auto">
-                        <HouseCompassViewZones
-                          width={houseWidth ?? 10}
-                          depth={houseDepth ?? 6}
-                          height={houseHeight ?? 8}
-                          roofType={roofType}
-                          flatRoofEdgeType={flatRoofEdgeType}
-                          parapetHeight={parapetHeight}
-                          edgeRadius={edgeRadius}
-                          bevelAngle={bevelAngle}
-                          roofPitch={roofPitch}
-                          hippedMainPitch={hippedMainPitch}
-                          hippedHipPitch={hippedHipPitch}
-                          rotation={currentHouseRotation}
-                          onRotationChange={(rotation) => {
-                            setCurrentHouseRotation(rotation);
-                            updateWindCalculatorSetting('houseRotation', rotation);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
         </div>
       </CardContent>      <CardFooter>
         <CardActionButtons

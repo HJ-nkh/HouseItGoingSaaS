@@ -44,12 +44,14 @@ import { hideAllEntities, showAllEntities } from "./lib/show-entities";
 import SimulationCard from "./simulation-card";
 import ScaleSimulationCard from "./scale-simulation-card";
 import GlobalLocalDefCard from "./global-local-def-card";
+import WindCalculatorCard from "./wind-calculator-card";
 import { getShowLoadByIds } from "./lib/show-loads-by-id";
 import PendingIndicator from "./pending-indicator";
 import ContextHint from "./context-hint";
 import { useContextHints } from "./lib/use-context-hints";
 import { calculateCardPosition, getCardTypeFromEntity } from "./lib/card-positioning";
 import { CreateDrawingData } from "@/lib/api";
+import { isLoadVisible } from "./lib/load-groups";
 
 type DrawingBoardProps = {
   drawing?: Drawing | null;
@@ -493,11 +495,15 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
           )}
 
           <div className="absolute z-30 top-4 w-full flex justify-center">
-            <div className="flex flex-col items-center gap-4 w-full max-w-md">
-              <div className="w-full">
-                <DisplayOptionsCard state={state} setState={setState} />
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-auto">
+                <DisplayOptionsCard 
+                  state={state} 
+                  setState={setState} 
+                  entitySet={entitySet}
+                />
               </div>              {analysis && ["F1", "F2", "M", "Ve", "R0"].includes(analysis as string) && (
-                <div className="w-full">
+                <div className="w-auto">
                   <ScaleSimulationCard
                     scale={
                       analysis === "Ve" ? scaleVe :
@@ -523,7 +529,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                     analysis={analysis}
                   />
                   {analysis === "Ve" && (
-                    <div className="w-full mt-2">
+                    <div className="w-auto mt-2">
                       <GlobalLocalDefCard 
                         selected={selectedGlobalLocal} 
                         setSelected={setSelectedGlobalLocal} 
@@ -592,6 +598,48 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                 />
               </div>
             )}
+
+          {/* WIND CALCULATOR CARD */}
+          {!showSimulation && state.tool === Tool.WindCalculator && (
+            <WindCalculatorCard
+              settings={state.windCalculatorSettings || {
+                houseHeight: undefined,
+                houseWidth: undefined,
+                houseDepth: undefined,
+                houseRotation: 0,
+                roofType: 'duopitch',
+                flatRoofEdgeType: 'sharp',
+                parapetHeight: undefined,
+                edgeRadius: undefined,
+                bevelAngle: undefined,
+                roofPitch: undefined,
+                hippedMainPitch: undefined,
+                hippedHipPitch: undefined,
+                distanceToSea: 'more_than_25km',
+                terrainCategory: '2',
+                formFactor: 'main_structure',
+                windDirection: 0,
+              }}
+              drawingBoardLines={(() => {
+                const lines = Object.values(members).map((member, index) => ({
+                  id: index + 1,
+                  x1: member.resolved.point1.x,
+                  y1: member.resolved.point1.y,
+                  x2: member.resolved.point2.x,
+                  y2: member.resolved.point2.y,
+                }));
+                return lines;
+              })()}
+              onSettingsChange={(settings) =>
+                setState((s) => ({ 
+                  ...s, 
+                  windCalculatorSettings: { ...s.windCalculatorSettings, ...settings },
+                  hasChanges: true 
+                }))
+              }
+              onClose={() => setState((s) => ({ ...s, tool: Tool.Select }))}
+            />
+          )}
 
           {/* UTILIZATION RATIO MATRIX */}
           {analysis === "UR" &&
@@ -710,7 +758,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                    return null;
                  }
                }
-               if (!state.showEntities.distributedLoads[load.type]) {
+               if (!isLoadVisible(load.id, load.type, state)) {
                  return null;
                }
 
@@ -838,11 +886,15 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
             {/* POINT LOADS (on top) */}
             {Object.values(pointLoads).map((load) => {
+
+              if (!isLoadVisible(load.id, load.type, state)) return null;
+
               // In simulation view, do not render loads when no load combination is selected
               if (showSimulation && !selectedLC) return null;
               // During the exact frame of an analysis switch, skip loads to avoid flicker
               if (showSimulation && switchingAnalysis) return null;
               if (!state.showEntities.pointLoads[load.type]) return null;
+
               const isSelected = state.selectedIds.includes(load.id);
               const strokeWidth = isSelected
                 ? state.viewBox[3] * 0.003
@@ -869,11 +921,15 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
             {/* MOMENT LOADS (on top) */}
             {Object.values(momentLoads).map((load) => {
+
+              if (!isLoadVisible(load.id, load.type, state)) return null;
+
               // In simulation view, do not render loads when no load combination is selected
               if (showSimulation && !selectedLC) return null;
               // During the exact frame of an analysis switch, skip loads to avoid flicker
               if (showSimulation && switchingAnalysis) return null;
               if (!state.showEntities.momentLoads[load.type]) return null;
+              
               const isSelected = state.selectedIds.includes(load.id);
               const size = momentScale;
               const isHovered = state.hoveringId === load.id;

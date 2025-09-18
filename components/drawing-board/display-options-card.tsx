@@ -1,6 +1,7 @@
 import classNames from "classnames";
-import { LoadType, DrawingState } from "./lib/types";
+import { LoadType, DrawingState, Tool } from "./lib/types";
 import { RxEyeOpen, RxEyeNone } from "react-icons/rx";
+import React, { useState, useEffect } from "react";
 import {
   DeadIcon,
   LiveIcon,
@@ -17,6 +18,8 @@ import {
   showAllEntities,
 } from "./lib/show-entities";
 import { loadTypeColors } from "@/lib/constants/colors";
+import { canGroupSelectedLoads, createLoadGroup } from "./lib/load-groups";
+import GroupConfirmationCard from "./group-confirmation-card";
 
 const icons: Record<LoadType, React.ComponentType> = {
   [LoadType.Standard]: StandardIconDK,
@@ -62,12 +65,134 @@ const DisplayButton: React.FC<DisplayButtonProps> = ({
 type DisplayOptionsCardProps = {
   state: DrawingState;
   setState: React.Dispatch<React.SetStateAction<DrawingState>>;
+  entitySet: {
+    pointLoads: { [id: string]: any };
+    distributedLoads: { [id: string]: any };
+    momentLoads: { [id: string]: any };
+  };
 };
 
 const DisplayOptionsCard: React.FC<DisplayOptionsCardProps> = ({
   state,
   setState,
-}) => {  const LoadTypeButton: React.FC<LoadTypeButtonProps> = ({
+  entitySet,
+}) => {
+  const [showGroupConfirmation, setShowGroupConfirmation] = useState(false);
+  const [groupConfirmationPosition, setGroupConfirmationPosition] = useState({ x: 0, y: 0 });
+  const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
+
+  // Check if selected loads can be grouped
+  const { canGroup, loadType } = canGroupSelectedLoads(state.selectedIds, entitySet);
+  const selectedLoadIds = state.selectedIds.filter(id => 
+    id.startsWith('pl-') || id.startsWith('dl-') || id.startsWith('ml-')
+  );
+
+  // Handle group creation
+  const handleGroupConfirm = (groupName?: string) => {
+    if (canGroup && loadType && selectedLoadIds.length >= 2) {
+      const newGroup = createLoadGroup(selectedLoadIds, loadType, state.nextGroupNumber, groupName);
+      
+      setState(s => ({
+        ...s,
+        loadGroups: [...s.loadGroups, newGroup],
+        nextGroupNumber: s.nextGroupNumber + 1,
+        selectedIds: [], // Clear selection after grouping
+        showEntities: {
+          ...s.showEntities,
+          groups: {
+            ...s.showEntities.groups,
+            [newGroup.id]: false, // Groups start as disabled
+          },
+        },
+      }));
+    }
+    setShowGroupConfirmation(false);
+  };
+
+  const handleGroupCancel = () => {
+    setShowGroupConfirmation(false);
+  };
+
+  // Handle group deletion and renumbering
+  const handleDeleteGroup = (groupToDelete: string) => {
+    setState(s => {
+      // Remove the group
+      const updatedGroups = s.loadGroups.filter(group => group.id !== groupToDelete);
+      
+      // Renumber groups and update their IDs
+      const renumberedGroups = updatedGroups.map((group, index) => ({
+        ...group,
+        id: `group-${index + 1}`,
+        name: `Group ${index + 1}`,
+      }));
+      
+      // Update visibility state to match new IDs
+      const newGroupsVisibility: { [groupId: string]: boolean } = {};
+      renumberedGroups.forEach((group) => {
+        newGroupsVisibility[group.id] = false; // All groups start disabled
+      });
+      
+      // If we deleted the active group, reset to normal mode
+      const newActiveGroupId = groupToDelete === s.showEntities.activeGroupId ? null : s.showEntities.activeGroupId;
+      
+      return {
+        ...s,
+        loadGroups: renumberedGroups,
+        nextGroupNumber: renumberedGroups.length + 1,
+        showEntities: {
+          ...s.showEntities,
+          groups: newGroupsVisibility,
+          activeGroupId: newActiveGroupId,
+          // If we deleted the active group, restore normal visibility
+          ...(newActiveGroupId === null ? {
+            distributedLoadsButton: true,
+            pointLoadsButton: true,
+            momentLoadsButton: true,
+            loadtypeButtons: {
+              [LoadType.Standard]: true,
+              [LoadType.Snow]: true,
+              [LoadType.Wind]: true,
+              [LoadType.Dead]: true,
+              [LoadType.Live]: true,
+            },
+            pointLoads: {
+              [LoadType.Standard]: true,
+              [LoadType.Snow]: true,
+              [LoadType.Wind]: true,
+              [LoadType.Dead]: true,
+              [LoadType.Live]: true,
+            },
+            distributedLoads: {
+              [LoadType.Standard]: true,
+              [LoadType.Snow]: true,
+              [LoadType.Wind]: true,
+              [LoadType.Dead]: true,
+              [LoadType.Live]: true,
+            },
+            momentLoads: {
+              [LoadType.Standard]: true,
+              [LoadType.Snow]: true,
+              [LoadType.Wind]: true,
+              [LoadType.Dead]: true,
+              [LoadType.Live]: true,
+            },
+          } : {}),
+        },
+      };
+    });
+    setHoveredGroupId(null);
+  };
+
+  // Show group confirmation when appropriate conditions are met
+  useEffect(() => {
+    // Show confirmation when user has selected multiple loads of same type with Select tool
+    if (state.tool === Tool.Select && canGroup && selectedLoadIds.length >= 2) {
+      setGroupConfirmationPosition({ x: 400, y: 100 });
+      setShowGroupConfirmation(true);
+    } else {
+      setShowGroupConfirmation(false);
+    }
+  }, [state.tool, canGroup, selectedLoadIds.length]);  const LoadTypeButton: React.FC<LoadTypeButtonProps> = ({
     type,
     tooltip,
   }) => {
@@ -113,104 +238,250 @@ const DisplayOptionsCard: React.FC<DisplayOptionsCardProps> = ({
     setState((s) => ({ ...s, showEntities: showAllEntities }));
 
   return (
-    <div
-      className="bg-white border rounded flex items-center gap-2 px-3 py-1 text-gray-500 w-full"
-      style={{ height: '48px' }} // Ensure consistent height
-    >      <DisplayButton
-        isSelected={anyEntitiesShown}
-        Icon={anyEntitiesShown ? RxEyeOpen : RxEyeNone}
-        onClick={anyEntitiesShown ? hideAll : showAll}
-        tooltip="Vis/skjul alt"
-      />
-      <hr className="h-6 border-l border-gray-300 mx-1" />      <DisplayButton
-        isSelected={state.showEntities.distributedLoadsButton}
-        Icon={DistributedLoadIcon}
-        tooltip="Vis/skjul linjelast"
-        selectedClassName={classNames(
-          loadTypeColors.backgroundLoadsButton,
-          "bg-opacity-30"
-        )}
-        onClick={() => {
-          const shouldToggle = !state.showEntities.distributedLoadsButton; // Determine if we are showing or hiding
-          setState((s) => ({
-            ...s,
-            showEntities: {
-              ...state.showEntities,
-              distributedLoadsButton: shouldToggle, // Toggle the main button state
-              distributedLoads: {
-                ...state.showEntities.distributedLoads,
-                Dead: state.showEntities.loadtypeButtons.Dead ? shouldToggle : state.showEntities.distributedLoads.Dead,
-                Live: state.showEntities.loadtypeButtons.Live ? shouldToggle : state.showEntities.distributedLoads.Live,
-                Snow: state.showEntities.loadtypeButtons.Snow ? shouldToggle : state.showEntities.distributedLoads.Snow,
-                Wind: state.showEntities.loadtypeButtons.Wind ? shouldToggle : state.showEntities.distributedLoads.Wind,
-                Standard: state.showEntities.loadtypeButtons.Standard ? shouldToggle : state.showEntities.distributedLoads.Standard,
+    <>
+      <div
+        className="bg-white border rounded flex items-center gap-2 px-3 py-1 text-gray-500"
+        style={{ height: '48px' }} // Ensure consistent height
+      >      <DisplayButton
+          isSelected={anyEntitiesShown}
+          Icon={anyEntitiesShown ? RxEyeOpen : RxEyeNone}
+          onClick={anyEntitiesShown ? hideAll : showAll}
+          tooltip="Vis/skjul alt"
+        />
+        <hr className="h-6 border-l border-gray-300 mx-1" />      <DisplayButton
+          isSelected={state.showEntities.distributedLoadsButton}
+          Icon={DistributedLoadIcon}
+          tooltip="Vis/skjul linjelast"
+          selectedClassName={classNames(
+            loadTypeColors.backgroundLoadsButton,
+            "bg-opacity-30"
+          )}
+          onClick={() => {
+            const shouldToggle = !state.showEntities.distributedLoadsButton; // Determine if we are showing or hiding
+            setState((s) => ({
+              ...s,
+              showEntities: {
+                ...state.showEntities,
+                distributedLoadsButton: shouldToggle, // Toggle the main button state
+                distributedLoads: {
+                  ...state.showEntities.distributedLoads,
+                  Dead: state.showEntities.loadtypeButtons.Dead ? shouldToggle : state.showEntities.distributedLoads.Dead,
+                  Live: state.showEntities.loadtypeButtons.Live ? shouldToggle : state.showEntities.distributedLoads.Live,
+                  Snow: state.showEntities.loadtypeButtons.Snow ? shouldToggle : state.showEntities.distributedLoads.Snow,
+                  Wind: state.showEntities.loadtypeButtons.Wind ? shouldToggle : state.showEntities.distributedLoads.Wind,
+                  Standard: state.showEntities.loadtypeButtons.Standard ? shouldToggle : state.showEntities.distributedLoads.Standard,
+              },
             },
-          },
-          }))
-        }
-        }
-      />      <DisplayButton
-        isSelected={state.showEntities.pointLoadsButton}
-        Icon={PointLoadIcon}
-        tooltip="Vis/skjul punktlast"
-        selectedClassName={classNames(
-          loadTypeColors.backgroundLoadsButton,
-          "bg-opacity-30"
-        )}
-        onClick={() => {
-          const shouldToggle = !state.showEntities.pointLoadsButton; // Determine if we are showing or hiding
-          setState((s) => ({
-            ...s,
-            showEntities: {
-              ...state.showEntities,
-              pointLoadsButton: shouldToggle, // Toggle the main button state
-              pointLoads: {
-                ...state.showEntities.pointLoads,
-                Dead: state.showEntities.loadtypeButtons.Dead ? shouldToggle : state.showEntities.pointLoads.Dead,
-                Live: state.showEntities.loadtypeButtons.Live ? shouldToggle : state.showEntities.pointLoads.Live,
-                Snow: state.showEntities.loadtypeButtons.Snow ? shouldToggle : state.showEntities.pointLoads.Snow,
-                Wind: state.showEntities.loadtypeButtons.Wind ? shouldToggle : state.showEntities.pointLoads.Wind,
-                Standard: state.showEntities.loadtypeButtons.Standard ? shouldToggle : state.showEntities.pointLoads.Standard,
+            }))
+          }
+          }
+        />      <DisplayButton
+          isSelected={state.showEntities.pointLoadsButton}
+          Icon={PointLoadIcon}
+          tooltip="Vis/skjul punktlast"
+          selectedClassName={classNames(
+            loadTypeColors.backgroundLoadsButton,
+            "bg-opacity-30"
+          )}
+          onClick={() => {
+            const shouldToggle = !state.showEntities.pointLoadsButton; // Determine if we are showing or hiding
+            setState((s) => ({
+              ...s,
+              showEntities: {
+                ...state.showEntities,
+                pointLoadsButton: shouldToggle, // Toggle the main button state
+                pointLoads: {
+                  ...state.showEntities.pointLoads,
+                  Dead: state.showEntities.loadtypeButtons.Dead ? shouldToggle : state.showEntities.pointLoads.Dead,
+                  Live: state.showEntities.loadtypeButtons.Live ? shouldToggle : state.showEntities.pointLoads.Live,
+                  Snow: state.showEntities.loadtypeButtons.Snow ? shouldToggle : state.showEntities.pointLoads.Snow,
+                  Wind: state.showEntities.loadtypeButtons.Wind ? shouldToggle : state.showEntities.pointLoads.Wind,
+                  Standard: state.showEntities.loadtypeButtons.Standard ? shouldToggle : state.showEntities.pointLoads.Standard,
+              },
             },
-          },
-          }))
-        }
-        }
-      />      <DisplayButton
-        isSelected={state.showEntities.momentLoadsButton}
-        Icon={MomentLoadIcon}
-        tooltip="Vis/skjul moment"
-        selectedClassName={classNames(
-          loadTypeColors.backgroundLoadsButton,
-          "bg-opacity-30"
-        )}
-        onClick={() => {
-          const shouldToggle = !state.showEntities.momentLoadsButton; // Determine if we are showing or hiding
-          setState((s) => ({
-            ...s,
-            showEntities: {
-              ...state.showEntities,
-              momentLoadsButton: shouldToggle, // Toggle the main button state
-              momentLoads: {
-                ...state.showEntities.momentLoads,
-                Dead: state.showEntities.loadtypeButtons.Dead ? shouldToggle : state.showEntities.momentLoads.Dead,
-                Live: state.showEntities.loadtypeButtons.Live ? shouldToggle : state.showEntities.momentLoads.Live,
-                Snow: state.showEntities.loadtypeButtons.Snow ? shouldToggle : state.showEntities.momentLoads.Snow,
-                Wind: state.showEntities.loadtypeButtons.Wind ? shouldToggle : state.showEntities.momentLoads.Wind,
-                Standard: state.showEntities.loadtypeButtons.Standard ? shouldToggle : state.showEntities.momentLoads.Standard,
+            }))
+          }
+          }
+        />      <DisplayButton
+          isSelected={state.showEntities.momentLoadsButton}
+          Icon={MomentLoadIcon}
+          tooltip="Vis/skjul moment"
+          selectedClassName={classNames(
+            loadTypeColors.backgroundLoadsButton,
+            "bg-opacity-30"
+          )}
+          onClick={() => {
+            const shouldToggle = !state.showEntities.momentLoadsButton; // Determine if we are showing or hiding
+            setState((s) => ({
+              ...s,
+              showEntities: {
+                ...state.showEntities,
+                momentLoadsButton: shouldToggle, // Toggle the main button state
+                momentLoads: {
+                  ...state.showEntities.momentLoads,
+                  Dead: state.showEntities.loadtypeButtons.Dead ? shouldToggle : state.showEntities.momentLoads.Dead,
+                  Live: state.showEntities.loadtypeButtons.Live ? shouldToggle : state.showEntities.momentLoads.Live,
+                  Snow: state.showEntities.loadtypeButtons.Snow ? shouldToggle : state.showEntities.momentLoads.Snow,
+                  Wind: state.showEntities.loadtypeButtons.Wind ? shouldToggle : state.showEntities.momentLoads.Wind,
+                  Standard: state.showEntities.loadtypeButtons.Standard ? shouldToggle : state.showEntities.momentLoads.Standard,
+              },
             },
-          },
-          }))
-        }
-        }
-      />
-      <hr className="h-6 border-l border-gray-300 mx-1" />
-      <LoadTypeButton type={LoadType.Dead} tooltip="Vis/skjul egenlast" />
-      <LoadTypeButton type={LoadType.Live} tooltip="Vis/skjul nyttelast" />
-      <LoadTypeButton type={LoadType.Snow} tooltip="Vis/skjul snelast" />
-      <LoadTypeButton type={LoadType.Wind} tooltip="Vis/skjul vindlast" />
-      <LoadTypeButton type={LoadType.Standard} tooltip="Vis/skjul karakteristisk last (uden lastkombination)" />
-    </div>
+            }))
+          }
+          }
+        />
+        <hr className="h-6 border-l border-gray-300 mx-1" />
+        <LoadTypeButton type={LoadType.Dead} tooltip="Vis/skjul egenlast" />
+        <LoadTypeButton type={LoadType.Live} tooltip="Vis/skjul nyttelast" />
+        <LoadTypeButton type={LoadType.Snow} tooltip="Vis/skjul snelast" />
+        <LoadTypeButton type={LoadType.Wind} tooltip="Vis/skjul vindlast" />
+        <LoadTypeButton type={LoadType.Standard} tooltip="Vis/skjul karakteristisk last (uden lastkombination)" />
+        
+        {/* Group buttons */}
+        {state.loadGroups.length > 0 && (
+          <>
+            <hr className="h-6 border-l border-gray-300 mx-1" />
+            {state.loadGroups.map((group, index) => (
+              <div 
+                key={group.id} 
+                className="relative flex flex-col items-center"
+                onMouseEnter={() => setHoveredGroupId(group.id)}
+                onMouseLeave={() => setHoveredGroupId(null)}
+              >
+                <button
+                  className={classNames("w-8 h-8 rounded flex items-center justify-center text-xs font-semibold transition-colors", {
+                    [loadTypeColors.background[group.type]]: state.showEntities.activeGroupId === group.id,
+                    "bg-gray-100": state.showEntities.activeGroupId !== group.id,
+                  })}
+                  title={`Vis/skjul gruppe ${index + 1} (${group.name})`}
+                  onClick={() => {
+                    setState(s => {
+                      const isCurrentlyActive = s.showEntities.activeGroupId === group.id;
+                      
+                      if (isCurrentlyActive) {
+                        // Deactivate current group - return to normal mode
+                        return {
+                          ...s,
+                          showEntities: {
+                            ...s.showEntities,
+                            activeGroupId: null,
+                            // Restore default visibility states
+                            distributedLoadsButton: true,
+                            pointLoadsButton: true,
+                            momentLoadsButton: true,
+                            loadtypeButtons: {
+                              [LoadType.Standard]: true,
+                              [LoadType.Snow]: true,
+                              [LoadType.Wind]: true,
+                              [LoadType.Dead]: true,
+                              [LoadType.Live]: true,
+                            },
+                            pointLoads: {
+                              [LoadType.Standard]: true,
+                              [LoadType.Snow]: true,
+                              [LoadType.Wind]: true,
+                              [LoadType.Dead]: true,
+                              [LoadType.Live]: true,
+                            },
+                            distributedLoads: {
+                              [LoadType.Standard]: true,
+                              [LoadType.Snow]: true,
+                              [LoadType.Wind]: true,
+                              [LoadType.Dead]: true,
+                              [LoadType.Live]: true,
+                            },
+                            momentLoads: {
+                              [LoadType.Standard]: true,
+                              [LoadType.Snow]: true,
+                              [LoadType.Wind]: true,
+                              [LoadType.Dead]: true,
+                              [LoadType.Live]: true,
+                            },
+                          },
+                        };
+                      } else {
+                        // Activate this group exclusively
+                        return {
+                          ...s,
+                          showEntities: {
+                            ...s.showEntities,
+                            activeGroupId: group.id,
+                            // Set only this group's load type to true, all others false
+                            distributedLoadsButton: true,
+                            pointLoadsButton: true,
+                            momentLoadsButton: true,
+                            loadtypeButtons: {
+                              [LoadType.Standard]: group.type === LoadType.Standard,
+                              [LoadType.Snow]: group.type === LoadType.Snow,
+                              [LoadType.Wind]: group.type === LoadType.Wind,
+                              [LoadType.Dead]: group.type === LoadType.Dead,
+                              [LoadType.Live]: group.type === LoadType.Live,
+                            },
+                            pointLoads: {
+                              [LoadType.Standard]: group.type === LoadType.Standard,
+                              [LoadType.Snow]: group.type === LoadType.Snow,
+                              [LoadType.Wind]: group.type === LoadType.Wind,
+                              [LoadType.Dead]: group.type === LoadType.Dead,
+                              [LoadType.Live]: group.type === LoadType.Live,
+                            },
+                            distributedLoads: {
+                              [LoadType.Standard]: group.type === LoadType.Standard,
+                              [LoadType.Snow]: group.type === LoadType.Snow,
+                              [LoadType.Wind]: group.type === LoadType.Wind,
+                              [LoadType.Dead]: group.type === LoadType.Dead,
+                              [LoadType.Live]: group.type === LoadType.Live,
+                            },
+                            momentLoads: {
+                              [LoadType.Standard]: group.type === LoadType.Standard,
+                              [LoadType.Snow]: group.type === LoadType.Snow,
+                              [LoadType.Wind]: group.type === LoadType.Wind,
+                              [LoadType.Dead]: group.type === LoadType.Dead,
+                              [LoadType.Live]: group.type === LoadType.Live,
+                            },
+                          },
+                        };
+                      }
+                    });
+                  }}
+                >
+                  {index + 1}
+                </button>
+                
+                {/* Invisible hover bridge to keep hover state active */}
+                {hoveredGroupId === group.id && (
+                  <div className="absolute top-8 w-6 h-2 bg-transparent" />
+                )}
+                
+                {/* Delete button that appears on hover */}
+                {hoveredGroupId === group.id && (
+                  <button
+                    className="absolute top-10 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded flex items-center justify-center text-xs font-bold transition-all duration-200 shadow-lg z-50"
+                    title={`Slet gruppe ${index + 1}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteGroup(group.id);
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* Group confirmation card */}
+      {showGroupConfirmation && loadType && (
+        <GroupConfirmationCard
+          selectedLoadCount={selectedLoadIds.length}
+          loadType={loadType}
+          onConfirm={handleGroupConfirm}
+          onCancel={handleGroupCancel}
+          position={groupConfirmationPosition}
+        />
+      )}
+    </>
   );
 };
 

@@ -7,6 +7,7 @@ import {
   DistributedLoadIcon,
   MomentLoadIcon,
   SupportIcon,
+  WindIcon,
 } from "@/lib/constants/icons";
 import { Tool } from "./types";
 import { renderToString } from "react-dom/server";
@@ -19,6 +20,7 @@ export const toolIcons: Record<Tool, React.ComponentType> = {
   DistributedLoad: DistributedLoadIcon,
   MomentLoad: MomentLoadIcon,
   Support: SupportIcon,
+  WindCalculator: WindIcon,
 };
 
 export const toBase64String = (Component: React.ComponentType): string => {

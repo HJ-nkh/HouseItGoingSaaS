@@ -153,6 +153,12 @@ function House3D({
           <meshBasicMaterial color="#FF0000" />
         </mesh>
         
+        {/* Arrow head for width direction - pointing towards positive X (when rotation=0, points East) */}
+        <mesh position={[7, 0.1, 0]} rotation={[0, 0, -Math.PI / 2]}>
+          <coneGeometry args={[0.3, 0.8, 8]} />
+          <meshBasicMaterial color="#FF0000" />
+        </mesh>
+        
         {/* Invisible thicker cylinder for easier dragging - width direction */}
         <mesh 
           position={[0, 0.1, 0]} 
@@ -166,6 +172,11 @@ function House3D({
         {/* Visible thin red line - depth direction (90 degrees rotated) */}
         <mesh position={[0, 0.1, 0]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.02, 0.02, 14]} />
+          <meshBasicMaterial color="#FF0000" />
+        </mesh>
+        
+        {/* Arrow head for depth direction - pointing towards positive Z (when rotation=0, points South) */}
+        <mesh position={[0, 0.1, 7]} rotation={[-Math.PI / 2, 0, 0]}>
           <meshBasicMaterial color="#FF0000" />
         </mesh>
         
@@ -317,46 +328,42 @@ export default function HouseCompassView({
   };
 
   return (
-    <div className="relative w-full h-full bg-gray-50 rounded border">
-      {/* HTML compass directions overlay */}
-      <CompassDirectionsHTML />
-      
-      <Canvas>
-        <TopDownCamera roofHeight={roofHeight} />
-        
-        {/* Ambient lighting - same as house-outline */}
-        <ambientLight intensity={0.6} />
-        <pointLight position={[10, 10, 10]} />
-        
-        {/* Grid background */}
-        <gridHelper args={[24, 24, '#CCCCCC', '#EEEEEE']} position={[0, -1, 0]} />
-        
-        {/* Compass markers */}
-        <CompassMarkers />
-        
-        {/* House (draggable for rotation) - using imported House component */}
-        <House3D
-          width={width * scale}
-          depth={depth * scale}
-          height={height * scale}
-          roofType={roofType}
-          flatRoofEdgeType={flatRoofEdgeType}
-          parapetHeight={parapetHeight * scale}
-          edgeRadius={edgeRadius * scale}
-          bevelAngle={bevelAngle}
-          roofPitch={roofPitch}
-          hippedMainPitch={hippedMainPitch}
-          hippedHipPitch={hippedHipPitch}
-          rotation={houseRotation}
-          onRotationChange={handleHouseRotationChange}
-        />
-        
-        {/* Center point */}
-        <mesh position={[0, 0.05, 0]}>
-          <cylinderGeometry args={[0.1, 0.1, 0.05]} />
-          <meshBasicMaterial color="#333333" />
-        </mesh>
-      </Canvas>
+    <div className="relative w-full" style={{ aspectRatio: '1 / 1' }}>
+      <div className="absolute inset-0 bg-gray-50 rounded border overflow-hidden">
+        {/* HTML compass directions overlay */}
+        <CompassDirectionsHTML />
+        <Canvas style={{ width: '100%', height: '100%' }}>
+          <TopDownCamera roofHeight={roofHeight} />
+          {/* Ambient lighting - same as house-outline */}
+          <ambientLight intensity={0.6} />
+          <pointLight position={[10, 10, 10]} />
+          {/* Grid background */}
+          <gridHelper args={[24, 24, '#CCCCCC', '#EEEEEE']} position={[0, -1, 0]} />
+          {/* Compass markers */}
+          <CompassMarkers />
+          {/* House (draggable for rotation) - using imported House component */}
+          <House3D
+            width={width * scale}
+            depth={depth * scale}
+            height={height * scale}
+            roofType={roofType}
+            flatRoofEdgeType={flatRoofEdgeType}
+            parapetHeight={parapetHeight * scale}
+            edgeRadius={edgeRadius * scale}
+            bevelAngle={bevelAngle}
+            roofPitch={roofPitch}
+            hippedMainPitch={hippedMainPitch}
+            hippedHipPitch={hippedHipPitch}
+            rotation={houseRotation}
+            onRotationChange={handleHouseRotationChange}
+          />
+          {/* Center point */}
+          <mesh position={[0, 0.05, 0]}>
+            <cylinderGeometry args={[0.1, 0.1, 0.05]} />
+            <meshBasicMaterial color="#333333" />
+          </mesh>
+        </Canvas>
+      </div>
     </div>
   );
 }
