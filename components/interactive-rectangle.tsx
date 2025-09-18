@@ -561,7 +561,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
         >
           {/* Quarter circles for each side */}
           {(() => {
-            const quarterCircles: JSX.Element[] = [];
+            const quarterCircles: React.ReactElement[] = [];
             const sides = [
               { name: 'top', x: rectX + scaledDepth/2, y: rectY, normal: 270 },
               { name: 'right', x: rectX + scaledDepth, y: rectY + scaledWidth/2, normal: 0 },
@@ -820,7 +820,7 @@ const InteractiveRectangle: React.FC<InteractiveRectangleProps> = ({
 
           {/* 45-degree dashed lines from rectangle sides */}
           {(() => {
-            const lines: JSX.Element[] = [];
+            const lines: React.ReactElement[] = [];
             const sides = [
               { name: 'top', x: rectX + scaledDepth/2, y: rectY, normal: 270 },
               { name: 'right', x: rectX + scaledDepth, y: rectY + scaledWidth/2, normal: 0 },
