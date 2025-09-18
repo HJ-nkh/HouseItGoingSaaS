@@ -24,6 +24,7 @@ import {
   resolveDistributedLoadPosition,
   resolvePointLoadPosition,
   resolveMomentLoadPosition,
+  resolveSupportPosition,
 } from "./lib/reduce-history/resolve-position";
 import { aboveOrBelowLine, offsetPointFromLine } from "./lib/geometry";
 import RightAngle from "./right-angle";
@@ -57,6 +58,7 @@ type DrawingBoardProps = {
   simulation?: Simulation;
   onSave: (drawing: CreateDrawingData) => void;
   onDelete?: () => void;
+  onSimulationQueued?: () => void;
 };
 
 const DrawingBoard: React.FC<DrawingBoardProps> = ({
@@ -64,12 +66,20 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
   simulation,
   onSave,
   onDelete,
+  onSimulationQueued,
 }) => {
   const svgRef = useRef(null);
+  const [runInProgress, setRunInProgress] = useState(false);
+  // Local override of simulation status based on SSE/poll to avoid waiting for parent props
+  const [simStatusOverride, setSimStatusOverride] = useState<SimulationStatus | null>(null);
+  // Local created simulation id to start SSE/polling immediately
+  const [localSimulationId, setLocalSimulationId] = useState<string | null>(null);
 
   // Simulations
   const [selectedLimitState, setSelectedLimitState] =
     useState<LimitState>("ULS");
+  // Remember what LimitState was selected before entering Ve, so we can restore it when leaving Ve
+  const [prevLimitStateBeforeVe, setPrevLimitStateBeforeVe] = useState<LimitState | null>(null);
   const [selectedLC, setSelectedLC] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);  const [showSimulation, setShowSimulation] = useState(false);
   const [scaleF1, setScaleF1] = useState(0.00005); // Add this state
@@ -79,6 +89,22 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
   const [scaleR0, setScaleR0] = useState(0.001); // Add scale for reactions
   const [selectedGlobalLocal, setSelectedGlobalLocal] = useState<"global" | "local">("global");
   const [selectedReactionIndex, setSelectedReactionIndex] = useState<number | null>(null); // Add reaction selection state
+  // Prevent a single-frame flash when switching analyses
+  const [switchingAnalysis, setSwitchingAnalysis] = useState(false);
+  const prevAnalysisRef = useRef<Analysis | null>(null);
+  useEffect(() => {
+    if (analysis !== prevAnalysisRef.current && analysis != null) {
+      // If we're leaving Ve, restore the previous LimitState deterministically here
+      if (prevAnalysisRef.current === "Ve" && analysis !== "Ve" && prevLimitStateBeforeVe) {
+        setSelectedLimitState(prevLimitStateBeforeVe);
+        setPrevLimitStateBeforeVe(null);
+      }
+      setSwitchingAnalysis(true);
+      const id = requestAnimationFrame(() => setSwitchingAnalysis(false));
+      prevAnalysisRef.current = analysis;
+      return () => cancelAnimationFrame(id);
+    }
+  }, [analysis]);
 
   // To avoid firing the click event when dragging the mouse
   const [mouseDownStartPos, setMouseDownStartPos] = useState<
@@ -91,9 +117,8 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
   const { memberSimulations, R0, loadCombinationsUR, loadCombinationsFactorMat, loadCombinationsFactorMatIds } =
     reshapedSimulation || {};
 
-  if (selectedLC === null && loadCombinationsUR?.[selectedLimitState]?.[0]) {
-    setSelectedLC(loadCombinationsUR[selectedLimitState][0]);
-  }
+  // Do not auto-select a load combination; require explicit user choice across analyses.
+  // If needed, this can be enhanced to preserve LC when switching limit states in SimulationCard.
 
   const showFE = false;
 
@@ -104,7 +129,9 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
       ? makeDrawingState(drawing, aspectRatio)
       : defaultDrawingState(aspectRatio)
   );
-  const viewBoxStr: string = state.viewBox.join(" ");  const hasChangedSinceSim = drawing?.hasChanges || state.hasChanges;
+  const viewBoxStr: string = state.viewBox.join(" ");
+  // Gate results solely by local change flag to avoid stale server values
+  const hasChangedSinceSim = !!state.hasChanges;
 
   const addAction = (action: Action | Action[]) => {
     setState((s) => ({ ...s, hasChanges: true }));
@@ -279,8 +306,105 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
   }, []);
 
   useEffect(() => {
-    setState(prev => ({ ...prev, hasChanges: drawing?.hasChanges ?? true }));
+    if (typeof drawing?.hasChanges === 'boolean') {
+      setState(prev => ({ ...prev, hasChanges: !!drawing.hasChanges }));
+    }
   }, [drawing?.hasChanges]);
+
+  // Keep local run flag in sync with simulation prop unless we have a local terminal override
+  useEffect(() => {
+    if (simStatusOverride) return; // don't fight local override
+    const isRunning = simulation?.status === SimulationStatus.Pending || simulation?.status === SimulationStatus.Running;
+    setRunInProgress(!!isRunning);
+  }, [simulation?.status, simStatusOverride]);
+
+  // Reset local override when switching to a different simulation id
+  useEffect(() => {
+    setSimStatusOverride(null);
+    setLocalSimulationId(null);
+  }, [simulation?.id]);
+
+  // Proactive updates: Prefer SSE for immediate updates; fallback to polling until props reflect completion
+  useEffect(() => {
+  const activeSimulationId = simulation?.id || localSimulationId;
+  if (!drawing?.id || !activeSimulationId) return;
+  const isActive = (simStatusOverride ?? simulation?.status) === SimulationStatus.Pending || (simStatusOverride ?? simulation?.status) === SimulationStatus.Running || runInProgress;
+    if (!isActive) return;
+
+    let cancelled = false;
+    let intervalId: any;
+    let sse: EventSource | null = null;
+
+    // Try SSE first
+  try {
+  const sseUrl = `/api/simulations/${activeSimulationId}/events?ts=${Date.now()}`;
+  sse = new EventSource(sseUrl);
+      sse.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data?.status === SimulationStatus.Completed || data?.status === SimulationStatus.Failed) {
+    // Clear pending overlay immediately
+    setRunInProgress(false);
+      setSimStatusOverride(data.status);
+            onSimulationQueued?.();
+          }
+        } catch {}
+      };
+      sse.onerror = () => {
+        // If SSE errors, the polling below will handle updates
+      };
+    } catch {}
+    const poll = async () => {
+      try {
+        // Prefer polling the specific id; if not available or fails, poll by drawingId limit=1
+        let latest: any = null;
+        if (activeSimulationId) {
+          const res = await fetch(`/api/simulations/${activeSimulationId}` as string, {
+            cache: "no-store",
+            credentials: "same-origin",
+            headers: { "cache-control": "no-cache" },
+          });
+          if (res.ok) {
+            latest = await res.json();
+          }
+        }
+        if (!latest && drawing?.id) {
+          const params = new URLSearchParams({ drawingId: String(drawing.id), limit: "1" });
+          const resList = await fetch(`/api/simulations?${params.toString()}` as string, {
+            cache: "no-store",
+            credentials: "same-origin",
+            headers: { "cache-control": "no-cache" },
+          });
+          if (resList.ok) {
+            const arr = await resList.json();
+            latest = Array.isArray(arr) ? arr[0] : null;
+          }
+        }
+
+        if (latest?.status === SimulationStatus.Completed || latest?.status === SimulationStatus.Failed) {
+          if (!cancelled) {
+            // Ask parent to refetch so UI updates ASAP; keep polling until props reflect it
+      setRunInProgress(false);
+            setSimStatusOverride(latest.status);
+            onSimulationQueued?.();
+          }
+        }
+      } catch (_) {
+        // ignore transient errors during polling
+      }
+    };
+
+    // Fast first check, then steady interval
+    poll();
+    intervalId = setInterval(poll, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+      if (sse) {
+        try { sse.close(); } catch {}
+      }
+    };
+  }, [drawing?.id, simulation?.id, simulation?.status, onSimulationQueued, localSimulationId, simStatusOverride, runInProgress]);
 
   // TODO: Add cursor classes to div when they work
   const SnappingAngle: React.FC = () => {
@@ -306,17 +430,29 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     );
   };
 
+  // Resolve effective status to drive UI consistently (prevents flicker)
+  const effectiveStatus: SimulationStatus | null = (simStatusOverride ?? simulation?.status) ?? (runInProgress ? SimulationStatus.Pending : null);
+
   // TODO: Position entity cards (adding and modifying) based on selection card size
   return (
     <div className="h-full w-full flex flex-col">
       <TopBar
-        onSave={onSave}
+  onSave={(data) => {
+          // Update local flag immediately so results can enable post-run
+          if (typeof data.hasChanges === 'boolean') {
+            setState((s) => ({ ...s, hasChanges: data.hasChanges! }));
+          }
+          onSave(data);
+        }}
         state={state}
         drawing={drawing}
         onDelete={onDelete}
         entitySet={entitySet}
-        simulationId={simulation?.status !== 'pending' ? simulation?.id : undefined}
-        showDownload={simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim}
+  simulationId={simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim && !runInProgress ? simulation?.id : undefined}
+  showDownload={simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim && !runInProgress}
+  onSimulationQueued={onSimulationQueued}
+  onRunStart={() => { setSimStatusOverride(null); setLocalSimulationId(null); setRunInProgress(true); }}
+  onSimulationCreated={(id) => setLocalSimulationId(id)}
       />
       <div className="h-full flex">
         <div className="h-full">
@@ -344,9 +480,17 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
               </div>
             )}
 
-          {simulation?.status && simulation.status === SimulationStatus.Pending && (
+          {(effectiveStatus === SimulationStatus.Pending || effectiveStatus === SimulationStatus.Running) && (
             <div className="absolute h-full w-full flex justify-center items-center z-40 bg-gray-100/60">
               <PendingIndicator />
+            </div>
+          )}
+
+          {showSimulation && !selectedLC && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+              <div className="pointer-events-auto bg-white/85 border rounded-lg px-4 py-3 text-gray-700 shadow-sm">
+                Vælg en lastkombination for at vise laster og resultater.
+              </div>
             </div>
           )}
 
@@ -362,17 +506,12 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                 <div className="w-auto">
                   <ScaleSimulationCard
                     scale={
-                      analysis === "Ve"
-                        ? scaleVe
-                        : analysis === "F1"
-                        ? scaleF1
-                        : analysis === "F2"
-                        ? scaleF2
-                        : analysis === "M"
-                        ? scaleM
-                        : analysis === "R0"
-                        ? scaleR0
-                        : scaleF1 // default case
+                      analysis === "Ve" ? scaleVe :
+                      analysis === "F1" ? scaleF1 :
+                      analysis === "F2" ? scaleF2 :
+                      analysis === "M" ? scaleM :
+                      analysis === "R0" ? scaleR0 :
+                      scaleF1 // default case
                     }
                     setScale={
                       analysis === "Ve"
@@ -603,8 +742,16 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
             {/* ORTHOGONAL SNAP ANGLE */}
             <SnappingAngle />
 
-            {/* DISTRIBUTED LOADS */}
+  {/* DISTRIBUTED LOADS */}
             {Object.values(distributedLoads).map((load) => {
+         // In simulation view, do not render loads when no load combination is selected
+         if (showSimulation && !selectedLC) {
+                 return null;
+               }
+          // During the exact frame of an analysis switch, skip loads to avoid flicker
+          if (showSimulation && switchingAnalysis) {
+                 return null;
+               }
                if (selectedLC && loadCombinationsFactorMat && loadCombinationsFactorMatIds && showSimulation) {
                  const showLoadByIds = getShowLoadByIds(selectedLC, selectedLimitState, loadCombinationsFactorMat, loadCombinationsFactorMatIds);
                  if (!showLoadByIds.includes(load.id)) {
@@ -647,6 +794,10 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
             {/* SUPPORTS (beneath distributed loads) */}
             {analysis !== "Ve" && analysis !== "R0" && Object.values(supports).map((support) => {
+              // Hide the regular black support when modifying this support
+              if (state.modifyingEntity?.support?.id === support.id) {
+                return null;
+              }
               const isSelected = state.selectedIds.includes(support.id);
               const strokeWidth = 2.5;
               const size = isSelected
@@ -735,7 +886,15 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
             {/* POINT LOADS (on top) */}
             {Object.values(pointLoads).map((load) => {
+
               if (!isLoadVisible(load.id, load.type, state)) return null;
+
+              // In simulation view, do not render loads when no load combination is selected
+              if (showSimulation && !selectedLC) return null;
+              // During the exact frame of an analysis switch, skip loads to avoid flicker
+              if (showSimulation && switchingAnalysis) return null;
+              if (!state.showEntities.pointLoads[load.type]) return null;
+
               const isSelected = state.selectedIds.includes(load.id);
               const strokeWidth = isSelected
                 ? state.viewBox[3] * 0.003
@@ -762,7 +921,15 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
             {/* MOMENT LOADS (on top) */}
             {Object.values(momentLoads).map((load) => {
+
               if (!isLoadVisible(load.id, load.type, state)) return null;
+
+              // In simulation view, do not render loads when no load combination is selected
+              if (showSimulation && !selectedLC) return null;
+              // During the exact frame of an analysis switch, skip loads to avoid flicker
+              if (showSimulation && switchingAnalysis) return null;
+              if (!state.showEntities.momentLoads[load.type]) return null;
+              
               const isSelected = state.selectedIds.includes(load.id);
               const size = momentScale;
               const isHovered = state.hoveringId === load.id;
@@ -834,7 +1001,22 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                   isHovered={false}
                 />
               </g>
-            )}            {/* REACTIONS (R0) - Global, not per member */}
+            )}
+            {state.modifyingEntity?.support && (
+              <RenderedSupport
+                support={{
+                  ...resolveSupportPosition(
+                    state.modifyingEntity.support,
+                    nodes,
+                    members
+                  ),
+                } as any}
+                strokeWidth={2.5}
+                isSelected={true}
+                size={state.viewBox[3] * 0.04}
+              />
+            )}
+            {/* REACTIONS (R0) - Global, not per member */}
             {simulation &&
               showSimulation &&
               selectedLC &&
@@ -859,7 +1041,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                   {memberSimulations?.map((memberSim: any) => {
                 const { id, nodes, elements } = memberSim;
                 // Show elements?
-                const FENodes = showFE
+                const FENodes = showFE && selectedLC
                   ? nodes.map(({ x, y }: any, i: number) => (
                       <circle
                         key={`FENode-${id}-${i}`}
@@ -876,11 +1058,14 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                 if (!member) {
                   return null;
                 }                const FEElements = elements.map((element: any, i: number) => {
+                  if (!selectedLC) {
+                    return null;
+                  }
                   if (analysis === "UR") {
                     return null;
                   }
                   if (analysis === "Ve") {
-                    if (selectedLimitState!=="SLS" && selectedLC){
+                    if (selectedLimitState!=="SLS"){
                       return null;
                     }
                     return (
@@ -1055,18 +1240,47 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
           </svg>
         </div>
         <div className="h-full">
-          <SimulationsSidebar            onSelect={(analysis: Analysis) => {
-              setAnalysis(analysis);
+  <SimulationsSidebar            onSelect={(nextAnalysis: Analysis) => {
               // Reset reaction selection when switching analysis
               setSelectedReactionIndex(null);
-              if (analysis && ["M", "F1", "F2"].includes(analysis)) {
+              // Determine target limit state for validation (Ve uses SLS; leaving Ve restores prev)
+              const leavingVe = analysis === "Ve" && nextAnalysis !== "Ve";
+              const enteringVe = nextAnalysis === "Ve" && analysis !== "Ve";
+              const targetLimitState: LimitState = enteringVe
+                ? "SLS"
+                : leavingVe && prevLimitStateBeforeVe
+                ? prevLimitStateBeforeVe
+                : selectedLimitState;
+
+              // If entering Ve, save current LS and set LS to SLS
+              if (enteringVe) {
+                setPrevLimitStateBeforeVe(selectedLimitState);
+                if (selectedLimitState !== "SLS") {
+                  setSelectedLimitState("SLS");
+                }
+              }
+
+              // Validate current LC for next analysis and target LS
+              const isSpecial = selectedLC === "Maksimale udnyttelser, samlet";
+              const specialAllowed = ["UR", "M", "F1", "F2"].includes(nextAnalysis);
+              const combos = loadCombinationsUR?.[targetLimitState] || [];
+              const lcIsValid = !!selectedLC && (!isSpecial
+                ? combos.includes(selectedLC)
+                : specialAllowed);
+
+              if (!lcIsValid) {
+                setSelectedLC(null);
+              }
+
+              setAnalysis(nextAnalysis);
+        if (nextAnalysis && ["M", "F1", "F2"].includes(nextAnalysis)) {
                 setState((s) => ({ ...s, showEntities: hideAllEntities }));
-              } else if (analysis && ["Ve", "UR"].includes(analysis)) { // Add this condition
+        } else if (nextAnalysis && ["Ve", "UR"].includes(nextAnalysis)) { // Add this condition
                 setState((s) => ({ ...s, showEntities: showAllEntities }));
               }
             }}
             selected={analysis}
-            disabled={!(simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim)}
+            disabled={!(simulation?.status === SimulationStatus.Completed && !hasChangedSinceSim && !runInProgress)}
             onClick={() => enableSimulationView()}
           />        </div>
       </div>

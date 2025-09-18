@@ -5,7 +5,7 @@ import URLoadCombinationsCard from "./ur-load-combinations-card";
 type SimulationCardProps = {
 	analysis: Analysis;
 	selectedLC: string | null;
-	setSelectedLC: (lc: string) => void;
+  setSelectedLC: (lc: string | null) => void;
 	selectedLimitState: LimitState;
 	setSelectedLimitState: (ls: LimitState) => void;
 	loadCombinations: string[];
@@ -19,8 +19,13 @@ const SimulationCard: React.FC<SimulationCardProps> = ({ selectedLC, setSelected
               selectedLC={selectedLC}
               onLCSelect={(lc: string) => setSelectedLC(lc)}
               onLimitStateSelect={(ls: LimitState) => {
+                // Preserve LC if still valid in new LS; clear otherwise
                 setSelectedLimitState(ls);
-                setSelectedLC(loadCombinationsUR[ls]?.[0] ?? null);
+                const options = loadCombinationsUR[ls] || [];
+                const isSpecial = selectedLC === "Maksimale udnyttelser, samlet";
+                const specialAllowed = ["UR", "M", "F1", "F2"].includes(analysis);
+                const lcIsValid = !!selectedLC && (!isSpecial ? options.includes(selectedLC) : specialAllowed);
+                if (!lcIsValid) setSelectedLC(null);
               }}
               loadCombinations={loadCombinationsUR[selectedLimitState] || []}
               analysis={analysis}

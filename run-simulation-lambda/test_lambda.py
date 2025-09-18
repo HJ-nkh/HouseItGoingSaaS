@@ -14,7 +14,7 @@ from main import handler
 test_event = {
     "body": {
         "team_id": 1,  # Changed from user_id to team_id to match main.py
-        "simulation_id": 7
+        "simulation_id": 16
     }, 
     "headers": { 
         "X-API-Key": os.environ.get("API_KEY") 
@@ -26,10 +26,13 @@ test_context = {}
 
 if __name__ == "__main__":
     print("Testing Lambda function...")
-    try:
-        result = handler(test_event, test_context)
-        print(f"Result: {result}")
-    except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()
+
+    result = handler(test_event, test_context)
+
+    # try:
+    #     result = handler(test_event, test_context)
+    #     print(f"Result: {result}")
+    # except Exception as e:
+    #     print(f"Error: {e}")
+    #     import traceback
+    #     traceback.print_exc()

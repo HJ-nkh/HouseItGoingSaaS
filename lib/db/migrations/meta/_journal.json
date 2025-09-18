@@ -29,6 +29,27 @@
       "when": 1751832582395,
       "tag": "0003_mighty_arclight",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1757500430417,
+      "tag": "0004_talented_shriek",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1757571400000,
+      "tag": "0005_json_state_simulations",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1757871400000,
+      "tag": "0006_add_meta_and_strip_from_payloads",
+      "breakpoints": true
     }
   ]
 }

@@ -28,7 +28,7 @@ export async function GET(
     const { id } = await params;
     const reportId = id;
 
-    console.log(`Getting download url for report ${reportId}`);
+  console.log(`[report-download] request reportId=${reportId}`);
 
     const report = await getReportById(reportId);
     if (!report) {
@@ -56,8 +56,33 @@ export async function GET(
       );
     }
 
-    const reportKey = generateReportKey(userWithTeam.teamId, report.projectId, report.id);
-    const downloadUrl = await generatePresignedUrl(bucketName, reportKey, 3600); // 1 hour expiration
+  // Prefer stored s3Key (exact path used at generation time) else fall back to deterministic key
+    const reportKey = (report as any).s3Key || generateReportKey(userWithTeam.teamId, report.projectId, report.id);
+    console.log(`[report-download] using key=${reportKey} storedKey=${(report as any).s3Key ? 'yes' : 'no'}`);
+
+    // Derive nice filename: prefer report.title else associated drawing title else project id
+    let niceFilenameBase = 'rapport';
+    if (report.title && report.title.trim() && !/^report$/i.test(report.title.trim())) {
+      niceFilenameBase = report.title.trim();
+    }
+    // sanitize
+    niceFilenameBase = niceFilenameBase
+      .replace(/\s+/g, '-')
+      .replace(/[^A-Za-z0-9.-]+/g, '')
+      .replace(/^-+|-+$/g, '') || 'rapport';
+    const finalFilename = `${niceFilenameBase}.docx`;
+
+    let downloadUrl: string;
+    try {
+      downloadUrl = await generatePresignedUrl(bucketName, reportKey, 900, { filename: finalFilename, headCheck: true, contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    } catch (e: any) {
+      if (e instanceof Error && e.message === 'OBJECT_NOT_FOUND') {
+        console.error('[report-download] object missing in bucket for key', reportKey);
+        return NextResponse.json({ error: 'Report file not found', code: 'NOT_FOUND' }, { status: 404 });
+      }
+      console.error('[report-download] presign failed for key', reportKey, e);
+      return NextResponse.json({ error: 'Failed to generate URL' }, { status: 500 });
+    }
     
     // Log the download activity
     await db.insert(activityLogs).values({
@@ -67,9 +92,17 @@ export async function GET(
       ipAddress: undefined,
     });
 
-    return NextResponse.json({ downloadUrl });
+  return new NextResponse(JSON.stringify({ downloadUrl, filename: finalFilename }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   } catch (error) {
-    console.error('Error generating download URL:', error);
+    console.error('[report-download] unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }

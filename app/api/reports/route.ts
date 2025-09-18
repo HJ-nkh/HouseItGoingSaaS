@@ -120,11 +120,14 @@ export async function POST(request: NextRequest) {
 
     // Prepare the payload for the Lambda function
     // This matches the Python Lambda function's expected input format
-    const lambdaPayload = {
+    const lambdaPayload: Record<string, any> = {
       user_id: user.id,
       simulation_id: validatedData.simulationId,
-      team_id: userWithTeam.teamId
+      team_id: userWithTeam.teamId,
     };
+    if (validatedData.title) {
+      lambdaPayload.title = validatedData.title;
+    }
 
     // Invoke the Lambda function via HTTP Function URL
     // The Lambda function will:
@@ -132,7 +135,7 @@ export async function POST(request: NextRequest) {
     // 2. Create the report document and upload to S3
     // 3. Insert the report record into the database
     // 4. Return the report_id
-    let lambdaResponse;
+  let rawLambdaResponse: any;
     try {
       const response = await fetch(lambdaUrl, {
         method: 'POST',
@@ -142,35 +145,32 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify(lambdaPayload)
       });
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Lambda function error:', errorText);
-        return NextResponse.json(
-          { error: 'Failed to generate report' },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to generate report' }, { status: 500 });
       }
-
-      lambdaResponse = await response.json();
+      rawLambdaResponse = await response.json();
     } catch (error) {
       console.error('Error invoking Lambda function:', error);
-      return NextResponse.json(
-        { error: 'Failed to invoke report generation service' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to invoke report generation service' }, { status: 500 });
     }
 
-    console.log('Lambda response:', lambdaResponse);
+    // Support both older Lambda (flat JSON) and newer format (statusCode + body string)
+    let parsedLambda: any = rawLambdaResponse;
+    if (rawLambdaResponse && typeof rawLambdaResponse.body === 'string') {
+      try {
+        parsedLambda = JSON.parse(rawLambdaResponse.body);
+      } catch (e) {
+        console.warn('Failed to parse Lambda body JSON, using raw response');
+      }
+    }
 
-    // Extract the report ID from the Lambda response
-    const reportId = lambdaResponse.report_id;
+    const reportId = (parsedLambda && (parsedLambda.report_id || parsedLambda.reportId)) as string | undefined;
+    const lambdaDownloadUrl = parsedLambda && (parsedLambda.download_url || parsedLambda.downloadUrl) as string | undefined;
     if (!reportId) {
-      console.error('Lambda response missing report_id:', lambdaResponse);
-      return NextResponse.json(
-        { error: 'Invalid response from report generation service' },
-        { status: 500 }
-      );
+      console.error('Lambda response missing report_id:', rawLambdaResponse);
+      return NextResponse.json({ error: 'Invalid response from report generation service' }, { status: 500 });
     }
 
     // The Lambda function has already created the report in the database,
@@ -195,7 +195,12 @@ export async function POST(request: NextRequest) {
       ipAddress: undefined,
     });
 
-    return NextResponse.json(newReport, { status: 201 });
+    // Augment response with a transient downloadUrl if provided by Lambda (not stored in DB)
+  const responseBody: any = { ...newReport };
+    if (lambdaDownloadUrl) {
+      responseBody.downloadUrl = lambdaDownloadUrl;
+    }
+    return NextResponse.json(responseBody, { status: 201 });
 
   } catch (error) {
     if (error instanceof z.ZodError) {

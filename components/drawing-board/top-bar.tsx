@@ -9,9 +9,10 @@ import { isValidDrawing } from "./lib/validate-drawing";
 import { flipYAxisOnResolvedEntities } from "./lib/flip-y-axis";
 // import { useCreateReport, useSimulationReport } from "@/lib/api/reports";
 import { downloadFile } from "@/lib/utils";
-import { CreateDrawingData, useReportMutations, useReports, useSimulationsWithMutations } from "@/lib/api";
+import { CreateDrawingData, useReportMutations, useReports } from "@/lib/api";
+import { useSimulationMutations } from "@/lib/api/use-simulations";
 import { useParams, useRouter } from "next/navigation";
-import { Download, Triangle, Archive, Trash2 } from "lucide-react";
+import { Download, Triangle, Archive, Trash2, Loader2 } from "lucide-react";
 import { RxChevronLeft } from "react-icons/rx";
 
 type TopBarProps = {
@@ -22,6 +23,12 @@ type TopBarProps = {
   state: DrawingState;
   simulationId?: string;
   showDownload?: boolean;
+  // Called right after a simulation has been queued/created; parent can refetch
+  onSimulationQueued?: () => void;
+  // Called immediately when user clicks Run, before any network calls
+  onRunStart?: () => void;
+  // Called with the new simulation id as soon as it's created
+  onSimulationCreated?: (simulationId: string) => void;
 };
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -32,6 +39,9 @@ const TopBar: React.FC<TopBarProps> = ({
   state,
   simulationId,
   showDownload = false,
+  onSimulationQueued,
+  onRunStart,
+  onSimulationCreated,
 }) => {
   const params = useParams();
   const projectId = params.projectId as string;
@@ -39,12 +49,20 @@ const TopBar: React.FC<TopBarProps> = ({
 
   const router = useRouter();
 
-  const simulationMutations = useSimulationsWithMutations();
+  const simulationMutations = useSimulationMutations();
   const reportMutations = useReportMutations();
 
+  const makeFilename = () => {
+    const raw = (drawing?.title || title || 'rapport').trim();
+    return raw
+      .replace(/\s+/g, '-')      // spaces -> dashes
+      .replace(/[^A-Za-z0-9.-]+/g, '') // strip other chars
+      || 'rapport';
+  };
+
   const downloadReport = async (reportId: string) => {
-    const { downloadUrl } = await reportMutations.getDownloadUrl(reportId);
-    downloadFile(downloadUrl, `report-${reportId}.docx`);
+    const { downloadUrl, filename } = await reportMutations.getDownloadUrl(reportId) as any;
+    downloadFile(downloadUrl, filename || `${makeFilename()}.docx`);
   };
 
   const { reports } = useReports({}, { simulationId });
@@ -67,6 +85,14 @@ const TopBar: React.FC<TopBarProps> = ({
         )}
         {drawing && (
           <>
+            {reportMutations.loading && (
+              <div className="text-sm text-gray-500 italic flex items-center gap-2 mr-1">
+                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                <span>
+                  Dokumentation udarbejdes – dette kan tage lidt tid. Du kan fortsætte arbejdet imens.
+                </span>
+              </div>
+            )}
             {showDownload && simulationId && (
               <Button
                 variant="default"
@@ -77,13 +103,13 @@ const TopBar: React.FC<TopBarProps> = ({
                   let reportId = report?.id;
 
                   if (!reportId) {
-                    const res = await reportMutations.createReport({
-                      simulationId
-                    });
-
+                    const res = await reportMutations.createReport({ simulationId, title });
                     reportId = res.id;
+                    if (res.downloadUrl) {
+                      downloadFile(res.downloadUrl, `${makeFilename()}.docx`);
+                      return;
+                    }
                   }
-
                   downloadReport(reportId);
                 }}
               >
@@ -99,15 +125,25 @@ const TopBar: React.FC<TopBarProps> = ({
                   return;
                 }
 
+                // Inform parent to hide result UI instantly
+                onRunStart?.();
+
                 onSave({ title, history: state.history, projectId, hasChanges: false });
 
-                await simulationMutations.createSimulation({
+                const created = await simulationMutations.createSimulation({
                   projectId,
                   drawingId: drawing?.id,
                   entities: flipYAxisOnResolvedEntities(entitySet),
                 });
-                
-                simulationMutations.refetch();
+                // Inform parent about created simulation id immediately (for SSE/poll)
+                if (created?.id) {
+                  onSimulationCreated?.(created.id);
+                }
+                // Locally mark drawing as not changed after run
+                // (the onSave above already persisted hasChanges: false)
+                // Parent controls props; local state will reflect via DrawingBoard onSave wrapper
+                // Notify parent/page to refetch latest simulation so UI updates immediately
+                onSimulationQueued?.();
               }}
             >
               <Triangle className="transform rotate-90 mr-1" /> Kør

@@ -7,7 +7,8 @@ import { z } from 'zod';
 const createDrawingSchema = z.object({
   projectId: z.coerce.number(),
   title: z.string().min(1).max(255),
-  history: z.any(),
+  // Make history optional to avoid 500 if client sends null/undefined; we'll default it
+  history: z.any().optional(),
   hasChanges: z.boolean().optional().default(false),
   isTemplate: z.boolean().optional().default(false),
 });
@@ -79,6 +80,33 @@ export async function POST(request: NextRequest) {
 
     const validatedData = createDrawingSchema.parse(body);
 
+    // Normalize / default history so DB not-null constraint is satisfied
+    const safeHistory = ((): any => {
+      let h = validatedData.history;
+      if (h === null || h === undefined || h === '') {
+        return { entities: [], actions: [] };
+      }
+      if (typeof h === 'string') {
+        try {
+          h = JSON.parse(h);
+        } catch {
+          // If it's a plain string that's not JSON, wrap it so we still store something structured
+          h = { entities: [], actions: [], raw: h };
+        }
+      }
+      return h;
+    })();
+
+    // Quick serializability check to surface clearer 400 instead of PG error
+    try {
+      JSON.stringify(safeHistory);
+    } catch {
+      return NextResponse.json(
+        { error: 'History must be JSON serializable' },
+        { status: 400 }
+      );
+    }
+
     // Verify the project belongs to the user's team
     const projectCheck = await db.query.projects.findFirst({
       where: (projects, { eq, and }) => and(
@@ -100,7 +128,7 @@ export async function POST(request: NextRequest) {
         teamId: userWithTeam.teamId,
         projectId: validatedData.projectId,
         title: validatedData.title,
-        history: validatedData.history,
+        history: safeHistory,
         hasChanges: validatedData.hasChanges,
         isTemplate: validatedData.isTemplate,
       })
@@ -116,15 +144,25 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(newDrawing, { status: 201 });
   } catch (error) {
+    const debug = process.env.DRAWINGS_DEBUG === '1';
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid input', details: error.errors },
         { status: 400 }
       );
     }
+    // Surface Postgres not-null violation more clearly if it still occurs for some reason
+    if (error instanceof Error && /null value in column "history"/i.test(error.message)) {
+      return NextResponse.json(
+        { error: 'History is required' },
+        { status: 400 }
+      );
+    }
     console.error('Error creating drawing:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      debug && error instanceof Error
+        ? { error: 'Internal Server Error', message: error.message, stack: error.stack }
+        : { error: 'Internal Server Error' },
       { status: 500 }
     );
   }

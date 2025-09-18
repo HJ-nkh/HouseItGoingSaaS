@@ -1,8 +1,10 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { NextRequest, NextResponse } from 'next/server';
 import { getUser, getUserWithTeam, getSimulationById, softDeleteSimulation } from '@/lib/db/queries';
 import { db } from '@/lib/db/drizzle';
 import { simulations, activityLogs, ActivityType, SimulationStatus } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, ne } from 'drizzle-orm';
 import { z } from 'zod';
 
 const updateSimulationSchema = z.object({
@@ -33,7 +35,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(simulation);
+  return NextResponse.json(simulation, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } });
   } catch (error) {
     if (error instanceof Error && error.message === 'User not authenticated') {
       return NextResponse.json(
@@ -203,7 +205,26 @@ export async function PUT(
       ipAddress: undefined,
     });
 
-    return NextResponse.json(updatedSimulation);
+    // If this simulation just completed, ensure all older sims for this drawing are soft-deleted
+    if (validatedData.status === SimulationStatus.COMPLETED) {
+      try {
+        await db
+          .update(simulations)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(
+            and(
+              eq(simulations.drawingId, updatedSimulation.drawingId!),
+              eq(simulations.teamId, userWithTeam.teamId!),
+              isNull(simulations.deletedAt),
+              ne(simulations.id, updatedSimulation.id)
+            )
+          );
+      } catch (cleanupErr) {
+        console.warn('Failed to cleanup older simulations after completion', cleanupErr);
+      }
+    }
+
+  return NextResponse.json(updatedSimulation, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

@@ -7,7 +7,7 @@ Created on Mon Apr 18 16:38:43 2022
 
 import numpy as np
 from Moon2Mars.EC3 import EC3base, EC3calc
-from Moon2Mars.EC5 import EC5
+from Moon2Mars.EC5 import EC5base, EC5calc
 from Moon2Mars.EC6 import EC6
 from scipy.interpolate import CubicSpline
 import copy as copy
@@ -247,19 +247,31 @@ class S():
             self.R0_type[i] = 'x' if self.model.U[i]%3 == 0 else 'y' if self.model.U[i]%3 == 1 else 'r'
             self.R0_coordinates[i,:] = self.model.X[np.floor(self.model.U[i]/3).astype(int),:] # R0 er i x, y eller r retning, afhængig af U. U er 0,1 eller 2 for hhv. x,y,r retning. R0_coordinates er det element som R0 er i, dvs. 0,1,2 for hhv. x,y,r retning
 
-        aaa=1
         ########################################################## --------------- LIMIT STATES ------------- ###############################################################
 
         # --------- Calculate section forces for each load combination using superposition-principle on section forces etc. --------- #
         domList = list(dict.fromkeys(loadtypes))
+
         domList.sort()
         loadtypesIndices = {}
+        loadtypeStandardIndices = {}
         for dom in domList:
-            loadtypesIndices[dom] = np.array([index for index, item in enumerate(loadtypes) if item == dom])
+            if dom == 'Standard':
+                loadtypeStandardIndices[dom] = np.array([index for index, item in enumerate(loadtypes) if item == dom])
+            else:
+                loadtypesIndices[dom] = np.array([index for index, item in enumerate(loadtypes) if item == dom])
+
+        #remove 'Standard' loadtype if present, also if present multiple times
+        while 'Standard' in domList:
+            domList.remove('Standard')
 
         # --------- Generate load combinations --------- #
 
-        combinations_matrix = self.generate_load_combinations(loadtypes, loadtypesIndices['Egenlast'])
+        #if no Egenlast exists make empy array
+        if 'Egenlast' not in loadtypesIndices:
+            combinations_matrix = self.generate_load_combinations(loadtypes, [])
+        else:
+            combinations_matrix = self.generate_load_combinations(loadtypes, loadtypesIndices['Egenlast'])
 
 
         # Load factors
@@ -283,93 +295,118 @@ class S():
         Ve = {}
         Ve_loc = {}
 
-        c = 0
-        for dom in domList:
-            # Tabel A1.2(B+C) DK NA Regningsmæssige lastværdier for vedvarende og midlertidige dimensioneringstilfælde (STR/GEO) (sæt B og C)
-            if dom == 'Egenlast': # Lastkombination 1 (6.10a)
-                for gamma_Gj in [gamma_Gjsup_6_10a, gamma_Gjinf_6_10a]:
-                    loadcombMat = np.zeros([1,len(loadtypes)])
-                    loadcombMat[:, loadtypesIndices['Egenlast']] = 1
+        #if loadtypeStandardIndices not empty (meaning 'Standard' load present), add a combination with only this load, with gamma_Gj = 1.0
+        if loadtypeStandardIndices:
+            loadcombMat = np.zeros([1,len(loadtypes)])
+            loadcombMat[:, loadtypeStandardIndices['Standard']] = 1.0
 
-                    # Tyngde, generelt
-                    if gamma_Gj == gamma_Gjsup_6_10a:
-                        loadcombMat[:, loadtypesIndices['Egenlast']] *= gamma_Gj*self.KFi              
-                        name = 'Tyngde, generelt - Ugunstig - (6.10a)'
-                    else: # gamma_Gjinf
-                        loadcombMat[:, loadtypesIndices['Egenlast']] *= gamma_Gj
-                        name = 'Tyngde, generelt - Gunstig - (6.10a)'                                                      # Uden KFi! Tyngde, generelt
+            F1_mat = np.matmul(loadcombMat, F1discr)
+            F2_mat = np.matmul(loadcombMat, F2discr)
+            M_mat = np.matmul(loadcombMat, Mdiscr)
+            VeX_mat = np.matmul(loadcombMat, VediscrX)
+            VeY_mat = np.matmul(loadcombMat, VediscrY)
+            Ve_loc_mat = np.matmul(loadcombMat, Vediscr_loc)
+            R0_mat = np.matmul(loadcombMat, R0_singleload_mat)
 
-                    for loadtype in loadtypesIndices:
-                        if loadtype != 'Egenlast':
-                            loadcombMat[:, loadtypesIndices[loadtype]] *= 0
+            domname = 'Uden lastfaktor / lastkombination'
+            for i in range(np.size(loadcombMat,0)):
+                comb = domname
+                F1[comb] = F1_mat[i,:]
+                F2[comb] = F2_mat[i,:]
+                M[comb] = M_mat[i,:]
+                Ve[comb] = np.array([VeX_mat[i,:], VeY_mat[i,:]]).T
+                Ve_loc[comb] = Ve_loc_mat[i,:]
+                R0[comb] = R0_mat[i,:]
+                loadcombMatDict_ULS[comb] = loadcombMat[i,:]
+        
+        else:
+            c = 0
+            for dom in domList:
+                # Tabel A1.2(B+C) DK NA Regningsmæssige lastværdier for vedvarende og midlertidige dimensioneringstilfælde (STR/GEO) (sæt B og C)
+                if dom == 'Egenlast': # Lastkombination 1 (6.10a)
+                    for gamma_Gj in [gamma_Gjsup_6_10a, gamma_Gjinf_6_10a]:
+                        loadcombMat = np.zeros([1,len(loadtypes)])
+                        loadcombMat[:, loadtypesIndices['Egenlast']] = 1
 
-                    F1_mat = np.matmul(loadcombMat, F1discr)
-                    F2_mat = np.matmul(loadcombMat, F2discr)
-                    M_mat = np.matmul(loadcombMat, Mdiscr)
-                    VeX_mat = np.matmul(loadcombMat, VediscrX)
-                    VeY_mat = np.matmul(loadcombMat, VediscrY)
-                    Ve_loc_mat = np.matmul(loadcombMat, Vediscr_loc)
-                    R0_mat = np.matmul(loadcombMat, R0_singleload_mat)
+                        # Tyngde, generelt
+                        if gamma_Gj == gamma_Gjsup_6_10a:
+                            loadcombMat[:, loadtypesIndices['Egenlast']] *= gamma_Gj*self.KFi              
+                            name = 'Tyngde, generelt - Ugunstig - (6.10a)'
+                        else: # gamma_Gjinf
+                            loadcombMat[:, loadtypesIndices['Egenlast']] *= gamma_Gj
+                            name = 'Tyngde, generelt - Gunstig - (6.10a)'                                                      # Uden KFi! Tyngde, generelt
 
-                    domname = name
-                    for i in range(np.size(loadcombMat,0)):
-                        comb = 'Komb. ' + str(c+1) + '. ' + domname
-                        F1[comb] = F1_mat[i,:]
-                        F2[comb] = F2_mat[i,:]
-                        M[comb] = M_mat[i,:]
-                        Ve[comb] = np.array([VeX_mat[i,:], VeY_mat[i,:]]).T
-                        Ve_loc[comb] = Ve_loc_mat[i,:]
-                        R0[comb] = R0_mat[i,:]
-                        loadcombMatDict_ULS[comb] = loadcombMat[i,:]
-                        c += 1
+                        for loadtype in loadtypesIndices:
+                            if loadtype != 'Egenlast':
+                                loadcombMat[:, loadtypesIndices[loadtype]] *= 0
 
-            else: # Lastkombination 2 (6.10b)
-                for gamma_Gj in [gamma_Gjsup_6_10b, gamma_Gjinf_6_10b]:
-                    loadcombMat = copy.deepcopy(combinations_matrix)
+                        F1_mat = np.matmul(loadcombMat, F1discr)
+                        F2_mat = np.matmul(loadcombMat, F2discr)
+                        M_mat = np.matmul(loadcombMat, Mdiscr)
+                        VeX_mat = np.matmul(loadcombMat, VediscrX)
+                        VeY_mat = np.matmul(loadcombMat, VediscrY)
+                        Ve_loc_mat = np.matmul(loadcombMat, Vediscr_loc)
+                        R0_mat = np.matmul(loadcombMat, R0_singleload_mat)
 
-                    # Tyngde, generelt
-                    if gamma_Gj == gamma_Gjsup_6_10b:
-                        loadcombMat[:, loadtypesIndices['Egenlast']] *= gamma_Gj*self.KFi               
-                        name = 'Tyngde, generelt - Ugunstig - (6.10b)'
-                    else: # gamma_Gjinf
-                        loadcombMat[:, loadtypesIndices['Egenlast']] *= gamma_Gj                        # Uden KFi! Tyngde, generelt
-                        name = 'Tyngde, generelt - Gunstig - (6.10b)'
+                        domname = name
+                        for i in range(np.size(loadcombMat,0)):
+                            comb = 'Komb. ' + str(c+1) + '. ' + domname
+                            F1[comb] = F1_mat[i,:]
+                            F2[comb] = F2_mat[i,:]
+                            M[comb] = M_mat[i,:]
+                            Ve[comb] = np.array([VeX_mat[i,:], VeY_mat[i,:]]).T
+                            Ve_loc[comb] = Ve_loc_mat[i,:]
+                            R0[comb] = R0_mat[i,:]
+                            loadcombMatDict_ULS[comb] = loadcombMat[i,:]
+                            c += 1
 
-                    # Dominerende last
-                    if dom == 'Nyttelast':
-                        alpha_n = (1+(self.n-1)*psi_0[dom])/self.n
-                    else:
-                        alpha_n = 1
-                    loadcombMat[:, loadtypesIndices[dom]] *= gamma_Q1*alpha_n*self.KFi   
+                else: # Lastkombination 2 (6.10b)
+                    for gamma_Gj in [gamma_Gjsup_6_10b, gamma_Gjinf_6_10b]:
+                        loadcombMat = copy.deepcopy(combinations_matrix)
 
-                    # Øvrige laster                  
-                    for loadtype in loadtypesIndices:
-                        if loadtype != 'Egenlast' and loadtype != dom:
-                            if loadtype == 'Snelast' and dom == 'Vindlast':
-                                loadcombMat[:, loadtypesIndices[loadtype]] *= gamma_Q1*psi_0['Snelast, dom vind']*self.KFi    
-                            else:
-                                loadcombMat[:, loadtypesIndices[loadtype]] *= gamma_Q1*psi_0[loadtype]*self.KFi               
+                        # Tyngde, generelt
+                        if gamma_Gj == gamma_Gjsup_6_10b:
+                            loadcombMat[:, loadtypesIndices['Egenlast']] *= gamma_Gj*self.KFi               
+                            name = 'Tyngde, generelt - Ugunstig - (6.10b)'
+                        else: # gamma_Gjinf
+                            loadcombMat[:, loadtypesIndices['Egenlast']] *= gamma_Gj                        # Uden KFi! Tyngde, generelt
+                            name = 'Tyngde, generelt - Gunstig - (6.10b)'
+
+                        # Dominerende last
+                        if dom == 'Nyttelast':
+                            alpha_n = (1+(self.n-1)*psi_0[dom])/self.n
+                        else:
+                            alpha_n = 1
+                        loadcombMat[:, loadtypesIndices[dom]] *= gamma_Q1*alpha_n*self.KFi   
+
+                        # Øvrige laster                  
+                        for loadtype in loadtypesIndices:
+                            if loadtype != 'Egenlast' and loadtype != dom:
+                                if loadtype == 'Snelast' and dom == 'Vindlast':
+                                    loadcombMat[:, loadtypesIndices[loadtype]] *= gamma_Q1*psi_0['Snelast, dom vind']*self.KFi    
+                                else:
+                                    loadcombMat[:, loadtypesIndices[loadtype]] *= gamma_Q1*psi_0[loadtype]*self.KFi               
 
 
-                    F1_mat = np.matmul(loadcombMat, F1discr)
-                    F2_mat = np.matmul(loadcombMat, F2discr)
-                    M_mat = np.matmul(loadcombMat, Mdiscr)
-                    VeX_mat = np.matmul(loadcombMat, VediscrX)
-                    VeY_mat = np.matmul(loadcombMat, VediscrY)
-                    Ve_loc_mat = np.matmul(loadcombMat, Vediscr_loc)
-                    R0_mat = np.matmul(loadcombMat, R0_singleload_mat)
+                        F1_mat = np.matmul(loadcombMat, F1discr)
+                        F2_mat = np.matmul(loadcombMat, F2discr)
+                        M_mat = np.matmul(loadcombMat, Mdiscr)
+                        VeX_mat = np.matmul(loadcombMat, VediscrX)
+                        VeY_mat = np.matmul(loadcombMat, VediscrY)
+                        Ve_loc_mat = np.matmul(loadcombMat, Vediscr_loc)
+                        R0_mat = np.matmul(loadcombMat, R0_singleload_mat)
 
-                    domname = dom + ' dominerende - ' + name
-                    for i in range(np.size(loadcombMat,0)):
-                        comb = 'Komb. ' + str(c+1) + '. ' + domname
-                        F1[comb] = F1_mat[i,:]
-                        F2[comb] = F2_mat[i,:]
-                        M[comb] = M_mat[i,:]
-                        Ve[comb] = np.array([VeX_mat[i,:], VeY_mat[i,:]]).T
-                        Ve_loc[comb] = Ve_loc_mat[i,:]
-                        R0[comb] = R0_mat[i,:]
-                        loadcombMatDict_ULS[comb] = loadcombMat[i,:]
-                        c += 1
+                        domname = dom + ' dominerende - ' + name
+                        for i in range(np.size(loadcombMat,0)):
+                            comb = 'Komb. ' + str(c+1) + '. ' + domname
+                            F1[comb] = F1_mat[i,:]
+                            F2[comb] = F2_mat[i,:]
+                            M[comb] = M_mat[i,:]
+                            Ve[comb] = np.array([VeX_mat[i,:], VeY_mat[i,:]]).T
+                            Ve_loc[comb] = Ve_loc_mat[i,:]
+                            R0[comb] = R0_mat[i,:]
+                            loadcombMatDict_ULS[comb] = loadcombMat[i,:]
+                            c += 1
 
                 
         self.loadCombinationsFE_discr['ULS'] = {
@@ -390,22 +427,12 @@ class S():
         R0 = {}
         Ve = {}
         Ve_loc = {}
-
-        for prim in domList:
-            #Tabel A1.3 DK NA Regningsmæssige lastværdier til brug ved lastkombinationer ved ulykkesdimensioneringstilstande og seismiske dimensioneringstilstande
-            # Dimensioneringstilfælde: Brand
-            loadcombMat = copy.deepcopy(combinations_matrix)
-
-            # Dominerende last, A_d - ikke nødvendig for nu
-
-            # Ikke-dominerende laster:
-            # Primær last
-            if prim != 'Egenlast':
-                loadcombMat[:, loadtypesIndices[prim]] *= psi_1[prim]
-            # Andre laster                  
-            for loadtype in loadtypesIndices:
-                if loadtype != 'Egenlast' and loadtype != prim:
-                        loadcombMat[:, loadtypesIndices[loadtype]] *= psi_2[loadtype] #Bemærk ikke kombineret med nogen dominerende last, men derimod primær last. Derfor f.eks. ikke anvend "Snelast, dom vind"        
+        
+        
+        #if loadtypeStandardIndices not empty (meaning 'Standard' load present), add a combination with only this load, with gamma_Gj = 1.0
+        if loadtypeStandardIndices:
+            loadcombMat = np.zeros([1,len(loadtypes)])
+            loadcombMat[:, loadtypeStandardIndices['Standard']] = 1.0
 
             F1_mat = np.matmul(loadcombMat, F1discr)
             F2_mat = np.matmul(loadcombMat, F2discr)
@@ -415,9 +442,9 @@ class S():
             Ve_loc_mat = np.matmul(loadcombMat, Vediscr_loc)
             R0_mat = np.matmul(loadcombMat, R0_singleload_mat)
 
-            domname = prim + ' primær - Brand - (6.11a/b)'
+            domname = 'Uden lastfaktor / lastkombination'
             for i in range(np.size(loadcombMat,0)):
-                comb = 'Komb. ' + str(i+1) + '. ' + domname
+                comb = domname
                 F1[comb] = F1_mat[i,:]
                 F2[comb] = F2_mat[i,:]
                 M[comb] = M_mat[i,:]
@@ -425,6 +452,42 @@ class S():
                 Ve_loc[comb] = Ve_loc_mat[i,:]
                 R0[comb] = R0_mat[i,:]
                 loadcombMatDict_ALS[comb] = loadcombMat[i,:]
+
+        else:
+            for prim in domList:
+                #Tabel A1.3 DK NA Regningsmæssige lastværdier til brug ved lastkombinationer ved ulykkesdimensioneringstilstande og seismiske dimensioneringstilstande
+                # Dimensioneringstilfælde: Brand
+                loadcombMat = copy.deepcopy(combinations_matrix)
+
+                # Dominerende last, A_d - ikke nødvendig for nu
+
+                # Ikke-dominerende laster:
+                # Primær last
+                if prim != 'Egenlast':
+                    loadcombMat[:, loadtypesIndices[prim]] *= psi_1[prim]
+                # Andre laster                  
+                for loadtype in loadtypesIndices:
+                    if loadtype != 'Egenlast' and loadtype != prim:
+                            loadcombMat[:, loadtypesIndices[loadtype]] *= psi_2[loadtype] #Bemærk ikke kombineret med nogen dominerende last, men derimod primær last. Derfor f.eks. ikke anvend "Snelast, dom vind"        
+
+                F1_mat = np.matmul(loadcombMat, F1discr)
+                F2_mat = np.matmul(loadcombMat, F2discr)
+                M_mat = np.matmul(loadcombMat, Mdiscr)
+                VeX_mat = np.matmul(loadcombMat, VediscrX)
+                VeY_mat = np.matmul(loadcombMat, VediscrY)
+                Ve_loc_mat = np.matmul(loadcombMat, Vediscr_loc)
+                R0_mat = np.matmul(loadcombMat, R0_singleload_mat)
+
+                domname = prim + ' primær - Brand - (6.11a/b)'
+                for i in range(np.size(loadcombMat,0)):
+                    comb = 'Komb. ' + str(i+1) + '. ' + domname
+                    F1[comb] = F1_mat[i,:]
+                    F2[comb] = F2_mat[i,:]
+                    M[comb] = M_mat[i,:]
+                    Ve[comb] = np.array([VeX_mat[i,:], VeY_mat[i,:]]).T
+                    Ve_loc[comb] = Ve_loc_mat[i,:]
+                    R0[comb] = R0_mat[i,:]
+                    loadcombMatDict_ALS[comb] = loadcombMat[i,:]
 
         self.loadCombinationsFE_discr['ALS'] = {
             'F1': F1,
@@ -494,31 +557,55 @@ class S():
         #                 Ve[comb] = np.array([VeX_mat[i,:], VeY_mat[i,:]]).T
         #                 Ve_loc[comb] = Ve_loc_mat[i,:]
         #                 loadcombMatDict_SLS[comb] = loadcombMat[i,:]
+        if loadtypeStandardIndices:
+            loadcombMat = np.zeros([1,len(loadtypes)])
+            loadcombMat[:, loadtypeStandardIndices['Standard']] = 1.0
 
-        for SLScombtype in ['Karakteristisk']:
-            for dom in domList:
-                loadtypesIndicesOneLoadtype ={}
-                loadtypesIndicesOneLoadtype = {dom: loadtypesIndices[dom]}
-                loadcombMat = self.generate_load_combinations_SLS_DKNA(loadtypes, loadtypesIndicesOneLoadtype)
+            F1_mat = np.matmul(loadcombMat, F1discr)
+            F2_mat = np.matmul(loadcombMat, F2discr)
+            M_mat = np.matmul(loadcombMat, Mdiscr)
+            VeX_mat = np.matmul(loadcombMat, VediscrX)
+            VeY_mat = np.matmul(loadcombMat, VediscrY)
+            Ve_loc_mat = np.matmul(loadcombMat, Vediscr_loc)
+            R0_mat = np.matmul(loadcombMat, R0_singleload_mat)
 
-                F1_mat = np.matmul(loadcombMat, F1discr)
-                F2_mat = np.matmul(loadcombMat, F2discr)
-                M_mat = np.matmul(loadcombMat, Mdiscr)
-                VeX_mat = np.matmul(loadcombMat, VediscrX)
-                VeY_mat = np.matmul(loadcombMat, VediscrY)
-                Ve_loc_mat = np.matmul(loadcombMat, Vediscr_loc)
-                R0_mat = np.matmul(loadcombMat, R0_singleload_mat)
+            domname = 'Uden lastfaktor / lastkombination'
+            for i in range(np.size(loadcombMat,0)):
+                comb = domname
+                F1[comb] = F1_mat[i,:]
+                F2[comb] = F2_mat[i,:]
+                M[comb] = M_mat[i,:]
+                Ve[comb] = np.array([VeX_mat[i,:], VeY_mat[i,:]]).T
+                Ve_loc[comb] = Ve_loc_mat[i,:]
+                R0[comb] = R0_mat[i,:]
+                loadcombMatDict_SLS[comb] = loadcombMat[i,:]
 
-                domname = SLScombtype + ', ' + dom + ' alene'
-                for i in range(np.size(loadcombMat,0)):
-                    comb = 'Komb. ' + str(i+1) + '. ' + domname
-                    F1[comb] = F1_mat[i,:]
-                    F2[comb] = F2_mat[i,:]
-                    M[comb] = M_mat[i,:]
-                    Ve[comb] = np.array([VeX_mat[i,:], VeY_mat[i,:]]).T
-                    Ve_loc[comb] = Ve_loc_mat[i,:]
-                    R0[comb] = R0_mat[i,:]
-                    loadcombMatDict_SLS[comb] = loadcombMat[i,:]
+        else:
+
+            for SLScombtype in ['Karakteristisk']:
+                for dom in domList:
+                    loadtypesIndicesOneLoadtype ={}
+                    loadtypesIndicesOneLoadtype = {dom: loadtypesIndices[dom]}
+                    loadcombMat = self.generate_load_combinations_SLS_DKNA(loadtypes, loadtypesIndicesOneLoadtype)
+
+                    F1_mat = np.matmul(loadcombMat, F1discr)
+                    F2_mat = np.matmul(loadcombMat, F2discr)
+                    M_mat = np.matmul(loadcombMat, Mdiscr)
+                    VeX_mat = np.matmul(loadcombMat, VediscrX)
+                    VeY_mat = np.matmul(loadcombMat, VediscrY)
+                    Ve_loc_mat = np.matmul(loadcombMat, Vediscr_loc)
+                    R0_mat = np.matmul(loadcombMat, R0_singleload_mat)
+
+                    domname = SLScombtype + ', ' + dom + ' alene'
+                    for i in range(np.size(loadcombMat,0)):
+                        comb = 'Komb. ' + str(i+1) + '. ' + domname
+                        F1[comb] = F1_mat[i,:]
+                        F2[comb] = F2_mat[i,:]
+                        M[comb] = M_mat[i,:]
+                        Ve[comb] = np.array([VeX_mat[i,:], VeY_mat[i,:]]).T
+                        Ve_loc[comb] = Ve_loc_mat[i,:]
+                        R0[comb] = R0_mat[i,:]
+                        loadcombMatDict_SLS[comb] = loadcombMat[i,:]
 
         self.loadCombinationsFE_discr['SLS'] = {
             'F1': F1,
@@ -534,14 +621,14 @@ class S():
 
         self.initMemberECobj = [None]*len(self.member_discr)
         
-        for comb in self.loadCombinationsFE_discr['ULS']['F1']:
-            self.loadCombinations['ULS'][comb] = self.getURvalues(comb, 'ULS')
+        for comb in loadcombMatDict_ULS:
+            self.loadCombinations['ULS'][comb] = self.getURvalues(comb, 'ULS', loadcombMatDict_ULS)
 
-        for comb in self.loadCombinationsFE_discr['SLS']['F1']:
-            self.loadCombinations['SLS'][comb] = self.getURvalues(comb, 'SLS')
+        for comb in loadcombMatDict_SLS:
+            self.loadCombinations['SLS'][comb] = self.getURvalues(comb, 'SLS', loadcombMatDict_SLS)
 
-        for comb in self.loadCombinationsFE_discr['ALS']['F1']:
-            self.loadCombinations['ALS'][comb] = self.getURvalues(comb, 'ALS') #ALS er ikke implementeret endnu, så vi bruger ULS. Først nødvendigt når kipning skal medtages, da der så skal itereres mht. ståltemp og udnyttelse
+        for comb in loadcombMatDict_ALS:
+            self.loadCombinations['ALS'][comb] = self.getURvalues(comb, 'ALS', loadcombMatDict_ALS) #ALS er ikke implementeret endnu, så vi bruger ULS. Først nødvendigt når kipning skal medtages, da der så skal itereres mht. ståltemp og udnyttelse
 
 
        #______________________________________________________________________________________________________________________#
@@ -626,7 +713,7 @@ class S():
                 maxArg_ALS = np.argmax(UR_loadcomb_mat_ALS,1)
             
 
-            UR_loadcomb_mat_ULS_member, LoadCombnames_ULS_member, top_indices = self.getTopXValuesPerRow_ULS(UR_loadcomb_mat_ULS, 1, LoadCombnames_ULS)
+            UR_loadcomb_mat_ULS_member, LoadCombnames_ULS_member, top_indices = self.getTopXValuesPerRow_ULS(UR_loadcomb_mat_ULS, 1, LoadCombnames_ULS, domList, loadtypeStandardIndices)
 
             sectionFull['URnames_ULS'] = URnames_ULS
             sectionFull['LoadCombnames_ULS'] = LoadCombnames_ULS
@@ -638,7 +725,7 @@ class S():
             sectionMember['UR_loadcomb_top_indices_ULS'] = top_indices
 
 
-            UR_loadcomb_mat_SLS_member, LoadCombnames_SLS_member, top_indices = self.getTopXValuesPerRow_SLS(UR_loadcomb_mat_SLS, domList, LoadCombnames_SLS)
+            UR_loadcomb_mat_SLS_member, LoadCombnames_SLS_member, top_indices = self.getTopXValuesPerRow_SLS(UR_loadcomb_mat_SLS, domList, LoadCombnames_SLS, loadtypeStandardIndices)
 
             sectionFull['URnames_SLS'] = URnames_SLS
             sectionFull['LoadCombnames_SLS'] = LoadCombnames_SLS
@@ -650,7 +737,7 @@ class S():
             sectionMember['UR_loadcomb_top_indices_SLS'] = top_indices
 
 
-            UR_loadcomb_mat_ALS_member, LoadCombnames_ALS_member, top_indices = self.getTopXValuesPerRow_ULS(UR_loadcomb_mat_ALS, 1, LoadCombnames_ALS)
+            UR_loadcomb_mat_ALS_member, LoadCombnames_ALS_member, top_indices = self.getTopXValuesPerRow_ULS(UR_loadcomb_mat_ALS, 1, LoadCombnames_ALS, domList, loadtypeStandardIndices)
 
             sectionFull['URnames_ALS'] = URnames_ALS
             sectionFull['LoadCombnames_ALS'] = LoadCombnames_ALS
@@ -756,13 +843,11 @@ class S():
             section['loadIds'] = self.loadIds
             self.sectionResults.append(section)
 
-        aaa=1
-
 
 ##########################################################################################################################
    
 
-    def getURvalues(self, lc, typeOfState):
+    def getURvalues(self, lc, typeOfState, loadcombMatDict):
         memberList = []
         for i in range(len(self.member_discr)):
             member = self.member_discr[i]
@@ -772,6 +857,8 @@ class S():
             if self.initMemberECobj[i] == None:
                 if member['membertype'] == 'Stål':
                     self.initMemberECobj[i] = EC3base(self, member)
+                if member['membertype'] == 'Træ':
+                    self.initMemberECobj[i] = EC5base(self, member)
                 elif member['membertype'] == 'Murværk':
                     self.initMemberECobj[i] = EC6(self.model, member, self.project)
 
@@ -780,7 +867,7 @@ class S():
             if member['membertype'] == 'Stål':
                 ECcalcObj = EC3calc(ECbaseObj)      # object containing methods for calculations
             elif member['membertype'] == 'Træ':
-                ECcalcObj = EC5(self, member)
+                ECcalcObj = EC5calc(ECbaseObj, lc, loadcombMatDict, typeOfState)      # object containing methods for calculations
             elif member['membertype'] == 'Murværk':
                 ECcalcObj = EC3calc(ECbaseObj)      # object containing methods for calculations
 
@@ -818,7 +905,6 @@ class S():
                     memberList.append(ECcalcObj)
 
             elif member['membertype'] == 'Træ':
-                ECcalcObj.dom = lc
                 if typeOfState == 'ULS' or typeOfState == 'ALS':
                     ECcalcObj.boejning616(1)
                     ECcalcObj.forskydning617()
@@ -993,12 +1079,12 @@ class S():
         return defArray_global, defArray_end2end_local
     
     def generate_load_combinations(self, loads, indicesDeadload):
-        n = len(loads)  # Number of loads
-        # Generate all combinations using binary representation (0 and 1)
+        n = len(loads)
         combinations = list(itertools.product([0, 1], repeat=n))
-        # Convert list of tuples to a numpy matrix for easier calculations
         matrix = np.array(combinations, float)
-        matrix[:,indicesDeadload] = 1.0 # Always include dead loads in all combinations
+        # Treat any non-empty list/array of indices as True
+        if np.size(indicesDeadload) > 0:  # was: if indicesDeadload:
+            matrix[:, indicesDeadload] = 1.0
         matrix = matrix[~(matrix == 0).all(axis=1)]
         return np.unique(matrix, axis=0) #remove repetitions
     
@@ -1038,45 +1124,82 @@ class S():
         return np.unique(loadcombMat, axis=0) #remove repetitions
     
 
-    def getTopXValuesPerRow_ULS(self, UR_loadcomb_mat, x, LoadCombnames):
+    def getTopXValuesPerRow_ULS(self, UR_loadcomb_mat, x, LoadCombnames, domList, isStandardPresent):
+        """
+        Select columns ensuring:
+        - Minimum one load combination per domain in domList (if present in names)
+        - Remaining highest values per row until at least x total selections per row
+          (x is promoted to at least number of domains with data)
+        Union of all selected column indices across rows is returned (like previous impl).
+        """
         import numpy as np
-        n_rows, _ = UR_loadcomb_mat.shape
-        # 1. Collect top x distinct column indices per row
-        row_col_indices = []
+        n_rows, n_cols = UR_loadcomb_mat.shape
+        if n_cols == 0:
+            return np.zeros((n_rows, 0)), [], []
+
+        if isStandardPresent:
+            categories = ['Uden lastfaktor / lastkombination']
+        else:
+            categories = domList
+        
+        # Pre-map domain -> column indices.
+        dom_to_cols = {dom: [j for j, name in enumerate(LoadCombnames) if dom in name or '(6.10a)' in name] for dom in categories}
+
+        # Domains that actually have columns
+        active_domains = [d for d, cols in dom_to_cols.items() if len(cols) > 0]
+
+        effective_x = max(x, len(active_domains))  # ensure at least one per active domain
+
+        per_row_selected = []  # list of lists of selected column indices per row
         for i in range(n_rows):
             row = UR_loadcomb_mat[i, :]
-            unique_vals = np.unique(row)
-            sorted_vals = np.sort(unique_vals)[::-1]
-            chosen_vals = sorted_vals[:x] if len(sorted_vals) >= x else sorted_vals
-            col_indices = []
-            for val in chosen_vals:
-                # Get all columns with this value, pick the first to avoid duplicates
-                all_cols = np.where(row == val)[0]
-                if len(all_cols) > 0:
-                    col_indices.append(all_cols[0])
-            row_col_indices.append(col_indices)
+            selected = []
 
-        # 2. Gather all column indices used by any row
-        all_indices = sorted(set(idx for col_list in row_col_indices for idx in col_list))
+            # 1. Pick best (max) column per active domain
+            for dom in active_domains:
+                cols = dom_to_cols[dom]
+                if cols:
+                    vals = row[cols]
+                    best_local = cols[int(np.argmax(vals))]
+                    selected.append(best_local)
 
-        # 3. Create new top_values and top_names
-        top_values = np.zeros((n_rows, len(all_indices)), dtype=float)
-        top_names = [LoadCombnames[i] for i in all_indices]
+            # 2. Add remaining top values until reaching effective_x
+            if len(selected) < effective_x:
+                # Remaining candidates excluding already selected
+                remaining_cols = [c for c in range(n_cols) if c not in selected]
+                if remaining_cols:
+                    remaining_vals = row[remaining_cols]
+                    order = np.argsort(remaining_vals)[::-1]
+                    for idx in order:
+                        selected.append(remaining_cols[idx])
+                        if len(selected) >= effective_x:
+                            break
 
-        # 4. Fill top_values
+            # 3. (Optional) If domains alone exceed effective_x we keep them all (requirement: min one per dom)
+            per_row_selected.append(sorted(set(selected)))
+
+        # Union indices across all rows
+        union_indices = sorted(set(j for lst in per_row_selected for j in lst))
+
+        # Build reduced value matrix
+        top_values = np.zeros((n_rows, len(union_indices)), dtype=float)
         for i in range(n_rows):
             row = UR_loadcomb_mat[i, :]
-            for j, col in enumerate(all_indices):
+            for j, col in enumerate(union_indices):
                 top_values[i, j] = row[col]
 
-        top_indices = all_indices  # indices in the original matrix
+        top_names = [LoadCombnames[i] for i in union_indices]
+        top_indices = union_indices
         return top_values, top_names, top_indices
     
 
-    def getTopXValuesPerRow_SLS(self, UR_loadcomb_mat, domList, LoadCombnames_SLS):
+    def getTopXValuesPerRow_SLS(self, UR_loadcomb_mat, domList, LoadCombnames_SLS, isStandardPresent):
         import numpy as np
         n_rows, _ = UR_loadcomb_mat.shape
-        categories = domList
+        if isStandardPresent:
+            categories = ['Uden lastfaktor / lastkombination']
+        else:
+            categories = domList
         # Pre-calculate candidate column indices per category
         cat_to_cols = {cat: [j for j, name in enumerate(LoadCombnames_SLS) if cat in name] for cat in categories}
         if all(len(cols) == 0 for cols in cat_to_cols.values()):

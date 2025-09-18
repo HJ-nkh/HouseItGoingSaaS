@@ -6,6 +6,7 @@ import { Report } from '../types';
 
 export interface CreateReportData {
   simulationId: string;
+  title?: string;
 }
 
 export interface UpdateReportData {
@@ -120,12 +121,12 @@ export function useReportMutations() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createReport = async (data: CreateReportData): Promise<Report> => {
+  const createReport = async (data: CreateReportData): Promise<Report & { downloadUrl?: string }> => {
     try {
       setLoading(true);
       setError(null);
       
-      const newReport = await fetchWithCache<Report>('/api/reports', {
+  const newReport = await fetchWithCache<Report & { downloadUrl?: string }>('/api/reports', {
         method: 'POST',
         body: JSON.stringify(data),
       }, { skipCache: true });

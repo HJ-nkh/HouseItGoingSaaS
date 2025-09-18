@@ -9,7 +9,7 @@ from Moon2Mars.Wood_parameters import WoodProp
 import numpy as np
 import math
 
-class EC5:
+class EC5base:
     def __init__(self, selfS, member_discr):
         
         self.project = selfS.project
@@ -19,6 +19,7 @@ class EC5:
         self.beamprop = member_discr['memberprop']
         self.beamtype = member_discr['membertype']
         self.strengthclass = self.beamprop['strength class']
+        self.loadtypes = selfS.loadtypes
 
         self.T = selfS.T_discr
         self.X = selfS.X_discr
@@ -36,7 +37,6 @@ class EC5:
         self.vederlag_længderetning = 100*10**-3
         
         self.serviceClass = 'Service class 2'
-        self.loadDuration = self.getLoadDuration()
         
         if self.serviceClass == 'Service class 1':
             self.anvendelsesklasse = 1
@@ -71,7 +71,6 @@ class EC5:
         #self.k_sys = 1.1
         
         self.k_sys = 1.0
-        self.k_mod = self.woodprop.getKmod(self.loadDuration, self.material1)
         self.k_def = self.woodprop.getKdef(self.serviceClass, self.material2)
         rektangulaertMassivtTraeLimtraeOgLVL = True
         self.k_m = self.get_k_m(rektangulaertMassivtTraeLimtraeOgLVL)
@@ -95,7 +94,43 @@ class EC5:
         
         self.gamma_M = self.woodprop.getGammaM(self.state)*robustFaktor
 
+    
+    def get_k_m(self,rektangulaertMassivtTraeLimtraeOgLVL):
+        if rektangulaertMassivtTraeLimtraeOgLVL:
+            k_m = 0.7
+        else:
+            k_m = 1
+        return k_m
+
+
+class EC5calc:
+    def __init__(self, ECbase, lc, loadcombMatDict, typeOfState):
+        # Copy attributes from EC3base instance
+        self.__dict__.update(ECbase.__dict__)
         self.UR = {}
+
+        def getLoadDuration(loadtypes, lc, loadcombMatDict, typeOfState):
+
+            loads = loadcombMatDict[lc]
+            idx = np.flatnonzero(np.abs(np.asarray(loads, float)) > 1e-12)
+            loadtypesInComb = [loadtypes[i] for i in idx]
+
+            # Determine load duration based on load types in combination
+            if 'Vindlast' in loadtypesInComb:
+                return 'Instantaneous'
+            elif 'ALS' in typeOfState:
+                return 'Instantaneous'
+            elif 'Snelast' in loadtypesInComb:
+                return 'Short term'
+            elif 'Nyttelast' in loadtypesInComb:
+                return 'Medium term'
+            elif 'Egenlast' in loadtypesInComb:
+                return 'Permanent'
+            else:
+                return 'Medium term' ### SIKRE DENNE FOR NYE LASTKOMBINATIONER
+
+        self.loadDuration = getLoadDuration(self.loadtypes, lc, loadcombMatDict, typeOfState)
+        self.k_mod = self.woodprop.getKmod(self.loadDuration, self.material1)
         
     def trykVinkelretPaaFibrene615(self):
         
@@ -249,13 +284,7 @@ class EC5:
         k90 = 1.35 + 0.015*d
         fhak = fh0k/(k90*math.sin(alpha*math.pi/180)**2 + math.cos(alpha*math.pi/180)**2)
         return fhak
-        
-    def get_k_m(self,rektangulaertMassivtTraeLimtraeOgLVL):
-        if rektangulaertMassivtTraeLimtraeOgLVL:
-            k_m = 0.7
-        else:
-            k_m = 1
-        return k_m
+    
         
     def get_k_h(self,h, woodType):        
         # Det kh variere i forhold til hvilken eftervisning der foretages. Det skal vi lige huske at have med.
@@ -365,26 +394,6 @@ class EC5:
             
         print(f'UR = {UR}')
         
-
-    def getLoadDuration(self):
-        # dom = self.dom
-        # # Table 2.1
-        # if dom == 'Nyttelast dominerende':
-        #     return 'Medium term'
-        # elif dom == 'Snelast dominerende':
-        #     return 'Short term'
-        # if dom == 'Vindlast dominerende':
-        #     return 'Instantaneous'
-        # if dom == 'Kun nyttelaster':
-        #     return 'Medium term'
-        # if dom == 'Egenlast dominerende':
-        #     return 'Permanent'
-        # if 'Brand' in dom:
-        #     return 'Instantaneous'
-        # if dom == 'Karakteristisk' or dom == 'Hyppig' or dom == 'Kvasi-permanent':
-        #     return 'Medium term'
-        # else:
-        return 'Medium term' ### SIKRE DENNE FOR NYE LASTKOMBINATIONER
         
     def Abeam(self,X1,X2):
         a0 = X2 - X1

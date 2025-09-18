@@ -1,7 +1,10 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { NextRequest, NextResponse } from 'next/server';
 import { getUser, getUserWithTeam, getSimulationsForUser, getSimulationsForProject, getSimulationsForDrawing } from '@/lib/db/queries';
 import { db } from '@/lib/db/drizzle';
 import { simulations, activityLogs, ActivityType } from '@/lib/db/schema';
+import { and, eq, isNull, ne } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -36,7 +39,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(simulationsList);
+  return NextResponse.json(simulationsList, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } });
   } catch (error) {
     if (error instanceof Error && error.message === 'User not authenticated') {
       return NextResponse.json(
@@ -144,6 +147,24 @@ export async function POST(request: NextRequest) {
       .returning();
 
     console.log('✅ Simulation created:', newSimulation.id);
+
+    // Soft-delete all previous simulations for this drawing to keep only the latest
+    try {
+      await db
+        .update(simulations)
+        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .where(
+          and(
+            eq(simulations.drawingId, validatedData.drawingId),
+            eq(simulations.teamId, userWithTeam.teamId!),
+            isNull(simulations.deletedAt),
+            ne(simulations.id, newSimulation.id)
+          )
+        );
+      console.log('🧹 Soft-deleted older simulations for drawing', validatedData.drawingId);
+    } catch (cleanupErr) {
+      console.warn('⚠️ Failed to soft-delete older simulations:', cleanupErr);
+    }
 
     // Log the activity
     await db.insert(activityLogs).values({

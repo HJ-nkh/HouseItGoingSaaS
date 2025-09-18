@@ -333,7 +333,10 @@ class Model:
 
         for i in range(np.size(nodenum,0)-1):
 
-            el = np.argwhere(np.sum(self.T==[int(nodenum[i,1]), int(nodenum[i+1,1])],1)==2)[0][0]
+            try:
+                el = np.argwhere(np.sum(self.T==[int(nodenum[i,1]), int(nodenum[i+1,1])],1)==2)[0][0]
+            except:
+                el = np.argwhere(np.sum(self.T==[int(nodenum[i+1,1]), int(nodenum[i,1])],1)==2)[0][0]
 
             X1, X2 = self.X[int(nodenum[i,1])], self.X[int(nodenum[i+1,1])]
             

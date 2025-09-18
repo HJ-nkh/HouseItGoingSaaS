@@ -95,6 +95,7 @@ export const invitations = pgTable('invitations', {
 export const projects = pgTable('projects', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
+  s3Key: text('s3_key'),
   address: text('address'),
   teamId: integer('team_id')
     .notNull()
@@ -142,6 +143,7 @@ export const simulations = pgTable('simulations', {
   entities: jsonb('entities'),
   inputHash: text('input_hash').notNull(),
   result: jsonb('result'),
+  meta: jsonb('meta'),
   encodedS: bytea('encoded_s'), // Pickle-serialized Python S class object stored as binary data
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -163,6 +165,7 @@ export const reports = pgTable('reports', {
     .notNull()
     .references(() => simulations.id),
   title: text('title').notNull(),
+  s3Key: text('s3_key'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),

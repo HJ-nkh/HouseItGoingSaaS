@@ -2,6 +2,7 @@
 
 import { useProject, useProjectMutations } from '@/lib/api/use-projects';
 import { useDrawings } from '@/lib/api/use-drawings';
+import { useReportsWithMutations } from '@/lib/api/use-reports';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ export default function ProjectPage() {
   
   const { project, loading, error } = useProject(projectId);
   const { drawings, loading: drawingsLoading, refetch: refetchDrawings } = useDrawings({}, { projectId: projectId || undefined });
+  const { reports, loading: reportsLoading, getDownloadUrl, mutationLoading: reportsMutLoading, refetch: refetchReports } = useReportsWithMutations({}, { projectId: projectId ? String(projectId) : undefined });
 
   const projectMutations = useProjectMutations();
 
@@ -137,8 +139,54 @@ export default function ProjectPage() {
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Rapporter</h2>
-              <p className="text-gray-500">Ingen rapporter</p>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Rapporter</h2>
+                {reportsLoading && <span className="text-xs text-gray-400">Henter...</span>}
+              </div>
+              {(!reportsLoading && reports && reports.length === 0) && (
+                <p className="text-gray-500">Ingen rapporter</p>
+              )}
+              {reports && reports.length > 0 && (
+                <ul className="divide-y divide-gray-200 border rounded-md">
+                  {reports.map(r => {
+                    // createdAt can be undefined on very fresh objects; fall back to updatedAt or now
+                    const created = new Date(r.createdAt || (r as any).updatedAt || Date.now());
+                    const ts = created.toLocaleDateString('da-DK', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' + created.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
+                    return (
+                      <li key={r.id} className="flex items-center justify-between px-4 py-2 gap-4 hover:bg-gray-50">
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm text-gray-900 truncate">{r.title || 'Rapport'}</p>
+                          <p className="text-xs text-gray-500">{ts}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={reportsMutLoading}
+                            onClick={async () => {
+                              try {
+                                const { downloadUrl, filename } = await getDownloadUrl(r.id) as any;
+                                if (downloadUrl) {
+                                  const raw = (r.title || 'rapport').trim();
+                                  const base = raw.replace(/\s+/g, '-').replace(/[^A-Za-z0-9.-]+/g, '') || 'rapport';
+                                  const a = document.createElement('a');
+                                  a.href = downloadUrl;
+                                  a.download = filename || `${base}.docx`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  a.remove();
+                                }
+                              } catch (e) {
+                                console.error('Kunne ikke hente download URL', e);
+                              }
+                            }}
+                          >Download</Button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </div>
 
