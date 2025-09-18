@@ -1,5 +1,5 @@
 import React from 'react';
-import { DistributedLoad, LoadType, ConstraintType } from "../lib/types";
+import { DistributedLoad, LoadType, ConstraintType, WindCalculatorSettings } from "../lib/types";
 import {
   Card,
   CardHeader,
@@ -101,6 +101,9 @@ type ModifyDistributedLoadCardProps = {
   onSubmit: (load: DistributedLoad) => void;
   onClose: () => void;
   onDelete?: () => void;
+  // Wind calculator integration (optional)
+  windCalculatorSettings?: WindCalculatorSettings;
+  onWindCalculatorSettingsChange?: (settings: Partial<WindCalculatorSettings>) => void;
 };
 
 const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
