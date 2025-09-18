@@ -113,6 +113,8 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
   onSubmit,
   onClose,
   onDelete,
+  windCalculatorSettings: _windCalculatorSettings,
+  onWindCalculatorSettingsChange: _onWindCalculatorSettingsChange,
 }) => {  const onEnter = () => onSubmit(load as DistributedLoad);
     // State for c/c distance and area load calculations
   // Initialize from load properties if they exist
