@@ -3,3 +3,8 @@ node_modules
 .next
 run-simulation-lambda/test_lambda.py
 
+generate-report-lambda/src/__pycache__/create_report_full.cpython-312.pyc
+generate-report-lambda/src/__pycache__/discretize.cpython-312.pyc
+generate-report-lambda/src/__pycache__/plots_legacy_full.cpython-312.pyc
+generate-report-lambda/src/__pycache__/Steel_fire.cpython-312.pyc
+generate-report-lambda/src/__pycache__/supports.cpython-312.pyc
