@@ -9,7 +9,7 @@ type GlobalLocalDefCardProps = {
 
 const GlobalLocalDefCard: React.FC<GlobalLocalDefCardProps> = ({ selected, setSelected }) => {
   return (
-      <Card className="p-2" style={{ height: "48px" }}>
+      <Card className="p-2 w-full" style={{ height: "48px" }}>
         <div className="flex h-full">
           <button
             className={classNames(

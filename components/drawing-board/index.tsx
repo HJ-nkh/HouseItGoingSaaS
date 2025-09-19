@@ -495,15 +495,14 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
           )}
 
           <div className="absolute z-30 top-4 w-full flex justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-auto">
-                <DisplayOptionsCard 
-                  state={state} 
-                  setState={setState} 
-                  entitySet={entitySet}
-                />
-              </div>              {analysis && ["F1", "F2", "M", "Ve", "R0"].includes(analysis as string) && (
-                <div className="w-auto">
+            <div className="inline-flex flex-col items-stretch gap-4 w-fit">
+              <DisplayOptionsCard 
+                state={state} 
+                setState={setState} 
+                entitySet={entitySet}
+              />
+              {analysis && ["F1", "F2", "M", "Ve", "R0"].includes(analysis as string) && (
+                <div className="w-full">
                   <ScaleSimulationCard
                     scale={
                       analysis === "Ve" ? scaleVe :
@@ -529,7 +528,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                     analysis={analysis}
                   />
                   {analysis === "Ve" && (
-                    <div className="w-auto mt-2">
+                    <div className="w-full mt-2">
                       <GlobalLocalDefCard 
                         selected={selectedGlobalLocal} 
                         setSelected={setSelectedGlobalLocal} 
