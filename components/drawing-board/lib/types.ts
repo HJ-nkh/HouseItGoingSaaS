@@ -308,6 +308,8 @@ export type DistributedLoad = {
     value: number;
     relativeTo: "member" | "x";
   };
+  // For Wind loads: flip application side by 180°
+  windFlip?: boolean;
   magnitude1?: number;
   magnitude2?: number;
   onMember: {
