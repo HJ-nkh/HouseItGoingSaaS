@@ -202,6 +202,8 @@ def handler(event, context):
             elif t == 'Snow':
                 t='Snelast'; scale=abs((dx)/c); fx1,fy1,fx2,fy2=0,-scale*(line_load.get('magnitude1'))*1e3,0,-scale*(line_load.get('magnitude2'))*1e3
             elif t == 'Wind':
+                if line_load.get('windFlip'):
+                    dx,dy = -dx,-dy
                 t='Vindlast'; fx1=(line_load.get('magnitude1'))/c*(dy)*1e3; fy1=-(line_load.get('magnitude1'))/c*(dx)*1e3; fx2=(line_load.get('magnitude2'))/c*(dy)*1e3; fy2=-(line_load.get('magnitude2'))/c*(dx)*1e3
             else:
                 cosPart = math.cos(math.pi/180*line_load.get('angle').get('value'))
