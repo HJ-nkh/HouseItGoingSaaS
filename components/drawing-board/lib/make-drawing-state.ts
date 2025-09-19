@@ -76,6 +76,7 @@ export const defaultDrawingState = (aspectRatio: number): DrawingState => ({
     formFactor: 'main_structure',
     windDirection: 0,
   } as WindCalculatorSettings,
+  pendingLoadTargets: {},
 });
 
 export const makeDrawingState = (

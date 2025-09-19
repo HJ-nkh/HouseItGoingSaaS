@@ -13,14 +13,19 @@ const handleMomentLoadClick: InputEventHandler = (
 
   if (state.tool === Tool.Select || state.tool === Tool.MomentLoad) {
     const loadId = e.payload.id as string;
+    // If in MomentLoad tool, only allow multi-select of moment loads
+    const baseSelection =
+      state.tool === Tool.MomentLoad
+        ? state.selectedIds.filter((id) => id.startsWith("ml-"))
+        : state.selectedIds;
     let selectedIds: string[];
 
     if (e.payload.ctrlKey || e.payload.metaKey) {
       // Toggle selection: remove if already selected, add if not
-      const already = state.selectedIds.includes(loadId);
+      const already = baseSelection.includes(loadId);
       selectedIds = already
-        ? state.selectedIds.filter((id) => id !== loadId)
-        : [...state.selectedIds, loadId];
+        ? baseSelection.filter((id) => id !== loadId)
+        : [...baseSelection, loadId];
     } else {
       selectedIds = [loadId];
     }

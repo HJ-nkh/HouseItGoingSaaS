@@ -185,8 +185,13 @@ const DisplayOptionsCard: React.FC<DisplayOptionsCardProps> = ({
 
   // Show group confirmation when appropriate conditions are met
   useEffect(() => {
-    // Show confirmation when user has selected multiple loads of same type with Select tool
-    if (state.tool === Tool.Select && canGroup && selectedLoadIds.length >= 2) {
+    // Show confirmation when user has selected multiple loads of same type with Select or any load tool
+    const groupingToolActive =
+      state.tool === Tool.Select ||
+      state.tool === Tool.PointLoad ||
+      state.tool === Tool.DistributedLoad ||
+      state.tool === Tool.MomentLoad;
+    if (groupingToolActive && canGroup && selectedLoadIds.length >= 2) {
       setGroupConfirmationPosition({ x: 400, y: 100 });
       setShowGroupConfirmation(true);
     } else {

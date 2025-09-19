@@ -13,24 +13,27 @@ const handlePointLoadClick: InputEventHandler = (
 
   if (
     state.tool === Tool.Select ||
-    state.tool === Tool.PointLoad ||
-    state.tool === Tool.DistributedLoad ||
-    state.tool === Tool.MomentLoad
+    state.tool === Tool.PointLoad
   ) {
     const loadId = e.payload.id as string;
+    // If we're in the PointLoad tool, only allow multi-select of point loads
+    const baseSelection =
+      state.tool === Tool.PointLoad
+        ? state.selectedIds.filter((id) => id.startsWith("pl-"))
+        : state.selectedIds;
     let selectedIds: string[];
 
     if (e.payload.ctrlKey || e.payload.metaKey) {
       // Toggle selection: remove if already selected, add if not
-      const already = state.selectedIds.includes(loadId);
+      const already = baseSelection.includes(loadId);
       selectedIds = already
-        ? state.selectedIds.filter((id) => id !== loadId)
-        : [...state.selectedIds, loadId];
+        ? baseSelection.filter((id) => id !== loadId)
+        : [...baseSelection, loadId];
     } else {
       selectedIds = [loadId];
     }
 
-    let modifyingEntity: DrawingState["modifyingEntity"] = null;
+  let modifyingEntity: DrawingState["modifyingEntity"] = null;
 
     if (selectedIds.length === 1) {
       modifyingEntity = {
