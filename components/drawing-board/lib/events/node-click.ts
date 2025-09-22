@@ -113,15 +113,38 @@ const handleNodeClick: InputEventHandler = (
 
     return handleAddMember(state, _, entitySet, e);
   }
-  // Add point load to node
+  // Add point load to node (supports Ctrl multi-select of nodes and members)
   if (state.tool === Tool.PointLoad) {
+    const nodeId = e.payload?.id as string;
+    const target = { onNode: { id: nodeId } };
+
+    if (e.payload.ctrlKey || e.payload.metaKey) {
+      const pending = { ...state.pendingLoadTargets, [nodeId]: target };
+      return {
+        pendingLoadTargets: pending,
+        modifyingEntity: state.modifyingEntity?.type === Entity.PointLoad
+          ? state.modifyingEntity
+          : {
+              type: Entity.PointLoad,
+              pointLoad: {
+                id: "",
+                type: LoadType.Dead,
+                onNode: { id: nodeId },
+                magnitude: undefined,
+              },
+            },
+        selectedIds: [],
+      };
+    }
+
     return {
+      pendingLoadTargets: { [nodeId]: target },
       modifyingEntity: {
         type: Entity.PointLoad,
         pointLoad: {
           id: "",
           type: LoadType.Dead,
-          onNode: { id: e.payload?.id as string },
+          onNode: { id: nodeId },
           magnitude: undefined,
         },
       },
@@ -129,15 +152,38 @@ const handleNodeClick: InputEventHandler = (
     };
   }
 
-  // Add moment load to node
+  // Add moment load to node (supports Ctrl multi-select)
   if (state.tool === Tool.MomentLoad) {
+    const nodeId = e.payload?.id as string;
+    const target = { onNode: { id: nodeId } };
+
+    if (e.payload.ctrlKey || e.payload.metaKey) {
+      const pending = { ...state.pendingLoadTargets, [nodeId]: target };
+      return {
+        pendingLoadTargets: pending,
+        modifyingEntity: state.modifyingEntity?.type === Entity.MomentLoad
+          ? state.modifyingEntity
+          : {
+              type: Entity.MomentLoad,
+              momentLoad: {
+                id: "",
+                type: LoadType.Dead,
+                onNode: { id: nodeId },
+                magnitude: undefined,
+              },
+            },
+        selectedIds: [],
+      };
+    }
+
     return {
+      pendingLoadTargets: { [nodeId]: target },
       modifyingEntity: {
         type: Entity.MomentLoad,
         momentLoad: {
           id: "",
           type: LoadType.Dead,
-          onNode: { id: e.payload?.id as string },
+          onNode: { id: nodeId },
           magnitude: undefined,
         },
       },

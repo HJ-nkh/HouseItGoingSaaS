@@ -83,6 +83,7 @@ type ModifyMomentLoadCardProps = {
   onSubmit: () => void;
   onClose: () => void;
   onDelete?: () => void;
+  hideCoordinateInputs?: boolean;
 };
 
 const ModifyMomentLoadCard: React.FC<ModifyMomentLoadCardProps> = ({
@@ -92,6 +93,7 @@ const ModifyMomentLoadCard: React.FC<ModifyMomentLoadCardProps> = ({
   onSubmit,
   onClose,
   onDelete,
+  hideCoordinateInputs,
 }) => {
   const isMember = !!load.onMember;
   const [constraint, setConstraint] = useState<Partial<Constraint>>(
@@ -189,7 +191,7 @@ const ModifyMomentLoadCard: React.FC<ModifyMomentLoadCardProps> = ({
         </div>
       )}
 
-      <CardContent>        {isMember && (
+      <CardContent>        {isMember && !hideCoordinateInputs && (
           <div className="mb-2">
             <XYConstraintSelect
               constraint={constraint as Constraint}

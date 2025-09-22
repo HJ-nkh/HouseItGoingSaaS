@@ -823,7 +823,14 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
             {/* MEMBERS (beneath point/moment loads) */}
             {Object.values(members).map((member) => {
-              const isSelected = state.selectedIds.includes(member.id);
+              // Highlight when selected via Select tool OR when chosen as a pending target during add-load flow
+              const pendingHighlightForAdd = !!(
+                (state.modifyingEntity?.pointLoad ||
+                  state.modifyingEntity?.distributedLoad ||
+                  state.modifyingEntity?.momentLoad) &&
+                state.pendingLoadTargets?.[member.id]
+              );
+              const isSelected = state.selectedIds.includes(member.id) || pendingHighlightForAdd;
               const strokeWidth = isSelected
                 ? state.viewBox[3] * 0.004
                 : state.viewBox[3] * 0.002;
@@ -855,7 +862,12 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
 
             {/* NODES (beneath point/moment loads) */}
             {analysis !== "Ve" && Object.values(nodes).map((node) => {
-              const isSelected = state.selectedIds.includes(node.id);
+              // Highlight when selected via Select tool OR when chosen as a pending target during add-load flow
+              const pendingHighlightForAdd = !!(
+                (state.modifyingEntity?.pointLoad || state.modifyingEntity?.momentLoad) &&
+                state.pendingLoadTargets?.[node.id]
+              );
+              const isSelected = state.selectedIds.includes(node.id) || pendingHighlightForAdd;
               const strokeWidth = isSelected
                 ? state.viewBox[3] * 0.002
                 : state.viewBox[3] * 0.001;
@@ -949,56 +961,141 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
               );
             })}            {/* LOAD BEING ADDED/MODIFIED */}
             {state.modifyingEntity?.pointLoad && (
-              <RenderedPointLoad
-                load={{
-                  ...resolvePointLoadPosition(
-                    state.modifyingEntity.pointLoad,
-                    nodes,
-                    members
-                  ),
-                  magnitude: state.modifyingEntity.pointLoad.magnitude
-                }}
-                className="opacity-50"
-                strokeWidth={state.viewBox[3] * 0.002}
-                size={pointScale}
-                isSelected={false}
-                isHovered={false}
-              />
+              <>
+                {Object.keys(state.pendingLoadTargets || {}).length > 0
+                  ? Object.entries(state.pendingLoadTargets).map(([tid, tgt]) => {
+                      const temp = {
+                        id: "",
+                        type: state.modifyingEntity!.pointLoad!.type,
+                        magnitude: state.modifyingEntity!.pointLoad!.magnitude,
+                        onNode: tgt.onNode,
+                        onMember: tgt.onMember as any,
+                      } as any;
+                      return (
+                        <RenderedPointLoad
+                          key={`pl-temp-${tid}`}
+                          load={{
+                            ...resolvePointLoadPosition(temp, nodes, members),
+                            magnitude: temp.magnitude,
+                          }}
+                          className="opacity-50"
+                          strokeWidth={state.viewBox[3] * 0.002}
+                          size={pointScale}
+                          isSelected={false}
+                          isHovered={false}
+                        />
+                      );
+                    })
+                  : (
+                    <RenderedPointLoad
+                      load={{
+                        ...resolvePointLoadPosition(
+                          state.modifyingEntity.pointLoad,
+                          nodes,
+                          members
+                        ),
+                        magnitude: state.modifyingEntity.pointLoad.magnitude,
+                      }}
+                      className="opacity-50"
+                      strokeWidth={state.viewBox[3] * 0.002}
+                      size={pointScale}
+                      isSelected={false}
+                      isHovered={false}
+                    />
+                  )}
+              </>
             )}
             {state.modifyingEntity?.distributedLoad && (
-              <RenderedDistributedLoad
-                load={{
-                  ...resolveDistributedLoadPosition(
-                    state.modifyingEntity.distributedLoad,
-                    nodes,
-                    members
-                  ),
-                  magnitude1: state.modifyingEntity.distributedLoad.magnitude1,
-                  magnitude2: state.modifyingEntity.distributedLoad.magnitude2
-                }}
-                className="opacity-20"
-                gridSize={state.gridSize}
-                strokeWidth={state.viewBox[3] * 0.002}
-                size={distributedScale}
-                isSelected={false}
-                isHovered={false}
-              />
+              <>
+                {Object.keys(state.pendingLoadTargets || {}).length > 0
+                  ? Object.entries(state.pendingLoadTargets).map(([tid, tgt]) => {
+                      const temp = {
+                        id: "",
+                        type: state.modifyingEntity!.distributedLoad!.type,
+                        angle: state.modifyingEntity!.distributedLoad!.angle,
+                        magnitude1: state.modifyingEntity!.distributedLoad!.magnitude1,
+                        magnitude2: state.modifyingEntity!.distributedLoad!.magnitude2,
+                        windFlip: (state.modifyingEntity!.distributedLoad as any).windFlip,
+                        onMember: tgt.onMember as any,
+                      } as any;
+                      return (
+                        <RenderedDistributedLoad
+                          key={`dl-temp-${tid}`}
+                          load={{
+                            ...resolveDistributedLoadPosition(temp, nodes, members),
+                            magnitude1: temp.magnitude1,
+                            magnitude2: temp.magnitude2,
+                          }}
+                          className="opacity-20"
+                          gridSize={state.gridSize}
+                          strokeWidth={state.viewBox[3] * 0.002}
+                          size={distributedScale}
+                          isSelected={false}
+                          isHovered={false}
+                        />
+                      );
+                    })
+                  : (
+                    <RenderedDistributedLoad
+                      load={{
+                        ...resolveDistributedLoadPosition(
+                          state.modifyingEntity.distributedLoad,
+                          nodes,
+                          members
+                        ),
+                        magnitude1: state.modifyingEntity.distributedLoad.magnitude1,
+                        magnitude2: state.modifyingEntity.distributedLoad.magnitude2,
+                        windFlip: (state.modifyingEntity.distributedLoad as any).windFlip,
+                      }}
+                      className="opacity-20"
+                      gridSize={state.gridSize}
+                      strokeWidth={state.viewBox[3] * 0.002}
+                      size={distributedScale}
+                      isSelected={false}
+                      isHovered={false}
+                    />
+                  )}
+              </>
             )}
             {state.modifyingEntity?.momentLoad && (
               <g opacity="0.5">
-                <RenderedMomentLoad
-                  load={{
-                    ...resolveMomentLoadPosition(
-                      state.modifyingEntity.momentLoad,
-                      nodes,
-                      members
-                    ),
-                    magnitude: state.modifyingEntity.momentLoad.magnitude
-                  }}
-                  size={momentScale}
-                  isSelected={false}
-                  isHovered={false}
-                />
+                {Object.keys(state.pendingLoadTargets || {}).length > 0
+                  ? Object.entries(state.pendingLoadTargets).map(([tid, tgt]) => {
+                      const temp = {
+                        id: "",
+                        type: state.modifyingEntity!.momentLoad!.type,
+                        magnitude: state.modifyingEntity!.momentLoad!.magnitude,
+                        onNode: tgt.onNode,
+                        onMember: tgt.onMember as any,
+                      } as any;
+                      return (
+                        <RenderedMomentLoad
+                          key={`ml-temp-${tid}`}
+                          load={{
+                            ...resolveMomentLoadPosition(temp, nodes, members),
+                            magnitude: temp.magnitude,
+                          }}
+                          size={momentScale}
+                          isSelected={false}
+                          isHovered={false}
+                        />
+                      );
+                    })
+                  : (
+                    <RenderedMomentLoad
+                      load={{
+                        ...resolveMomentLoadPosition(
+                          state.modifyingEntity.momentLoad,
+                          nodes,
+                          members
+                        ),
+                        magnitude: state.modifyingEntity.momentLoad.magnitude,
+                      }}
+                      size={momentScale}
+                      isSelected={false}
+                      isHovered={false}
+                    />
+                  )}
               </g>
             )}
             {state.modifyingEntity?.support && (

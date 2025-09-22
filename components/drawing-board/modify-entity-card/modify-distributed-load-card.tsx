@@ -104,6 +104,8 @@ type ModifyDistributedLoadCardProps = {
   // Wind calculator integration (optional)
   windCalculatorSettings?: WindCalculatorSettings;
   onWindCalculatorSettingsChange?: (settings: Partial<WindCalculatorSettings>) => void;
+  // When assigning the same load to multiple members, hide coordinate inputs
+  hideCoordinateInputs?: boolean;
 };
 
 const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
@@ -115,6 +117,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
   onDelete,
   windCalculatorSettings: _windCalculatorSettings,
   onWindCalculatorSettingsChange: _onWindCalculatorSettingsChange,
+  hideCoordinateInputs,
 }) => {  const onEnter = () => onSubmit(load as DistributedLoad);
     // State for c/c distance and area load calculations
   // Initialize from load properties if they exist
@@ -513,7 +516,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
               </div>
             )}
 
-        <div className="flex gap-3 mb-2 items-center">
+        {!hideCoordinateInputs && <div className="flex gap-3 mb-2 items-center">
           <div className="w-32 text-left flex-shrink-0">Start:</div>
           <div className="w-38 flex-shrink-0">
             <ConstraintSelect
@@ -529,8 +532,8 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                   currentY={startCoordinates.y}
                 />
               </div>
-            </div>
-            <div className="flex gap-3 items-center">
+            </div>}
+            {!hideCoordinateInputs && <div className="flex gap-3 items-center">
           <div className="w-32 text-left flex-shrink-0">Slut:</div>
           <div className="w-38 flex-shrink-0">
             <ConstraintSelect
@@ -546,7 +549,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                   currentY={endCoordinates.y}
                 />
               </div>
-          </div>
+          </div>}
         </div>
 
         </div>

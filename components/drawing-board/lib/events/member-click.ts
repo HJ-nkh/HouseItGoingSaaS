@@ -94,86 +94,152 @@ const handleMemberClick: InputEventHandler = (
     }
 
     return handleAddMember(state, _, entitySet, e);
-  }  // Add point load to member
+  }
+  // Add point load to member (Ctrl to accumulate multiple members)
   if (state.tool === Tool.PointLoad) {
     const smartConstraintType = getSmartDefaultConstraint(e.payload.id as string, entitySet);
     const smartConstraintValue = smartConstraintType === ConstraintType.X 
       ? roundToTwoDecimals(state.cursorPosition.x)
       : roundToTwoDecimals(state.cursorPosition.y);
 
+    const target = {
+      onMember: {
+        id: e.payload.id as string,
+        constraint: { type: smartConstraintType, value: smartConstraintValue },
+      },
+    } as const;
+
+    if (ctrl || cmd) {
+      return {
+        pendingLoadTargets: { ...state.pendingLoadTargets, [e.payload.id as string]: target },
+        modifyingEntity: state.modifyingEntity?.type === Entity.PointLoad
+          ? state.modifyingEntity
+          : {
+              type: Entity.PointLoad,
+              pointLoad: {
+                id: "",
+                type: LoadType.Dead,
+                onMember: target.onMember,
+                magnitude: undefined,
+              },
+            },
+        selectedIds: [],
+      };
+    }
+
     return {
+      pendingLoadTargets: { [e.payload.id as string]: target },
       modifyingEntity: {
-        type: Entity.PointLoad,        pointLoad: {
+        type: Entity.PointLoad,
+        pointLoad: {
           id: "",
           type: LoadType.Dead,
-          onMember: {
-            id: e.payload.id,
-            constraint: {
-              type: smartConstraintType,
-              value: smartConstraintValue,
-            },
-          },
+          onMember: target.onMember,
           magnitude: undefined,
         },
       },
+      selectedIds: [],
     };
   }
-  // Add distributed load to member
+  // Add distributed load to member (Ctrl to accumulate multiple members; always full member span in multi)
   if (state.tool === Tool.DistributedLoad) {
-    const member = entitySet.members[e.payload.id];
+    const member = entitySet.members[e.payload.id as string];
     const smartConstraintType = getSmartDefaultConstraint(e.payload.id as string, entitySet);
 
     const constraintStart = {
       type: smartConstraintType,
-      value: smartConstraintType === ConstraintType.X 
-        ? member.resolved.point1.x 
-        : member.resolved.point1.y,
+      value: smartConstraintType === ConstraintType.X ? member.resolved.point1.x : member.resolved.point1.y,
     };
 
     const constraintEnd = {
       type: smartConstraintType,
-      value: smartConstraintType === ConstraintType.X 
-        ? member.resolved.point2.x 
-        : member.resolved.point2.y,
-    };    return {
+      value: smartConstraintType === ConstraintType.X ? member.resolved.point2.x : member.resolved.point2.y,
+    };
+
+    const target = { onMember: { id: e.payload.id as string, constraintStart, constraintEnd } } as const;
+
+    if (ctrl || cmd) {
+      return {
+        pendingLoadTargets: { ...state.pendingLoadTargets, [e.payload.id as string]: target },
+        modifyingEntity: state.modifyingEntity?.type === Entity.DistributedLoad
+          ? state.modifyingEntity
+          : {
+              type: Entity.DistributedLoad,
+              distributedLoad: {
+                id: "",
+                type: LoadType.Dead,
+                angle: { relativeTo: "x", value: 90 },
+                onMember: target.onMember as any,
+                magnitude1: undefined,
+                magnitude2: undefined,
+              },
+            },
+        selectedIds: [],
+      };
+    }
+
+    return {
+      pendingLoadTargets: { [e.payload.id as string]: target },
       modifyingEntity: {
-        type: Entity.DistributedLoad,        distributedLoad: {
+        type: Entity.DistributedLoad,
+        distributedLoad: {
           id: "",
           type: LoadType.Dead,
-          angle: {
-            relativeTo: "x",
-            value: 90,
-          },
-          onMember: { id: e.payload.id, constraintStart, constraintEnd },
+          angle: { relativeTo: "x", value: 90 },
+          onMember: target.onMember as any,
           magnitude1: undefined,
           magnitude2: undefined,
         },
       },
       selectedIds: [],
     };
-  }  if (state.tool === Tool.MomentLoad) {
+  }
+  if (state.tool === Tool.MomentLoad) {
     const smartConstraintType = getSmartDefaultConstraint(e.payload.id as string, entitySet);
     const smartConstraintValue = smartConstraintType === ConstraintType.X 
       ? roundToTwoDecimals(state.cursorPosition.x)
       : roundToTwoDecimals(state.cursorPosition.y);
 
+    const target = {
+      onMember: {
+        id: e.payload.id as string,
+        constraint: { type: smartConstraintType, value: smartConstraintValue },
+      },
+    } as const;
+
+    if (ctrl || cmd) {
+      return {
+        pendingLoadTargets: { ...state.pendingLoadTargets, [e.payload.id as string]: target },
+        modifyingEntity: state.modifyingEntity?.type === Entity.MomentLoad
+          ? state.modifyingEntity
+          : {
+              type: Entity.MomentLoad,
+              momentLoad: {
+                id: "",
+                type: LoadType.Dead,
+                onMember: target.onMember,
+                magnitude: undefined,
+              },
+            },
+        selectedIds: [],
+      };
+    }
+
     return {
+      pendingLoadTargets: { [e.payload.id as string]: target },
       modifyingEntity: {
-        type: Entity.MomentLoad,        momentLoad: {
+        type: Entity.MomentLoad,
+        momentLoad: {
           id: "",
           type: LoadType.Dead,
-          onMember: {
-            id: e.payload.id,
-            constraint: {
-              type: smartConstraintType,
-              value: smartConstraintValue,
-            },
-          },
+          onMember: target.onMember,
           magnitude: undefined,
         },
       },
+      selectedIds: [],
     };
-  }  // Add support to member
+  }
+  // Add support to member
   if (state.tool === Tool.Support) {
     const id = `s-${state.nextSupportNumber}`;
     const smartConstraintType = getSmartDefaultConstraint(e.payload.id as string, entitySet);

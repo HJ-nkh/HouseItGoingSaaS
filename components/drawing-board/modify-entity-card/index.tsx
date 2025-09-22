@@ -221,6 +221,7 @@ const ModifyEntityCard: React.FC<ModifyEntityCardProps> = ({
         <ModifyPointLoadCard
           entitySet={entitySet}
           load={pointLoad}
+          hideCoordinateInputs={state.selectedIds.length > 1}
           onChange={(load) =>
             setState((s) => ({
               ...s,
@@ -266,6 +267,7 @@ const ModifyEntityCard: React.FC<ModifyEntityCardProps> = ({
           entitySet={entitySet}
           windCalculatorSettings={windCalculatorSettings}
           onWindCalculatorSettingsChange={onWindCalculatorSettingsChange}
+          hideCoordinateInputs={state.selectedIds.length > 1}
           onChange={(load) =>
             setState((s) => ({
               ...s,
@@ -314,6 +316,7 @@ const ModifyEntityCard: React.FC<ModifyEntityCardProps> = ({
         <ModifyMomentLoadCard
           load={momentLoad}
           entitySet={entitySet}
+          hideCoordinateInputs={state.selectedIds.length > 1}
           onChange={(load) =>
             setState((s) => ({
               ...s,
