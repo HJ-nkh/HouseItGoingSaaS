@@ -180,6 +180,15 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     [entitySet, state.viewBox[3], drawing?.id]
   );
 
+  // Sticky Ctrl/Cmd modifier: physical + latched state
+  const [ctrlLatched, setCtrlLatched] = useState(false);
+  const [ctrlPhysical, setCtrlPhysical] = useState(false);
+  const ctrlActive = ctrlLatched || ctrlPhysical;
+  const isMac = useMemo(() => {
+    if (typeof navigator === "undefined") return false;
+    return /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  }, []);
+
   const handleEvent = (input: InputEvent) => {
     const update = handleInputEvent(
       state,
@@ -254,6 +263,17 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
         return;
       }
 
+      // Allow ESC to unlatch the sticky Ctrl/Cmd toggle (when latched via mouse)
+      if (e.key === "Escape") {
+        setCtrlLatched(false);
+        // Do not return; still forward the HotKey below if needed
+      }
+
+      // Track physical Ctrl/Cmd state for sticky modifier UI
+      if (e.ctrlKey || e.metaKey) {
+        setCtrlPhysical(true);
+      }
+
       // TODO: Maybe not necessary to handle these as special cases?
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "Z") {
         handleEvent({ type: InputEventType.CtrlShiftZ });
@@ -282,9 +302,23 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
     };
 
     window.addEventListener("keydown", handleKeyDown);
+    const handleKeyUp = (e: KeyboardEvent) => {
+      // If neither modifier is held after this keyup, clear physical flag
+      const stillHeld = (e as any).getModifierState
+        ? (e as any).getModifierState("Control") || (e as any).getModifierState("Meta")
+        : (e.ctrlKey || e.metaKey);
+      if (!stillHeld) {
+        setCtrlPhysical(false);
+      }
+    };
+    const handleBlur = () => setCtrlPhysical(false);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleBlur);
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
     };
   }, [state]);
 
@@ -683,8 +717,8 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                 type: InputEventType.CanvasClick,
                 payload: {
                   altKey: e.altKey,
-                  ctrlKey: e.ctrlKey,
-                  metaKey: e.metaKey,
+                  ctrlKey: e.ctrlKey || ctrlActive,
+                  metaKey: e.metaKey || ctrlActive,
                 },
               });
             }}
@@ -694,8 +728,8 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                 payload: {
                   clientPosition: { clientX: e.clientX, clientY: e.clientY },
                   altKey: e.altKey,
-                  ctrlKey: e.ctrlKey,
-                  metaKey: e.metaKey,
+                  ctrlKey: e.ctrlKey || ctrlActive,
+                  metaKey: e.metaKey || ctrlActive,
                 },
               })
             }
@@ -707,8 +741,8 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                   clientPosition: { clientX: e.clientX, clientY: e.clientY },
                   button: e.button,
                   altKey: e.altKey,
-                  ctrlKey: e.ctrlKey,
-                  metaKey: e.metaKey,
+                  ctrlKey: e.ctrlKey || ctrlActive,
+                  metaKey: e.metaKey || ctrlActive,
                 },
               });
             }}
@@ -718,8 +752,8 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                 payload: {
                   clientPosition: { clientX: e.clientX, clientY: e.clientY },
                   altKey: e.altKey,
-                  ctrlKey: e.ctrlKey,
-                  metaKey: e.metaKey,
+                  ctrlKey: e.ctrlKey || ctrlActive,
+                  metaKey: e.metaKey || ctrlActive,
                 },
               })
             }
@@ -777,7 +811,11 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                   onClick={(payload) => {
                     handleEvent({
                       type: InputEventType.DistributedLoadClick,
-                      payload,
+                      payload: {
+                        ...payload,
+                        ctrlKey: (payload as any)?.ctrlKey || ctrlActive,
+                        metaKey: (payload as any)?.metaKey || ctrlActive,
+                      },
                     });
                   }}
                   gridSize={state.gridSize}
@@ -812,7 +850,11 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                   onClick={(payload) =>
                     handleEvent({
                       type: InputEventType.SupportClick,
-                      payload,
+                      payload: {
+                        ...payload,
+                        ctrlKey: (payload as any)?.ctrlKey || ctrlActive,
+                        metaKey: (payload as any)?.metaKey || ctrlActive,
+                      },
                     })
                   }
                   onMouseEnter={() => setHoveringId(support.id)}
@@ -846,7 +888,12 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                   onClick={(payload) =>
                     handleEvent({
                       type: InputEventType.MemberClick,
-                      payload: { id: member.id, ...payload },
+                      payload: {
+                        id: member.id,
+                        ...payload,
+                        ctrlKey: (payload as any)?.ctrlKey || ctrlActive,
+                        metaKey: (payload as any)?.metaKey || ctrlActive,
+                      },
                     })
                   }
                   onMouseEnter={() => setHoveringId(member.id)}
@@ -880,7 +927,11 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                   onClick={(payload) =>
                     handleEvent({
                       type: InputEventType.NodeClick,
-                      payload,
+                      payload: {
+                        ...payload,
+                        ctrlKey: (payload as any)?.ctrlKey || ctrlActive,
+                        metaKey: (payload as any)?.metaKey || ctrlActive,
+                      },
                     })
                   }
                   isSelected={isSelected}
@@ -922,7 +973,15 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                   strokeWidth={strokeWidth}
                   size={size}
                   onClick={(payload) =>
-                    handleEvent({ type: InputEventType.PointLoadClick, payload: { ...payload, id: load.id } })
+                    handleEvent({
+                      type: InputEventType.PointLoadClick,
+                      payload: {
+                        ...payload,
+                        id: load.id,
+                        ctrlKey: (payload as any)?.ctrlKey || ctrlActive,
+                        metaKey: (payload as any)?.metaKey || ctrlActive,
+                      },
+                    })
                   }
                   onMouseEnter={() => setHoveringId(load.id)}
                   onMouseLeave={() => setHoveringId(null)}
@@ -953,7 +1012,15 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                   isHovered={isHovered}
                   size={size}
                   onClick={(payload) =>
-                    handleEvent({ type: InputEventType.MomentLoadClick, payload: { ...payload, id: load.id } })
+                    handleEvent({
+                      type: InputEventType.MomentLoadClick,
+                      payload: {
+                        ...payload,
+                        id: load.id,
+                        ctrlKey: (payload as any)?.ctrlKey || ctrlActive,
+                        metaKey: (payload as any)?.metaKey || ctrlActive,
+                      },
+                    })
                   }
                   onMouseEnter={() => setHoveringId(load.id)}
                   onMouseLeave={() => setHoveringId(null)}
@@ -1239,7 +1306,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                         e.stopPropagation();
                         handleEvent({
                           type: InputEventType.MemberClick,
-                          payload: { id: sim.id, ...e },
+                          payload: { id: sim.id, ...e, ctrlKey: (e as any)?.ctrlKey || ctrlActive, metaKey: (e as any)?.metaKey || ctrlActive },
                         });
                       }}
                       transform={`translate(${x}, ${y})`}
@@ -1303,7 +1370,7 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
                       e.stopPropagation();
                       handleEvent({
                         type: InputEventType.MemberClick,
-                        payload: { id: sim.id, ...e },
+                        payload: { id: sim.id, ...e, ctrlKey: (e as any)?.ctrlKey || ctrlActive, metaKey: (e as any)?.metaKey || ctrlActive },
                       });
                     }}
                     transform={`translate(${x}, ${y})`}
@@ -1381,6 +1448,24 @@ const DrawingBoard: React.FC<DrawingBoardProps> = ({
           />        </div>
       </div>
       
+      {/* Sticky Ctrl/Cmd toggle in bottom-left */}
+      {!showSimulation && (
+        <div className="absolute left-2 bottom-2 z-40">
+          <button
+            type="button"
+            onClick={() => setCtrlLatched((v) => !v)}
+            className={cn(
+              "px-4 py-2 rounded-lg border text-base shadow-sm transition-colors",
+              ctrlActive ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300"
+            )}
+            title={isMac ? "Cmd-lås til multi-valg (klik for at holde)" : "Ctrl-lås til multi-valg (klik for at holde)"}
+          >
+            <span className="font-medium">{isMac ? "Cmd" : "Ctrl"}</span>
+            <span className={cn("ml-2 inline-block w-3 h-3 rounded-full align-middle", ctrlActive ? "bg-green-400" : "bg-gray-300")}></span>
+          </button>
+        </div>
+      )}
+
       {/* Context hint in bottom right corner */}
       <ContextHint 
         message={currentHint} 
