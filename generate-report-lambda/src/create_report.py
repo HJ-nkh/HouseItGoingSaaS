@@ -89,14 +89,15 @@ def make_report_filename(team_id, project_id, report_id):
     return f"{team_id}/{project_id}/{report_id}.docx"
 
 def _sanitize_filename_base(name: str, default: str = 'report') -> str:
-    """Sanitize a string to be safe for filenames (keeps letters, numbers, . _ -)."""
+    """Sanitize a string to be safe for filenames (keeps letters, numbers, . _ -, and Danish æøåÆØÅ)."""
     try:
         s = name if isinstance(name, str) else ('' if name is None else str(name))
     except Exception:
         s = ''
     s = s.strip()
     s = re.sub(r'\s+', '-', s)
-    s = re.sub(r'[^A-Za-z0-9._-]+', '', s)
+    # Allow ASCII letters/digits plus dot, underscore, hyphen, and Danish letters æøåÆØÅ
+    s = re.sub(r'[^A-Za-z0-9._ÆØÅæøå-]+', '', s)
     return s or default
 
 def create_report(s, team_id, project_id, title: str | None = None):
@@ -884,7 +885,8 @@ def create_report(s, team_id, project_id, title: str | None = None):
     # Derive a friendly base title
     base_title = (title or 'reports').strip()
     base_title = re.sub(r'\s+', '-', base_title)
-    base_title = re.sub(r'[^A-Za-z0-9.-]+', '', base_title) or 'reports'
+    # Match the same allowed set as _sanitize_filename_base, including æøåÆØÅ
+    base_title = re.sub(r'[^A-Za-z0-9._ÆØÅæøå-]+', '', base_title) or 'reports'
 
     # Save ZIP to S3 or locally, mirroring save_document behavior
     bundle_report_id = str(uuid.uuid4())
@@ -994,7 +996,8 @@ def save_document(
                 import re
                 base = (display_title or 'report').strip()
                 base = re.sub(r'\s+', '-', base)
-                base = re.sub(r'[^A-Za-z0-9.-]+', '', base)
+                # Allow æøåÆØÅ plus safe ASCII filename characters
+                base = re.sub(r'[^A-Za-z0-9._ÆØÅæøå-]+', '', base)
                 if not base:
                     base = 'report'
                 response_disposition = f'attachment; filename="{base}.docx"'

@@ -274,6 +274,7 @@ export type MemberProp = {
   name?: string;
   type?: MaterialType;
   steelProfile?: SteelProfile;
+  steelStrength?: string;
   woodType?: string;
   woodSizeString?: string;
   woodSize?: WoodSize;

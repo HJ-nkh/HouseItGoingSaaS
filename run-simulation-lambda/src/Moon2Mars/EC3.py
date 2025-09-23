@@ -22,12 +22,11 @@ class EC3base:
         self.beamprop = member_discr['memberprop']
         self.beamtype = member_discr['membertype']
         self.profile = self.beamprop['profile']
+        self.steelgrade = self.beamprop['strength class']
 
         self.T = selfS.T_discr
         self.X = selfS.X_discr
         self.X_loc = selfS.X_loc_discr
-        
-        self.steelgrade = 'S235'
         
         profile = self.profile
         self.E = member_discr['E']       
