@@ -50,6 +50,20 @@
       "when": 1757871400000,
       "tag": "0006_add_meta_and_strip_from_payloads",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1758630838402,
+      "tag": "0007_optimal_siren",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1758632331134,
+      "tag": "0008_amused_lilandra",
+      "breakpoints": true
     }
   ]
 }

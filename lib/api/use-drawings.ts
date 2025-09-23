@@ -10,6 +10,8 @@ export interface CreateDrawingData {
   history: any;
   hasChanges?: boolean;
   isTemplate?: boolean;
+  consequenceClass?: 'CC1' | 'CC2' | 'CC3';
+  robustnessFactor?: boolean;
 }
 
 export interface UpdateDrawingData {
@@ -17,6 +19,8 @@ export interface UpdateDrawingData {
   history?: any;
   hasChanges?: boolean;
   isTemplate?: boolean;
+  consequenceClass?: 'CC1' | 'CC2' | 'CC3';
+  robustnessFactor?: boolean;
 }
 
 export interface UseDrawingsConfig extends UseEntityConfig {}

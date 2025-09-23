@@ -4,6 +4,8 @@ import { Action, MemberProp } from "@/components/drawing-board/lib/types";
 export type Drawing = {
   id: string;
   title: string;
+  consequenceClass?: 'CC1' | 'CC2' | 'CC3';
+  robustnessFactor?: boolean;
   history: Action[];
   projectId: string;
   userId: string;

@@ -11,6 +11,8 @@ const createDrawingSchema = z.object({
   history: z.any().optional(),
   hasChanges: z.boolean().optional().default(false),
   isTemplate: z.boolean().optional().default(false),
+  consequenceClass: z.enum(["CC1","CC2","CC3"]).optional().default("CC2"),
+  robustnessFactor: z.boolean().optional().default(false),
 });
 
 export async function GET(request: NextRequest) {
@@ -131,6 +133,8 @@ export async function POST(request: NextRequest) {
         history: safeHistory,
         hasChanges: validatedData.hasChanges,
         isTemplate: validatedData.isTemplate,
+        consequenceClass: validatedData.consequenceClass ?? 'CC2',
+        robustnessFactor: validatedData.robustnessFactor ?? false,
       })
       .returning();
 

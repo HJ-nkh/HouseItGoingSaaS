@@ -1,0 +1,1 @@
+ALTER TABLE "drawings" ADD COLUMN "robustness_factor" boolean DEFAULT false NOT NULL;

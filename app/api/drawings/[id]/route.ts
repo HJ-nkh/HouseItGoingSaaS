@@ -10,6 +10,8 @@ const updateDrawingSchema = z.object({
   history: z.any().optional(),
   hasChanges: z.boolean().optional(),
   isTemplate: z.boolean().optional(),
+  consequenceClass: z.enum(["CC1","CC2","CC3"]).optional(),
+  robustnessFactor: z.boolean().optional(),
 });
 
 export async function GET(
@@ -106,6 +108,12 @@ export async function PUT(
     }
     if (validatedData.isTemplate !== undefined) {
       updateData.isTemplate = validatedData.isTemplate;
+    }
+    if (validatedData.consequenceClass !== undefined) {
+      updateData.consequenceClass = validatedData.consequenceClass;
+    }
+    if (validatedData.robustnessFactor !== undefined) {
+      updateData.robustnessFactor = validatedData.robustnessFactor;
     }
 
     const [updatedDrawing] = await db
