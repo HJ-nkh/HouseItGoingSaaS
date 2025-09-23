@@ -133,6 +133,25 @@ def handler(event, context):
         return {'statusCode': 404, 'body': json.dumps({'error': 'Simulation not found'})}
     if sim_row.status != 'pending' and not is_development:
         return {'statusCode': 400, 'body': json.dumps({'error': 'Simulation is not in pending status'})}
+    
+    # Fetch project
+    project_row = session.execute(
+        select(projects_table)
+        .where(projects_table.c.id == sim_row.project_id)
+    ).first()
+    if project_row is None:
+        return {'statusCode': 404, 'body': json.dumps({'error': 'Project not found'})}
+    
+    # Fetch drawing
+    if sim_row.drawing_id:
+        drawing_row = session.execute(
+            select(Table('drawings', metadata, autoload_with=engine))
+            .where(Table('drawings', metadata, autoload_with=engine).c.id == sim_row.drawing_id)
+        ).first()
+        if drawing_row is None:
+            return {'statusCode': 404, 'body': json.dumps({'error': 'Drawing not found'})}
+        
+
 
     # Mark running
     session.execute(
@@ -150,19 +169,22 @@ def handler(event, context):
     import math, platform, numpy as np
 
     entity_set = sim_row.entities if isinstance(sim_row.entities, dict) else json.loads(sim_row.entities)
+
     project = Project()
     model = Model()
     s = S(model, project)
-    project.addProjectNumber('!Ptest')
-    project.road = 'Hejvej 2'
-    project.city = '5600 Bynavn'
-    project.name = 'Lars Larsen' 
+
+    project.projectNumber = project_row.title
+    project.address = project_row.address
+    
     project.addCC('CC2')
-    project.selfweightTrueFalse(True)
     project.addNumberOfLevelsAbove(1)
     project.robustFactorTrueFalse(False)
+
+
     project.addDeformationCriteriaSteel(400)
     project.addDeformationCriteriaWood(400, 250)
+    project.selfweightTrueFalse(True)
 
     # Members first, then supports
     model.addMembers(entity_set)
