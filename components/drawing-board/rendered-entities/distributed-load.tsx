@@ -83,6 +83,17 @@ const RenderedDistributedLoad: React.FC<DistributedLoadProps> = ({
     degrees -= getLineAngle(load.resolved);
   }
 
+  if (load.type === LoadType.Wind) {
+    if (point2.x < point1.x) {
+      degrees = degrees + 180;
+    } else if (point2.x === point1.x) {
+      degrees = 180;
+    }
+    if ((load as any).windFlip) {
+      degrees = (degrees + 180) % 360;
+    }
+  }
+
   const angle: PointLoad["angle"] = {
     value: degrees,
     relativeTo: "x",

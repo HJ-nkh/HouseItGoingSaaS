@@ -32,30 +32,30 @@ const handleHotkey: InputEventHandler = (
   }
 
   if (e.payload?.key === "v") {
-    return { tool: Tool.Select };
+    return { tool: Tool.Select, pendingLoadTargets: {} };
   }
   if (e.payload?.key === "n") {
-    return { tool: Tool.Node };
+    return { tool: Tool.Node, pendingLoadTargets: {} };
   }
 
   if (e.payload?.key === "m") {
-    return { tool: Tool.MomentLoad };
+    return { tool: Tool.MomentLoad, pendingLoadTargets: {} };
   }
 
   if (e.payload?.key === "k") {
-    return { tool: Tool.Member };
+    return { tool: Tool.Member, pendingLoadTargets: {} };
   }
 
   if (e.payload?.key === "u") {
-    return { tool: Tool.Support };
+    return { tool: Tool.Support, pendingLoadTargets: {} };
   }
 
   if (e.payload?.key === "l") {
-    return { tool: Tool.DistributedLoad };
+    return { tool: Tool.DistributedLoad, pendingLoadTargets: {} };
   }
 
   if (e.payload?.key === "p") {
-    return { tool: Tool.PointLoad };
+    return { tool: Tool.PointLoad, pendingLoadTargets: {} };
   }
 
   if (e.payload?.key === "g") {

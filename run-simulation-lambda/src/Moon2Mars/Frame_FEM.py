@@ -66,6 +66,7 @@ class Model:
             if memberPropFrontend['type'] == 'Steel':
                 memberProp['type'] = 'Stål'
                 memberProp['profile'] = memberPropFrontend['steelProfile']
+                memberProp['strength class'] = memberPropFrontend['steelStrength']
             elif memberPropFrontend['type'] == 'Wood':
                 memberProp['type'] = 'Træ'
                 memberProp['strength class'] = memberPropFrontend['woodType']

@@ -29,6 +29,9 @@ const ModifyMemberCard: React.FC<{
   const [selectedSteelProfile, setSelectedSteelProfile] = useState<string>(
     member.memberprop?.steelProfile || ""
   );
+  const [selectedSteelStrength, setSelectedSteelStrength] = useState<string>(
+    (member.memberprop as any)?.steelStrength || ""
+  );
   const [selectedWoodType, setSelectedWoodType] = useState<string>(
     member.memberprop?.woodType || ""
   );
@@ -45,7 +48,7 @@ const ModifyMemberCard: React.FC<{
     
     // Steel validation
     if (selectedType === MaterialType.Steel) {
-      return !!selectedSteelProfile;
+      return !!selectedSteelProfile && !!selectedSteelStrength;
     }
     
     // Wood validation
@@ -78,6 +81,15 @@ const ModifyMemberCard: React.FC<{
     label: profile,
     value: profile,
   }));
+
+  const steelStrengthOptions = [
+    { label: "S235", value: "S235" },
+    { label: "S275", value: "S275" },
+    { label: "S355", value: "S355" },
+    { label: "S420", value: "S420" },
+    { label: "S450", value: "S450" },
+    { label: "S460", value: "S460" },
+  ];
 
   const woodSizeOptionsC = [
     {
@@ -226,7 +238,7 @@ const ModifyMemberCard: React.FC<{
     return null;
   }
   return (
-    <Card className="absolute z-30 min-w-96 max-w-2xl">
+    <Card className="absolute z-30 w-[22rem] max-w-[90vw]">
       <CardHeader className="mb-2 font-bold">
         Tilpas konstruktionsdel
       </CardHeader>
@@ -239,9 +251,9 @@ const ModifyMemberCard: React.FC<{
             unit="m"
             //onEnter={() => onSubmit(length)}
           />
-        </div> */}        <div className="flex gap-3 mb-2 items-center">
+  </div> */}        <div className="flex gap-3 mb-2 items-center">
           <div className="w-32 text-left flex-shrink-0">Navn (ID):</div>
-          <div className="flex-1 min-w-fit">
+          <div className="flex-1 min-w-0">
             <Input
               value={name}
               placeholder="Valgfrit"
@@ -255,7 +267,7 @@ const ModifyMemberCard: React.FC<{
           <div className="w-32 text-left flex-shrink-0">Type:</div>
           <div className="flex-1 min-w-0">
             <Select
-              className="w-full min-w-fit"
+                className="w-full min-w-0"
               value={selectedType}
               placeholder="Vælg type"
               onChange={(e) => {
@@ -265,11 +277,24 @@ const ModifyMemberCard: React.FC<{
             />
           </div>
         </div>        {selectedType === MaterialType.Steel && (
+          <>
+          <div className="flex gap-3 mb-2 items-center">
+            <div className="w-32 text-left flex-shrink-0">Styrkeklasse:</div>
+            <div className="flex-1 min-w-0">
+              <Select
+                className="w-full min-w-0"
+                value={selectedSteelStrength}
+                placeholder="Vælg styrkeklasse"
+                onChange={(e) => setSelectedSteelStrength(e as string)}
+                options={steelStrengthOptions}
+              />
+            </div>
+          </div>
           <div className="flex gap-3 mb-2 items-center">
             <div className="w-32 text-left flex-shrink-0">Stålprofil:</div>
             <div className="flex-1 min-w-0">
               <Select
-                className="w-full min-w-fit"
+                className="w-full min-w-0"
                 value={selectedSteelProfile}
                 placeholder="Vælg stålprofil"
                 onChange={(e) => setSelectedSteelProfile(e as string)}
@@ -277,13 +302,14 @@ const ModifyMemberCard: React.FC<{
               />
             </div>
           </div>
+          </>
         )}        {selectedType === MaterialType.Wood && (
           <>
             <div className="flex gap-3 mb-2 items-center">
               <div className="w-32 text-left flex-shrink-0">Styrkeklasse:</div>
               <div className="flex-1 min-w-0">
                 <Select
-                  className="w-full min-w-fit"
+                  className="w-full min-w-0"
                   value={selectedWoodType}
                   placeholder="Vælg styrkeklasse"
                   onChange={(selectedValue) => {
@@ -299,7 +325,7 @@ const ModifyMemberCard: React.FC<{
               <div className="w-32 text-left flex-shrink-0">Dimension:</div>
               <div className="flex-1 min-w-0">
                 <Select
-                  className="w-full min-w-fit"
+                  className="w-full min-w-0"
                   value={selectedWoodSize}
                   placeholder="Vælg standarddimension"
                   onChange={(selectedValue) => {
@@ -350,6 +376,7 @@ const ModifyMemberCard: React.FC<{
                 type: selectedType as MaterialType,
                 name: name,
                 steelProfile: selectedSteelProfile as SteelProfile,
+                steelStrength: selectedSteelStrength,
                 woodType: selectedWoodType,
                 woodSizeString: selectedWoodSize,
                 woodSize: {

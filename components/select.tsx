@@ -30,22 +30,14 @@ const SelectComponent: React.FC<SelectProps> = ({
   placeholder,
   emptyPlaceholder = null,
 }) => {
-  const selectedOption: SelectOption | undefined = options.find(
-    (option) => option.value === value
-  );
-
   if (options.length === 0) {
     return emptyPlaceholder;
   }
 
   return (
-    <Select value={selectedOption?.value} onValueChange={onChange}>
+    <Select value={value} onValueChange={onChange}>
       <SelectTrigger className={className}>
-        <SelectValue>
-          {selectedOption?.selectedLabel ||
-            selectedOption?.label ||
-            placeholder}
-        </SelectValue>
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
         {options.map(({ label, value }) => (

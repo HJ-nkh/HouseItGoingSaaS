@@ -27,6 +27,7 @@ const handleCanvasClick: InputEventHandler = (
     return {
       selectedIds: [],
       modifyingEntity: null,
+      pendingLoadTargets: {},
     };
   }
 

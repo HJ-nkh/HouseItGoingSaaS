@@ -129,6 +129,9 @@ export type DrawingState = {
   hasChanges: boolean;
   // Wind calculator settings - shared across all wind loads
   windCalculatorSettings: WindCalculatorSettings;
+  // While adding loads with Ctrl multi-select, collect per-target placement
+  // Data keyed by selected node/member id with target-specific constraint data
+  pendingLoadTargets: PendingLoadTargets;
 };
 
 export type WindCalculatorSettings = {
@@ -271,6 +274,7 @@ export type MemberProp = {
   name?: string;
   type?: MaterialType;
   steelProfile?: SteelProfile;
+  steelStrength?: string;
   woodType?: string;
   woodSizeString?: string;
   woodSize?: WoodSize;
@@ -308,6 +312,8 @@ export type DistributedLoad = {
     value: number;
     relativeTo: "member" | "x";
   };
+  // For Wind loads: flip application side by 180°
+  windFlip?: boolean;
   magnitude1?: number;
   magnitude2?: number;
   onMember: {
@@ -353,6 +359,20 @@ export type ResolvedPointLoad = PointLoad & { resolved: Point };
 export type ResolvedDistributedLoad = DistributedLoad & { resolved: Line };
 export type ResolvedMomentLoad = MomentLoad & { resolved: Point };
 export type ResolvedSupport = Support & { resolved: Point };
+
+// Pending targets for batch-applying loads while in add mode
+export type PendingLoadTargets = {
+  [targetId: string]: {
+    onNode?: { id: string };
+    onMember?: {
+      id: string;
+      // Point/Moment use 'constraint', Distributed uses 'constraintStart'/'constraintEnd'
+      constraint?: Constraint;
+      constraintStart?: Constraint;
+      constraintEnd?: Constraint;
+    };
+  };
+};
 
 /* SIMULATION TYPES */
 // Contains the coordinates and force results for a FEM node

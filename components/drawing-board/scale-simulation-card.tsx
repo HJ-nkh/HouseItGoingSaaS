@@ -18,7 +18,9 @@ const ScaleSimulationCard: React.FC<ScaleSimulationCardProps> = ({ scale, setSca
   const inputProps =
     analysis === "Ve"
       ? { min: "0.0", max: "1000", step: "1" }
-      : { min: "0", max: "0.005", step: "0.000001" };
+    : analysis === "R0"
+    ? { min: "0", max: "0.005", step: "0.00001" }
+      : { min: "0", max: "0.001", step: "0.00001" };
 
   return (
     <div
@@ -26,7 +28,7 @@ const ScaleSimulationCard: React.FC<ScaleSimulationCardProps> = ({ scale, setSca
         "bg-white border rounded flex items-center gap-2 px-3 py-1 text-gray-500 w-full",
         className
       )}
-      style={{ height: '48px' }} // Ensure consistent height
+      style={{ height: '48px' }}
     >
       <label htmlFor="scale" className="p-2">
         Skalér:

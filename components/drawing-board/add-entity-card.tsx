@@ -23,7 +23,7 @@ import { calculateCardPosition, getCardTypeFromEntity } from "./lib/card-positio
 type AddEntityCardProps = {
   state: DrawingState;
   setState: React.Dispatch<React.SetStateAction<DrawingState>>;
-  addAction: (action: Action) => void;
+  addAction: (action: Action | Action[]) => void;
   svgRef: SVGSVGElement | null;
   entitySet: EntitySet;
   windCalculatorSettings?: WindCalculatorSettings;
@@ -45,6 +45,7 @@ const AddEntityCard: React.FC<AddEntityCardProps> = ({
 
   switch (state.modifyingEntity.type) {    case Entity.PointLoad: {
       const load = state.modifyingEntity.pointLoad as PointLoad;
+    const multiTargets = Object.keys(state.pendingLoadTargets || {});
       const point = resolvePointLoadPosition(
         load,
         entitySet.nodes,
@@ -61,9 +62,16 @@ const AddEntityCard: React.FC<AddEntityCardProps> = ({
             clientY,
             getCardTypeFromEntity('PointLoad', true)
           )}
-        >          <ModifyPointLoadCard
+    >
+          {multiTargets.length > 1 && (
+            <div className="absolute -top-2 -right-2 z-50 text-xs bg-blue-600 text-white px-2 py-0.5 rounded shadow">
+              {multiTargets.length} valgt
+            </div>
+          )}
+          <ModifyPointLoadCard
             entitySet={entitySet}
             load={load}
+      hideCoordinateInputs={multiTargets.length > 1}
             onChange={(load) =>
               setState((s) => ({
                 ...s,
@@ -74,28 +82,41 @@ const AddEntityCard: React.FC<AddEntityCardProps> = ({
               }))
             }
             onSubmit={() => {
-              const id = `pl-${state.nextPointLoadNumber}`;
-              load.id = id;
-
-              addAction({
-                type: ActionType.Create,
-                entity: Entity.PointLoad,
-                value: { id, pointLoad: load },
-              });
+              const targets = multiTargets.length > 0 ? multiTargets : [load.onNode?.id || load.onMember?.id!];
+              const actions: Action[] = [];
+              let next = state.nextPointLoadNumber;
+              for (const tid of targets) {
+                const id = `pl-${next++}`;
+                const base = { ...load, id } as PointLoad;
+                const pending = state.pendingLoadTargets[tid];
+                const applied: PointLoad = pending?.onNode
+                  ? { ...base, onNode: { id: pending.onNode.id }, onMember: undefined }
+                  : { ...base, onMember: { ...(pending?.onMember as any) }, onNode: undefined };
+                actions.push({
+                  type: ActionType.Create,
+                  entity: Entity.PointLoad,
+                  value: { id, pointLoad: applied },
+                });
+              }
+              if (actions.length === 0) return;
+              addAction(actions);
               setState((s) => ({
                 ...s,
-                nextPointLoadNumber: state.nextPointLoadNumber + 1,
+                nextPointLoadNumber: next,
                 modifyingEntity: null,
+                pendingLoadTargets: {},
+                selectedIds: [],
               }));
             }}
-            onClose={() => setState((s) => ({ ...s, modifyingEntity: null }))}
+            onClose={() => setState((s) => ({ ...s, modifyingEntity: null, pendingLoadTargets: {}, selectedIds: [] }))}
           />
         </div>
       );
     }
 
     case Entity.DistributedLoad: {
-      const load = state.modifyingEntity.distributedLoad as DistributedLoad;
+  const load = state.modifyingEntity.distributedLoad as DistributedLoad;
+  const multiTargets = Object.keys(state.pendingLoadTargets || {});
       const { point1, point2 } = resolveDistributedLoadPosition(
         load,
         entitySet.nodes,
@@ -115,9 +136,16 @@ const AddEntityCard: React.FC<AddEntityCardProps> = ({
             clientY,
             getCardTypeFromEntity('DistributedLoad', true)
           )}
-        >          <ModifyDistributedLoadCard
+    >
+          {multiTargets.length > 1 && (
+            <div className="absolute -top-2 -right-2 z-50 text-xs bg-blue-600 text-white px-2 py-0.5 rounded shadow">
+              {multiTargets.length} valgt
+            </div>
+          )}
+          <ModifyDistributedLoadCard
             load={load}
             entitySet={entitySet}
+      hideCoordinateInputs={multiTargets.length > 1}
             windCalculatorSettings={windCalculatorSettings}
             onWindCalculatorSettingsChange={onWindCalculatorSettingsChange}
             onChange={(load) =>
@@ -128,27 +156,47 @@ const AddEntityCard: React.FC<AddEntityCardProps> = ({
                   distributedLoad: load,
                 },
               }))
-            }            onSubmit={() => {
-              const id = `dl-${state.nextDistributedLoadNumber}`;
-              load.id = id;
-
-              addAction({
-                type: ActionType.Create,
-                entity: Entity.DistributedLoad,
-                value: { id, distributedLoad: load },
-              });
+            }
+            onSubmit={() => {
+              const targets = multiTargets.length > 0 ? multiTargets : [load.onMember.id];
+              const actions: Action[] = [];
+              let next = state.nextDistributedLoadNumber;
+              for (const tid of targets) {
+                const id = `dl-${next++}`;
+                const pending = state.pendingLoadTargets[tid];
+                const targetMember = pending?.onMember || load.onMember;
+                const applied: DistributedLoad = {
+                  ...load,
+                  id,
+                  onMember: {
+                    id: targetMember.id,
+                    constraintStart: targetMember.constraintStart ?? load.onMember.constraintStart,
+                    constraintEnd: targetMember.constraintEnd ?? load.onMember.constraintEnd,
+                  },
+                };
+                actions.push({
+                  type: ActionType.Create,
+                  entity: Entity.DistributedLoad,
+                  value: { id, distributedLoad: applied },
+                });
+              }
+              if (actions.length === 0) return;
+              addAction(actions);
               setState((s) => ({
                 ...s,
-                nextDistributedLoadNumber: state.nextDistributedLoadNumber + 1,
+                nextDistributedLoadNumber: next,
                 modifyingEntity: null,
+                pendingLoadTargets: {},
+                selectedIds: [],
               }));
             }}
-            onClose={() => setState((s) => ({ ...s, modifyingEntity: null }))}
+            onClose={() => setState((s) => ({ ...s, modifyingEntity: null, pendingLoadTargets: {}, selectedIds: [] }))}
           />
         </div>
       );
     }    case Entity.MomentLoad: {
       const load = state.modifyingEntity.momentLoad as MomentLoad;
+      const multiTargets = Object.keys(state.pendingLoadTargets || {});
 
       const point = resolveMomentLoadPosition(
         load,
@@ -164,9 +212,16 @@ const AddEntityCard: React.FC<AddEntityCardProps> = ({
             clientY,
             getCardTypeFromEntity('MomentLoad', true)
           )}
-        >          <ModifyMomentLoadCard
+    >
+          {multiTargets.length > 1 && (
+            <div className="absolute -top-2 -right-2 z-50 text-xs bg-blue-600 text-white px-2 py-0.5 rounded shadow">
+              {multiTargets.length} valgt
+            </div>
+          )}
+          <ModifyMomentLoadCard
             load={load}
             entitySet={entitySet}
+      hideCoordinateInputs={multiTargets.length > 1}
             onChange={(load) =>
               setState((s) => ({
                 ...s,
@@ -177,21 +232,33 @@ const AddEntityCard: React.FC<AddEntityCardProps> = ({
               }))
             }
             onSubmit={() => {
-              const id = `ml-${state.nextMomentLoadNumber}`;
-              load.id = id;
-
-              addAction({
-                type: ActionType.Create,
-                entity: Entity.MomentLoad,
-                value: { id, momentLoad: load },
-              });
+              const targets = multiTargets.length > 0 ? multiTargets : [load.onNode?.id || load.onMember?.id!];
+              const actions: Action[] = [];
+              let next = state.nextMomentLoadNumber;
+              for (const tid of targets) {
+                const id = `ml-${next++}`;
+                const base = { ...load, id } as MomentLoad;
+                const pending = state.pendingLoadTargets[tid];
+                const applied: MomentLoad = pending?.onNode
+                  ? { ...base, onNode: { id: pending.onNode.id }, onMember: undefined }
+                  : { ...base, onMember: { ...(pending?.onMember as any) }, onNode: undefined };
+                actions.push({
+                  type: ActionType.Create,
+                  entity: Entity.MomentLoad,
+                  value: { id, momentLoad: applied },
+                });
+              }
+              if (actions.length === 0) return;
+              addAction(actions);
               setState((s) => ({
                 ...s,
-                nextMomentLoadNumber: state.nextMomentLoadNumber + 1,
+                nextMomentLoadNumber: next,
                 modifyingEntity: null,
+                pendingLoadTargets: {},
+                selectedIds: [],
               }));
             }}
-            onClose={() => setState((s) => ({ ...s, modifyingEntity: null }))}
+            onClose={() => setState((s) => ({ ...s, modifyingEntity: null, pendingLoadTargets: {}, selectedIds: [] }))}
           />
         </div>
       );

@@ -104,6 +104,8 @@ type ModifyDistributedLoadCardProps = {
   // Wind calculator integration (optional)
   windCalculatorSettings?: WindCalculatorSettings;
   onWindCalculatorSettingsChange?: (settings: Partial<WindCalculatorSettings>) => void;
+  // When assigning the same load to multiple members, hide coordinate inputs
+  hideCoordinateInputs?: boolean;
 };
 
 const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
@@ -115,6 +117,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
   onDelete,
   windCalculatorSettings: _windCalculatorSettings,
   onWindCalculatorSettingsChange: _onWindCalculatorSettingsChange,
+  hideCoordinateInputs,
 }) => {  const onEnter = () => onSubmit(load as DistributedLoad);
     // State for c/c distance and area load calculations
   // Initialize from load properties if they exist
@@ -319,7 +322,6 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
   return (
     <Card 
       className="absolute z-30" 
-      style={{ width: load.type === LoadType.Wind ? '500px' : '340px' }}
     >
       <CardHeader>
         <span className="font-bold">Linjelast</span>
@@ -327,7 +329,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
       <CardContent>
         <div className="flex gap-4">
           {/* Left section - main inputs */}
-          <div className="flex-shrink-0" style={{ width: load.type === LoadType.Wind ? '500px' : '340px' }}>
+          <div className="flex-shrink-0">
             <div className="flex gap-3 mb-2 items-center">
               <div className="w-32 text-left flex-shrink-0">Type:</div>
               <div className="w-38 flex-shrink-0">
@@ -382,186 +384,12 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                 <div className="w-32 text-left flex-shrink-0"></div>
                 <div className="flex-1 min-w-0"></div>          </div>            )}
 
-            {/* Wind load specific inputs with pressure/suction columns */}
-            {load.type === LoadType.Wind ? (
-              <>
-                {/* Header row */}
-                <div className="flex gap-3 mb-2 items-center">
-                  <div className="w-32 text-left flex-shrink-0"></div>
-                  <div className="w-38 flex-shrink-0 text-center font-semibold">Tryk</div>
-                  <div className="w-38 flex-shrink-0 text-center font-semibold">Sug</div>
-                </div>
-                
-                {/* C/C afstand row */}
-                <div className="flex gap-3 mb-2 items-center">
-                  <div className="w-32 text-left flex-shrink-0">C/C afstand:</div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={ccDistance}
-                      onChange={(value) => {
-                        setCcDistance(value);
-                        calculateMagnitudes(value, areaLoad);
-                      }}
-                      unit="m"
-                      placeholder="valgfrit"
-                      onEnter={onEnter}
-                    />
-                  </div>              <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={ccDistanceSuction}
-                      onChange={(value) => {
-                        setCcDistanceSuction(value);
-                        calculateSuctionMagnitudes(value, areaLoadSuction);
-                      }}
-                      unit="m"
-                      placeholder="valgfrit"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                </div>
+            {/* Flip control (Wind only) moved under 'Linjelast (slut)' */}
 
-                {/* Fladelast row */}
-                <div className="flex gap-3 mb-2 items-center">
-                  <div className="w-32 text-left flex-shrink-0">Fladelast:</div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={areaLoad}
-                      onChange={(value) => {
-                        setAreaLoad(value);
-                        calculateMagnitudes(ccDistance, value);
-                      }}
-                      unit="kN/m²"
-                      placeholder="valgfrit"
-                      onEnter={onEnter}
-                    />
-                  </div>              <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={areaLoadSuction}
-                      onChange={(value) => {
-                        setAreaLoadSuction(value);
-                        calculateSuctionMagnitudes(ccDistanceSuction, value);
-                      }}
-                      unit="kN/m²"
-                      placeholder="valgfrit"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                </div>
-
-                {/* Linjelast (start) row */}
-                <div className="flex gap-3 mb-2 items-center">
-                  <div className="w-32 text-left flex-shrink-0">Linjelast (start):</div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={load.magnitude1}
-                      onChange={(magnitude1) => {
-                        setCcDistance(undefined);
-                        setAreaLoad(undefined);
-                        const newMag1 = magnitude1;
-                        let newMag2 = load.magnitude2;
-                        if (newMag1 !== undefined && newMag1 !== 0 && (newMag2 === 0 || newMag2 === undefined)) {
-                          newMag2 = newMag1;
-                        }
-                        const updatedLoad: ExtendedDistributedLoad = { ...load, magnitude1: newMag1, magnitude2: newMag2 };
-                        delete updatedLoad.ccDistance;
-                        delete updatedLoad.areaLoad;
-                        onChange(updatedLoad);
-                      }}
-                      unit="kN/m"
-                      onEnter={onEnter}                    />
-                  </div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={extendedLoad.magnitude1Suction}
-                      onChange={(magnitude1Suction) => {
-                        // Clear c/c distance and area load when manually changing magnitude
-                        setCcDistanceSuction(undefined);
-                        setAreaLoadSuction(undefined);
-                        
-                        const newMag1Suction = magnitude1Suction;
-                        let newMag2Suction = extendedLoad.magnitude2Suction;
-                        
-                        // Auto-fill magnitude2Suction when magnitude1Suction is first entered
-                        if (newMag1Suction !== undefined && newMag1Suction !== 0 && (newMag2Suction === 0 || newMag2Suction === undefined)) {
-                          newMag2Suction = newMag1Suction;
-                        }
-                        
-                        // Remove stored calculation values when manually editing
-                        const updatedLoad: ExtendedDistributedLoad = { 
-                          ...load, 
-                          magnitude1Suction: newMag1Suction, 
-                          magnitude2Suction: newMag2Suction 
-                        };
-                        delete updatedLoad.ccDistanceSuction;
-                        delete updatedLoad.areaLoadSuction;
-                        
-                        onChange(updatedLoad);
-                      }}
-                      unit="kN/m"
-                      placeholder="valgfrit"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                </div>
-
-                {/* Linjelast (slut) row */}
-                <div className="flex gap-3 mb-2 items-center">
-                  <div className="w-32 text-left flex-shrink-0">Linjelast (slut):</div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={load.magnitude2}
-                      onChange={(magnitude2) => {
-                        setCcDistance(undefined);
-                        setAreaLoad(undefined);
-                        const newMag2 = magnitude2;
-                        const mag1 = load.magnitude1;
-                        if (mag1 !== undefined && mag1 !== 0 && newMag2 !== undefined && newMag2 !== 0 && Math.sign(mag1) !== Math.sign(newMag2)) {
-                          return;
-                        }
-                        const updatedLoad: ExtendedDistributedLoad = { ...load, magnitude2: newMag2 };
-                        delete updatedLoad.ccDistance;
-                        delete updatedLoad.areaLoad;
-                        onChange(updatedLoad);
-                      }}
-                      unit="kN/m"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                  <div className="w-38 flex-shrink-0">
-                    <NumberInput
-                      value={extendedLoad.magnitude2Suction}
-                      onChange={(magnitude2Suction) => {
-                        // Clear c/c distance and area load when manually changing magnitude
-                        setCcDistanceSuction(undefined);
-                        setAreaLoadSuction(undefined);
-                        
-                        const newMag2Suction = magnitude2Suction;
-                        const mag1Suction = extendedLoad.magnitude1Suction;
-                        
-                        // If magnitude1Suction is non-zero and user tries to enter a value with opposite sign, prevent the change
-                        if (mag1Suction !== undefined && mag1Suction !== 0 && newMag2Suction !== undefined && newMag2Suction !== 0 && Math.sign(mag1Suction) !== Math.sign(newMag2Suction)) {
-                          return;
-                        }
-                        
-                        // Remove stored calculation values when manually editing
-                        const updatedLoad: ExtendedDistributedLoad = { ...load, magnitude2Suction: newMag2Suction };
-                        delete updatedLoad.ccDistanceSuction;
-                        delete updatedLoad.areaLoadSuction;
-                        
-                        onChange(updatedLoad);
-                      }}
-                      unit="kN/m"
-                      placeholder="valgfrit"
-                      onEnter={onEnter}
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
               <>
                 {/* Standard inputs for non-wind loads */}
                 <div className="flex gap-3 mb-2 items-center">
-                  <div className="w-32 text-left flex-shrink-0">C/C afstand:</div>
+                  <div className="w-32 text-left flex-shrink-0">Lastopland:</div>
                   <div className="w-38 flex-shrink-0">
                     <NumberInput
                       value={ccDistance}
@@ -639,8 +467,37 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                     />
                   </div>
                 </div>
+
+                {/* Flip switch styled like supports; shown only for Wind */}
+                {load.type === LoadType.Wind && (
+                  <div className="flex gap-3 mb-2 items-center">
+                    <div className="w-32 text-left flex-shrink-0">Flip retning:</div>
+                    <div className="w-38 flex items-center gap-2">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={Boolean((load as any).windFlip)}
+                        onClick={() =>
+                          onChange({
+                            ...load,
+                            windFlip: !((load as any).windFlip),
+                          } as ExtendedDistributedLoad)
+                        }
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          (load as any).windFlip ? "bg-sky-500" : "bg-gray-300"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                            (load as any).windFlip ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                      <span className="text-gray-500 text-xs"></span>
+                    </div>
+                  </div>
+                )}
               </>
-            )}
 
             {/* Validation error messages */}
             {showBothZeroError && (
@@ -659,7 +516,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
               </div>
             )}
 
-        <div className="flex gap-3 mb-2 items-center">
+        {!hideCoordinateInputs && <div className="flex gap-3 mb-2 items-center">
           <div className="w-32 text-left flex-shrink-0">Start:</div>
           <div className="w-38 flex-shrink-0">
             <ConstraintSelect
@@ -675,8 +532,8 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                   currentY={startCoordinates.y}
                 />
               </div>
-            </div>
-            <div className="flex gap-3 items-center">
+            </div>}
+            {!hideCoordinateInputs && <div className="flex gap-3 items-center">
           <div className="w-32 text-left flex-shrink-0">Slut:</div>
           <div className="w-38 flex-shrink-0">
             <ConstraintSelect
@@ -692,7 +549,7 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
                   currentY={endCoordinates.y}
                 />
               </div>
-          </div>
+          </div>}
         </div>
 
         </div>

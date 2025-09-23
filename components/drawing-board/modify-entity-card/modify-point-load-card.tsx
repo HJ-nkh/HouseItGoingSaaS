@@ -30,6 +30,8 @@ type ModifyPointLoadCardProps = {
   onSubmit: () => void;
   onClose: () => void;
   onDelete?: () => void;
+  // When assigning to multiple targets, hide coordinate inputs
+  hideCoordinateInputs?: boolean;
 };
 
 const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
@@ -39,6 +41,7 @@ const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
   onSubmit,
   onClose,
   onDelete,
+  hideCoordinateInputs,
 }) => {
   const isMember = !!load.onMember;
   const [constraint, setConstraint] = useState<Partial<Constraint>>(load.onMember?.constraint ?? { type: ConstraintType.X, value: 0 });  // Get disabled constraint types based on member orientation
@@ -128,7 +131,7 @@ const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
         </div>
       )}
 
-      <CardContent>        {isMember && (
+      <CardContent>        {isMember && !hideCoordinateInputs && (
           <div className="mb-2">
             <XYConstraintSelect
               constraint={constraint as Constraint}
