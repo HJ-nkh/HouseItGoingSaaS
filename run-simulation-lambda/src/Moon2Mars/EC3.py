@@ -268,8 +268,10 @@ class EC3calc:
 
         if self.deflectionIsLocal:
             self.max_def = np.max(abs(self.Ve_loc))
+            LG_string = '(lokal),'
         else:
             Ve = self.Ve
+            LG_string = '(global),'
 
             v = np.zeros([len(Ve),2])
             for i, ve in enumerate(Ve):        
@@ -278,4 +280,4 @@ class EC3calc:
             self.max_def = np.max(v)
             
         self.UR_deformation = self.max_def/self.maxAllowable
-        self.UR['Deformation'] = self.UR_deformation
+        self.UR['Deformation ' + LG_string + ' L/' + str(self.deflectionRequirement)] = self.UR_deformation

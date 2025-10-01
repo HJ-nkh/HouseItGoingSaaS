@@ -64,6 +64,9 @@ const ModifyMemberCard: React.FC<{
   const [serviceClass, setServiceClass] = useState<string>(
     (member.memberprop as any)?.serviceClass || ""
   );
+  const [selfWeightEnabled, setSelfWeightEnabled] = useState<boolean>(
+    (member.memberprop as any)?.selfWeightEnabled ?? true
+  );
   const [width, setWidth] = useState<number | null>(
     member.memberprop?.woodSize?.width || null
   );  const [height, setHeight] = useState<number | null>(
@@ -391,6 +394,31 @@ const ModifyMemberCard: React.FC<{
               </div>
             </div>
           </div>
+          <div className="my-2 h-px bg-gray-200" />
+          <div className="flex gap-3 mb-2 items-center">
+            <div className="w-32 text-left flex-shrink-0">Egenvægt:</div>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={selfWeightEnabled}
+                onClick={() => setSelfWeightEnabled(v => !v)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  selfWeightEnabled ? "bg-sky-500" : "bg-gray-300"
+                }`}
+                title="Aktiver/deaktiver egenvægt"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                    selfWeightEnabled ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+              <span className="text-xs text-gray-500 select-none min-w-8">
+                {selfWeightEnabled ? "til" : "fra"}
+              </span>
+            </div>
+          </div>
           </>
         )}        {selectedType === MaterialType.Wood && (
           <>
@@ -563,6 +591,31 @@ const ModifyMemberCard: React.FC<{
                 </div>
               </div>
             </div>
+            <div className="my-2 h-px bg-gray-200" />
+            <div className="flex gap-3 mb-2 items-center">
+              <div className="w-32 text-left flex-shrink-0">Egenvægt:</div>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={selfWeightEnabled}
+                  onClick={() => setSelfWeightEnabled(v => !v)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    selfWeightEnabled ? "bg-sky-500" : "bg-gray-300"
+                  }`}
+                  title="Aktiver/deaktiver egenvægt"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                      selfWeightEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span className="text-xs text-gray-500 select-none min-w-8">
+                  {selfWeightEnabled ? "til" : "fra"}
+                </span>
+              </div>
+            </div>
           </>
         )}
       </CardContent>      <CardFooter>
@@ -593,6 +646,7 @@ const ModifyMemberCard: React.FC<{
                 deflectionRequirementInstantWind: deflectionInstantWind,
                 deflectionRequirementInstantLive: deflectionInstantLive,
                 serviceClass: serviceClass,
+                selfWeightEnabled: selfWeightEnabled,
               },
             };
             onSubmit(length, updatedMember);

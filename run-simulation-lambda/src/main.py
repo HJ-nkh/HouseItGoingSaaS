@@ -184,8 +184,6 @@ def handler(event, context):
 
     project.addNumberOfLevelsAbove(1)
 
-    project.selfweightTrueFalse(True)
-
     # Members first, then supports
     model.addMembers(entity_set)
     for id, support in (entity_set.get('supports') or {}).items():
@@ -237,8 +235,7 @@ def handler(event, context):
             x = (moment_load.get('resolved') or {}).get('x'); y = (moment_load.get('resolved') or {}).get('y'); M0 = (moment_load.get('magnitude'))*1e3
             s.addMoment([x,y],[M0],moment_load.get('type'),id)
 
-    if project.selfweightOnOff:
-        s.addSelfweight()
+    s.addSelfweight()
 
     # Execution phase
     # Run and persist

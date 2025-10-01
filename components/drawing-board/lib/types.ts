@@ -286,6 +286,8 @@ export type MemberProp = {
   deflectionRequirementInstantLive?: number; // w_inst nyttelast
   // Wood service (anvendelses) class 1,2,3
   serviceClass?: string;
+  // Include self weight (egenvægt) in analysis
+  selfWeightEnabled?: boolean;
   woodType?: string;
   woodSizeString?: string;
   woodSize?: WoodSize;
