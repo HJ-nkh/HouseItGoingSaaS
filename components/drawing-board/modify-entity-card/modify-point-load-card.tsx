@@ -14,6 +14,7 @@ import { Constraint, ConstraintType } from "../lib/types";
 import XYConstraintSelect from "./constraint-select/xy-only-select";
 import { getDisabledConstraintTypes } from "../lib/validate-side-mounted-node";
 import { resolvePointLoadPosition } from "../lib/reduce-history/resolve-position";
+import IntegerInput from "@/components/integer-input";
 
 const LoadTypeOptions = [
   { label: "Egenlast", value: LoadType.Dead },
@@ -44,7 +45,8 @@ const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
   hideCoordinateInputs,
 }) => {
   const isMember = !!load.onMember;
-  const [constraint, setConstraint] = useState<Partial<Constraint>>(load.onMember?.constraint ?? { type: ConstraintType.X, value: 0 });  // Get disabled constraint types based on member orientation
+  const [constraint, setConstraint] = useState<Partial<Constraint>>(load.onMember?.constraint ?? { type: ConstraintType.X, value: 0 });
+  // Get disabled constraint types based on member orientation
   const disabledConstraintTypes = isMember && load.onMember?.id 
     ? getDisabledConstraintTypes(load.onMember.id, entitySet)
     : [];
@@ -73,7 +75,8 @@ const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
     });
   };
 
-  const hasDuplicate = checkForDuplicate();// Get current X and Y coordinates for display when switching between constraint types
+  const hasDuplicate = checkForDuplicate();
+  // Get current X and Y coordinates for display when switching between constraint types
   const getCurrentCoordinates = () => {
     if (!isMember || !load.onMember?.id) {
       return { x: 0, y: 0 };
@@ -102,7 +105,8 @@ const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
       x: xConstraintValue ?? resolvedPosition.x,
       y: yConstraintValue ?? resolvedPosition.y
     };
-  };  const currentCoordinates = getCurrentCoordinates();
+  };
+  const currentCoordinates = getCurrentCoordinates();
   // Validation: magnitude cannot be zero or empty
   const isSubmitDisabled = (load.magnitude ?? 0) === 0 || hasDuplicate;
   const showZeroError = load.magnitude === 0; // Only show error if explicitly set to 0, not if undefined/empty
@@ -113,7 +117,8 @@ const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
         onMember: { id: load.onMember.id, constraint: constraint as Constraint },
       });
     }
-  }, [constraint]);return (
+  }, [constraint]);
+  return (
     <Card className="absolute z-30 p-2 min-w-fit max-w-md">
       <CardHeader className="mb-2 font-bold">Punktlast</CardHeader>
 
@@ -131,7 +136,8 @@ const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
         </div>
       )}
 
-      <CardContent>        {isMember && !hideCoordinateInputs && (
+      <CardContent>
+        {isMember && !hideCoordinateInputs && (
           <div className="mb-2">
             <XYConstraintSelect
               constraint={constraint as Constraint}
@@ -152,7 +158,8 @@ const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
               currentY={currentCoordinates.y}
             />
           </div>
-        )}        <div className="flex gap-3 mb-2 items-center">
+        )}
+        <div className="flex gap-3 mb-2 items-center">
           <div className="w-32 text-left flex-shrink-0">Lasttype:</div>
           <div className="flex-1 min-w-0">
             <Select
@@ -167,7 +174,8 @@ const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
               options={LoadTypeOptions}
             />
           </div>
-        </div>        <div className="flex gap-3 mb-2 items-center">
+        </div>
+        <div className="flex gap-3 mb-2 items-center">
           <div className="w-32 text-left flex-shrink-0">Størrelse:</div>
           <div className="w-24">
             <NumberInput
@@ -179,7 +187,8 @@ const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
               onEnter={onSubmit}
             />
           </div>
-        </div>{/* Validation error messages */}
+        </div>
+        {/* Validation error messages */}
         {showZeroError && (
           <div className="text-red-500 text-sm mb-2">
             Størrelse kan ikke være nul
@@ -190,7 +199,8 @@ const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
           <div className="text-red-500 text-sm mb-2">
             En punktlast af denne type og størrelse findes allerede på denne position
           </div>
-        )}        <div className="flex gap-3 mb-2 items-center">
+        )}
+        <div className="flex gap-3 mb-2 items-center">
           <div className="w-32 text-left flex-shrink-0">Vinkel:</div>
           <div className="w-24">
             <NumberInput
@@ -210,7 +220,20 @@ const ModifyPointLoadCard: React.FC<ModifyPointLoadCardProps> = ({
             />
           </div>
         </div>
-      </CardContent>      <CardFooter>
+        {load.type === LoadType.Live && (
+          <div className="flex gap-3 mb-2 items-center">
+            <div className="w-32 text-left flex-shrink-0">n etager over:</div>
+            <div className="w-28">
+              <IntegerInput
+                value={load.floorsAbove ?? 1}
+                onChange={(v) => onChange({ ...load, floorsAbove: v ?? 1 })}
+                min={1}
+              />
+            </div>
+          </div>
+        )}
+      </CardContent>
+      <CardFooter>
         <CardActionButtons
           submitDisabled={isSubmitDisabled}
           onSubmit={() => {

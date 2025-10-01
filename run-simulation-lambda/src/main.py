@@ -174,16 +174,16 @@ def handler(event, context):
     model = Model()
     s = S(model, project)
 
+    # Project specific settings
     project.projectNumber = project_row.title
     project.address = project_row.address
-    
-    project.addCC('CC2')
+
+    # Model specific settings
+    project.CC = drawing_row.consequence_class if sim_row.drawing_id and drawing_row.consequence_class else 'CC2'
+    project.robustFactorOnOff = drawing_row.robustness_factor if sim_row.drawing_id and drawing_row.robustness_factor is not None else False
+
     project.addNumberOfLevelsAbove(1)
-    project.robustFactorTrueFalse(False)
 
-
-    project.addDeformationCriteriaSteel(400)
-    project.addDeformationCriteriaWood(400, 250)
     project.selfweightTrueFalse(True)
 
     # Members first, then supports
@@ -242,6 +242,7 @@ def handler(event, context):
 
     # Execution phase
     # Run and persist
+    s.run()
 
     try:
         s.run()

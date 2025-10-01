@@ -454,6 +454,7 @@ class S():
                 loadcombMatDict_ALS[comb] = loadcombMat[i,:]
 
         else:
+            c=0
             for prim in domList:
                 #Tabel A1.3 DK NA Regningsmæssige lastværdier til brug ved lastkombinationer ved ulykkesdimensioneringstilstande og seismiske dimensioneringstilstande
                 # Dimensioneringstilfælde: Brand
@@ -480,7 +481,7 @@ class S():
 
                 domname = prim + ' primær - Brand - (6.11a/b)'
                 for i in range(np.size(loadcombMat,0)):
-                    comb = 'Komb. ' + str(i+1) + '. ' + domname
+                    comb = 'Komb. ' + str(c+1) + '. ' + domname
                     F1[comb] = F1_mat[i,:]
                     F2[comb] = F2_mat[i,:]
                     M[comb] = M_mat[i,:]
@@ -488,6 +489,7 @@ class S():
                     Ve_loc[comb] = Ve_loc_mat[i,:]
                     R0[comb] = R0_mat[i,:]
                     loadcombMatDict_ALS[comb] = loadcombMat[i,:]
+                    c += 1
 
         self.loadCombinationsFE_discr['ALS'] = {
             'F1': F1,
@@ -581,7 +583,7 @@ class S():
                 loadcombMatDict_SLS[comb] = loadcombMat[i,:]
 
         else:
-
+            c=0
             for SLScombtype in ['Karakteristisk']:
                 for dom in domList:
                     loadtypesIndicesOneLoadtype ={}
@@ -598,7 +600,7 @@ class S():
 
                     domname = SLScombtype + ', ' + dom + ' alene'
                     for i in range(np.size(loadcombMat,0)):
-                        comb = 'Komb. ' + str(i+1) + '. ' + domname
+                        comb = 'Komb. ' + str(c+1) + '. ' + domname
                         F1[comb] = F1_mat[i,:]
                         F2[comb] = F2_mat[i,:]
                         M[comb] = M_mat[i,:]
@@ -606,6 +608,7 @@ class S():
                         Ve_loc[comb] = Ve_loc_mat[i,:]
                         R0[comb] = R0_mat[i,:]
                         loadcombMatDict_SLS[comb] = loadcombMat[i,:]
+                        c += 1
 
         self.loadCombinationsFE_discr['SLS'] = {
             'F1': F1,
@@ -699,8 +702,11 @@ class S():
 
             for ii in range(np.size(UR_loadcomb_mat_SLS,0)):
                 for iii in range(np.size(UR_loadcomb_mat_SLS,1)):
-                    UR_loadcomb_mat_SLS[ii,iii] = loadCombUR_SLS[LoadCombnames_SLS[iii]][URnames_SLS[ii]]
-                    
+                    try:
+                        UR_loadcomb_mat_SLS[ii,iii] = loadCombUR_SLS[LoadCombnames_SLS[iii]][URnames_SLS[ii]]
+                    except KeyError:
+                        UR_loadcomb_mat_SLS[ii,iii] = np.nan
+
             for ii in range(np.size(UR_loadcomb_mat_ALS,0)):
                 for iii in range(np.size(UR_loadcomb_mat_ALS,1)):
                     UR_loadcomb_mat_ALS[ii,iii] = loadCombUR_ALS[LoadCombnames_ALS[iii]][URnames_ALS[ii]]
@@ -877,11 +883,13 @@ class S():
             F2 = self.loadCombinationsFE_discr[typeOfState]['F2'][lc][self.T_discr[member['consistOfelements']]]
             M  = self.loadCombinationsFE_discr[typeOfState]['M'][lc][self.T_discr[member['consistOfelements']]]
             Ve = self.loadCombinationsFE_discr[typeOfState]['Ve'][lc][self.T_discr[member['consistOfelements']]]
+            Ve_loc = self.loadCombinationsFE_discr[typeOfState]['Ve_loc'][lc][self.T_discr[member['consistOfelements']]]
 
             ECcalcObj.F1 = F1
             ECcalcObj.F2 = F2
             ECcalcObj.M  = M
             ECcalcObj.Ve = Ve
+            ECcalcObj.Ve_loc = Ve_loc
 
             if member['membertype'] == 'Stål':
                 if 'RH' not in memberprop['profile']:
@@ -914,7 +922,7 @@ class S():
                     ECcalcObj.boejningOgTryk624()
                     ECcalcObj.boejningOgTraek623()
                 elif typeOfState == 'SLS':
-                    ECcalcObj.deformation()
+                    ECcalcObj.deformation(lc)
                 memberList.append(ECcalcObj)
 
             elif member['membertype'] == 'Murværk':

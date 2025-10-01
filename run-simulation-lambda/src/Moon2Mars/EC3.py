@@ -23,6 +23,8 @@ class EC3base:
         self.beamtype = member_discr['membertype']
         self.profile = self.beamprop['profile']
         self.steelgrade = self.beamprop['strength class']
+        self.deflectionRequirement = self.beamprop.get('deflection requirement', None)
+        self.deflectionIsLocal = self.beamprop.get('deflectionIsLocal', True)
 
         self.T = selfS.T_discr
         self.X = selfS.X_discr
@@ -261,18 +263,19 @@ class EC3calc:
             #print('KROPSFORSTÆRKNING NØDVENDIG!!!!')
         
     def deformation(self):   
-        
-        self.def_criteria = self.project.defCritSteel
-        
-        self.maxAllowable = self.beam['L']/self.def_criteria
-        
-        Ve = self.Ve
 
-        v = np.zeros([len(Ve),2])
-        for i, ve in enumerate(Ve):        
-            v[i,:] = [np.sqrt(ve[0,0]**2+ve[0,1]**2), np.sqrt(ve[1,0]**2+ve[1,1]**2)]
+        self.maxAllowable = self.beam['L']/self.deflectionRequirement
+
+        if self.deflectionIsLocal:
+            self.max_def = np.max(abs(self.Ve_loc))
+        else:
+            Ve = self.Ve
+
+            v = np.zeros([len(Ve),2])
+            for i, ve in enumerate(Ve):        
+                v[i,:] = [np.sqrt(ve[0,0]**2+ve[0,1]**2), np.sqrt(ve[1,0]**2+ve[1,1]**2)]
             
-        self.max_def = np.max(v)
+            self.max_def = np.max(v)
             
         self.UR_deformation = self.max_def/self.maxAllowable
         self.UR['Deformation'] = self.UR_deformation

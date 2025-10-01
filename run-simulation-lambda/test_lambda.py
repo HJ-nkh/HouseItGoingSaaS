@@ -14,7 +14,7 @@ from main import handler
 test_event = {
     "body": {
         "team_id": 1,  # Changed from user_id to team_id to match main.py
-        "simulation_id": 26
+        "simulation_id": 40
     }, 
     "headers": { 
         "X-API-Key": os.environ.get("API_KEY") 

@@ -19,6 +19,15 @@ class EC5base:
         self.beamprop = member_discr['memberprop']
         self.beamtype = member_discr['membertype']
         self.strengthclass = self.beamprop['strength class']
+        self.deflectionIsLocal = self.beamprop.get('deflectionIsLocal', True)
+        self.deflectionRequirementFinished = self.beamprop.get('deflectionRequirementFinished', None)
+        self.deflectionRequirementInstantSnow = self.beamprop.get('deflectionRequirementInstantSnow', None)
+        self.deflectionRequirementInstantWind = self.beamprop.get('deflectionRequirementInstantWind', None)
+        self.deflectionRequirementInstantLive = self.beamprop.get('deflectionRequirementInstantLive', None)
+        self.serviceClass = self.beamprop.get('serviceClass', None)
+
+
+
         self.loadtypes = selfS.loadtypes
 
         self.T = selfS.T_discr
@@ -302,44 +311,48 @@ class EC5calc:
                 k_h = 1                
         return k_h
 
-    def deformation(self):
+    def deformation(self, lc):
         
-        Ve = self.Ve
+        if self.deflectionIsLocal:
+            self.maxV = np.max(abs(self.Ve_loc))
+            LG_string = '(lokal),'
+        else:
+            Ve = self.Ve
+            LG_string = '(global),'
 
-        v = np.zeros([len(Ve),2])
-        for i, ve in enumerate(Ve):
-            v[i,:] = [np.sqrt(ve[0,0]**2+ve[0,1]**2), np.sqrt(ve[1,0]**2+ve[1,1]**2)]
-            
-        self.maxV = np.max(v)
+            v = np.zeros([len(Ve),2])
+            for i, ve in enumerate(Ve):
+                v[i,:] = [np.sqrt(ve[0,0]**2+ve[0,1]**2), np.sqrt(ve[1,0]**2+ve[1,1]**2)]
+                
+            self.maxV = np.max(v)
         
-        E_0 = self.woodprop.getElasticity(self.woodType2)
-        G_0 = self.woodprop.getShear(self.woodType2)
-             
-        forskydningsudbøjningsFaktor = (E_0/G_0)*(self.h/self.L)**2
-        
-        self.u_inst = self.maxV*(1+forskydningsudbøjningsFaktor)
+        self.u_inst = self.maxV#*(1+forskydningsudbøjningsFaktor)
         
         self.u_fin = self.u_inst*(1+self.k_def)
-        
-        self.maxDef1 = self.L/self.project.defCritWood1
-        self.maxDef2 = self.L/self.project.defCritWood2
-        
-        self.UR_deformation_inst1 = self.u_inst/self.maxDef1
-        self.UR_deformation_inst2 = self.u_inst/self.maxDef2
-        self.UR_deformation_fin1 = self.u_fin/self.maxDef1
 
-        self.UR['Deformation, inst L/' + str(self.project.defCritWood1)] = self.UR_deformation_inst1
-        self.UR['Deformation, inst L/' + str(self.project.defCritWood2)] = self.UR_deformation_inst2
-        self.UR['Deformation, fin L/' + str(self.project.defCritWood1)] = self.UR_deformation_fin1
-        
-        
-        
-        print('Bjælkenavn: ' + str(self.beam['membername']) + ' - u_inst: ' + str(self.u_inst*1000))
-        print('Bjælkenavn: ' + str(self.beam['membername']) + ' - u_fin: ' + str(self.u_fin*1000))
+        if 'Egenlast' in lc:
+            self.maxDefDead = self.L/self.deflectionRequirementFinished
+            self.UR_deformation_dead = self.u_fin/self.maxDefDead
 
-        print('Bjælkenavn: ' + str(self.beam['membername']) + ' - UR deformation_inst' + str(self.project.defCritWood1) + ': ' + str(self.UR_deformation_inst1))
-        print('Bjælkenavn: ' + str(self.beam['membername']) + ' - UR deformation_inst' + str(self.project.defCritWood2) + ': ' + str(self.UR_deformation_inst2))
-        print('Bjælkenavn: ' + str(self.beam['membername']) + ' - UR deformation_fin' + str(self.project.defCritWood1) + ': ' + str(self.UR_deformation_fin1))
+            self.UR['Deformation ' + LG_string + ' fin L/' + str(self.deflectionRequirementFinished)] = self.UR_deformation_dead
+
+        elif 'Snelast' in lc:
+            self.maxDefSnow = self.L/self.deflectionRequirementInstantSnow
+            self.UR_deformation_snow = self.u_inst/self.maxDefSnow
+            
+            self.UR['Deformation ' + LG_string + ' inst L/' + str(self.deflectionRequirementInstantSnow)] = self.UR_deformation_snow
+
+        elif 'Vindlast' in lc:
+            self.maxDefWind = self.L/self.deflectionRequirementInstantWind
+            self.UR_deformation_wind = self.u_inst/self.maxDefWind
+
+            self.UR['Deformation ' + LG_string + ' inst L/' + str(self.deflectionRequirementInstantWind)] = self.UR_deformation_wind
+
+        elif 'Nyttelast' in lc:
+            self.maxDefLive = self.L/self.deflectionRequirementInstantLive
+            self.UR_deformation_live = self.u_inst/self.maxDefLive
+
+            self.UR['Deformation ' + LG_string + ' inst L/' + str(self.deflectionRequirementInstantLive)] = self.UR_deformation_live
            
     def studsvaeg(self,cc):
         if cc <= 610:

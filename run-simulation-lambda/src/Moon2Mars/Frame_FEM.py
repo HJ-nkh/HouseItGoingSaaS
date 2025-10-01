@@ -67,11 +67,18 @@ class Model:
                 memberProp['type'] = 'Stål'
                 memberProp['profile'] = memberPropFrontend['steelProfile']
                 memberProp['strength class'] = memberPropFrontend['steelStrength']
+                memberProp['deflection requirement'] = memberPropFrontend['deflectionRequirement'] if memberPropFrontend['deflectionRequirement'] != None else None
+                memberProp['deflectionIsLocal'] = memberPropFrontend['deflectionIsLocal'] if memberPropFrontend['deflectionIsLocal'] != None else True
             elif memberPropFrontend['type'] == 'Wood':
                 memberProp['type'] = 'Træ'
                 memberProp['strength class'] = memberPropFrontend['woodType']
                 memberProp['b'] = memberPropFrontend['woodSize']['width']*10**-3
                 memberProp['h'] = memberPropFrontend['woodSize']['height']*10**-3
+                memberProp['deflectionIsLocal'] = memberPropFrontend['deflectionIsLocal']
+                memberProp['deflectionRequirementFinished'] = memberPropFrontend['deflectionRequirementFinished'] if memberPropFrontend['deflectionRequirementFinished'] != None else None
+                memberProp['deflectionRequirementInstantSnow'] = memberPropFrontend['deflectionRequirementInstantSnow'] if memberPropFrontend['deflectionRequirementInstantSnow'] != None else None
+                memberProp['deflectionRequirementInstantWind'] = memberPropFrontend['deflectionRequirementInstantWind'] if memberPropFrontend['deflectionRequirementInstantWind'] != None else None
+                memberProp['deflectionRequirementInstantLive'] = memberPropFrontend['deflectionRequirementInstantLive'] if memberPropFrontend['deflectionRequirementInstantLive'] != None else None
             elif memberPropFrontend['type'] == 'Masonry':
                 memberProp['type'] = 'Murværk'
                 memberProp['murtype'] = memberPropFrontend['murtype']
