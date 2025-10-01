@@ -14,6 +14,7 @@ import { Constraint, ConstraintType } from "../lib/types";
 import XYConstraintSelect from "./constraint-select/xy-only-select";
 import { getDisabledConstraintTypes } from "../lib/validate-side-mounted-node";
 import { resolveMomentLoadPosition } from "../lib/reduce-history/resolve-position";
+import IntegerInput from "@/components/integer-input";
 
 const LoadTypeOptions = [
   { label: "Egenlast", value: LoadType.Dead },
@@ -227,7 +228,8 @@ const ModifyMomentLoadCard: React.FC<ModifyMomentLoadCardProps> = ({
               options={LoadTypeOptions}
             />
           </div>
-        </div>        <div className="flex gap-3 mb-2 items-center">
+        </div>
+        <div className="flex gap-3 mb-2 items-center">
           <div className="w-32 text-left flex-shrink-0">Størrelse:</div>
           <div className="w-24">
             <NumberInput
@@ -239,18 +241,32 @@ const ModifyMomentLoadCard: React.FC<ModifyMomentLoadCardProps> = ({
               onEnter={onSubmit}
             />
           </div>
-        </div>{/* Validation error messages */}
+        </div>
+        {load.type === LoadType.Live && (
+          <div className="flex gap-3 mb-2 items-center">
+            <div className="w-32 text-left flex-shrink-0">n etager over:</div>
+            <div className="w-28">
+              <IntegerInput
+                value={load.floorsAbove ?? 1}
+                onChange={(v) => onChange({ ...load, floorsAbove: v ?? 1 })}
+                min={1}
+              />
+            </div>
+          </div>
+        )}
+        {/* Validation error messages */}
         {showZeroError && (
           <div className="text-red-500 text-sm mb-2">
             Størrelse kan ikke være nul
           </div>
         )}
-        
         {hasDuplicate && (
           <div className="text-red-500 text-sm mb-2">
             Et moment af denne type og størrelse findes allerede på denne position
           </div>
-        )}</CardContent><CardFooter>
+        )}
+      </CardContent>
+      <CardFooter>
         <CardActionButtons
           submitDisabled={isSubmitDisabled}
           onSubmit={() => {

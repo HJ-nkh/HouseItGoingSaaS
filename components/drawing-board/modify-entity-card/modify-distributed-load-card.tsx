@@ -14,6 +14,7 @@ import ConstraintSelect from "./constraint-select/xy-only-select";
 import { getDisabledConstraintTypes } from "../lib/validate-side-mounted-node";
 import { resolveDistributedLoadPosition } from "../lib/reduce-history/resolve-position";
 import { useState } from "react";
+import IntegerInput from "@/components/integer-input";
 
 // Extended interface for DistributedLoad with additional calculation properties
 interface ExtendedDistributedLoad extends DistributedLoad {
@@ -553,6 +554,18 @@ const ModifyDistributedLoadCard: React.FC<ModifyDistributedLoadCardProps> = ({
         </div>
 
         </div>
+        {load.type === LoadType.Live && (
+          <div className="flex gap-3 mt-2 items-center">
+            <div className="w-32 text-left flex-shrink-0">N etager over:</div>
+            <div className="w-38 flex-shrink-0">
+              <IntegerInput
+                value={load.floorsAbove ?? 1}
+                onChange={(v) => onChange({ ...load, floorsAbove: v ?? 1 })}
+                min={1}
+              />
+            </div>
+          </div>
+        )}
       </CardContent>      <CardFooter>
         <CardActionButtons
           submitDisabled={isSubmitDisabled}

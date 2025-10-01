@@ -67,11 +67,20 @@ class Model:
                 memberProp['type'] = 'Stål'
                 memberProp['profile'] = memberPropFrontend['steelProfile']
                 memberProp['strength class'] = memberPropFrontend['steelStrength']
+                memberProp['deflection requirement'] = memberPropFrontend['deflectionRequirement'] if memberPropFrontend['deflectionRequirement'] != None else None
+                memberProp['deflectionIsLocal'] = memberPropFrontend['deflectionIsLocal'] if memberPropFrontend['deflectionIsLocal'] != None else True
+                memberProp['selfWeightEnabled'] = memberPropFrontend['selfWeightEnabled'] if memberPropFrontend['selfWeightEnabled'] != None else True
             elif memberPropFrontend['type'] == 'Wood':
                 memberProp['type'] = 'Træ'
                 memberProp['strength class'] = memberPropFrontend['woodType']
                 memberProp['b'] = memberPropFrontend['woodSize']['width']*10**-3
                 memberProp['h'] = memberPropFrontend['woodSize']['height']*10**-3
+                memberProp['deflectionIsLocal'] = memberPropFrontend['deflectionIsLocal']
+                memberProp['deflectionRequirementFinished'] = memberPropFrontend['deflectionRequirementFinished'] if memberPropFrontend['deflectionRequirementFinished'] != None else None
+                memberProp['deflectionRequirementInstantSnow'] = memberPropFrontend['deflectionRequirementInstantSnow'] if memberPropFrontend['deflectionRequirementInstantSnow'] != None else None
+                memberProp['deflectionRequirementInstantWind'] = memberPropFrontend['deflectionRequirementInstantWind'] if memberPropFrontend['deflectionRequirementInstantWind'] != None else None
+                memberProp['deflectionRequirementInstantLive'] = memberPropFrontend['deflectionRequirementInstantLive'] if memberPropFrontend['deflectionRequirementInstantLive'] != None else None
+                memberProp['selfWeightEnabled'] = memberPropFrontend['selfWeightEnabled'] if memberPropFrontend['selfWeightEnabled'] != None else True
             elif memberPropFrontend['type'] == 'Masonry':
                 memberProp['type'] = 'Murværk'
                 memberProp['murtype'] = memberPropFrontend['murtype']
@@ -373,17 +382,21 @@ class Model:
         
     def addSelfWeight(self,factor):
         
-        a = -9.82 # tyngdeacceleration
+        g = -9.82 # tyngdeacceleration
+
+        for i in range(len(self.member)):
+            if not self.member[i]['memberprop']['selfWeightEnabled']:
+                continue
         
-        for i in range(np.size(self.T,0)):
-            
-            x1, y1 = self.X[self.T[i,0],0], self.X[self.T[i,0],1]
-            
-            x2, y2 = self.X[self.T[i,1],0], self.X[self.T[i,1],1]
-            
-            N_pr_m = self.rho[i]*self.A[i]*a*factor #[kg/m]*a
-            
-            self.addLineLoad([x1, y1], [x2, y2], "Fy", N_pr_m, N_pr_m)
+            for j in self.member[i]['consistOfelements']:
+                
+                x1, y1 = self.X[self.T[j,0],0], self.X[self.T[j,0],1]
+                
+                x2, y2 = self.X[self.T[j,1],0], self.X[self.T[j,1],1]
+                
+                N_pr_m = self.member[i]['rho']*self.member[i]['A']*g*factor #[kg/m]*a
+                
+                self.addLineLoad([x1, y1], [x2, y2], "Fy", N_pr_m, N_pr_m)
                   
         
     def run(self):

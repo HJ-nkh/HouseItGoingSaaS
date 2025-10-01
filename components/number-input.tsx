@@ -1,11 +1,11 @@
 import classNames from "classnames";
-import { useEffect, useState } from "react";
+import { useEffect, useState, ReactNode } from "react";
 import { normalizeDecimalSeparator, roundToTwoDecimals } from "@/lib/decimal-utils";
 
 type NumberInputProps = {
   value: number | undefined;
   onChange: (value: number | undefined) => void;
-  unit?: string;
+  unit?: ReactNode;
   placeholder?: string;
   className?: string;
   min?: number;

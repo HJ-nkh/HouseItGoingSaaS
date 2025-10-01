@@ -227,8 +227,7 @@ def create_report(s, team_id, project_id, title: str | None = None):
                     doc = DocxTemplate(template_path)
 
                 context.update({'last' : last,
-                            'Vej' : project.road,
-                            'By' : project.city,
+                            'Adresse' : project.address,
                             'Projektnummer' : project.projectNumber,
                             'navn_bjaelke' : str(m.beamname),
                             'L' : num2deci(m.L),
@@ -480,8 +479,7 @@ def create_report(s, team_id, project_id, title: str | None = None):
                 
                 context = { 'last' : last,
                             'critLoadCombTryk' : critLoadComb,
-                            'Vej' : project.road,
-                            'By' : project.city,
+                            'Adresse' : project.address,
                             'Projektnummer' : project.projectNumber,
                             'navn_bjaelke' : str(m.beamname),
                             'L' : num2deci(m.L),
@@ -578,8 +576,7 @@ def create_report(s, team_id, project_id, title: str | None = None):
                 m = ECmembers[i]
                 
                 context = { 'last' : last,
-                            'Vej' : project.road,
-                            'By' : project.city,
+                            'Adresse' : project.address,
                             'Projektnummer' : project.projectNumber,
                             'navn_bjaelke' : str(m.beamname).replace('.',','),
                             'material' : material,
@@ -706,8 +703,7 @@ def create_report(s, team_id, project_id, title: str | None = None):
             UR_ritter = m.UR_ritter
             
             context.update({'last' : last,
-                        'Vej' : project.road,
-                        'By' : project.city,
+                        'Adresse' : project.address,
                         'Projektnummer' : project.projectNumber,
                         'critLoadCombKropsforstaerkning' : critLoadComb,         
                         'fb' : num2deci(m.fb*10**-6),

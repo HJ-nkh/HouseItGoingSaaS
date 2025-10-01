@@ -133,6 +133,25 @@ def handler(event, context):
         return {'statusCode': 404, 'body': json.dumps({'error': 'Simulation not found'})}
     if sim_row.status != 'pending' and not is_development:
         return {'statusCode': 400, 'body': json.dumps({'error': 'Simulation is not in pending status'})}
+    
+    # Fetch project
+    project_row = session.execute(
+        select(projects_table)
+        .where(projects_table.c.id == sim_row.project_id)
+    ).first()
+    if project_row is None:
+        return {'statusCode': 404, 'body': json.dumps({'error': 'Project not found'})}
+    
+    # Fetch drawing
+    if sim_row.drawing_id:
+        drawing_row = session.execute(
+            select(Table('drawings', metadata, autoload_with=engine))
+            .where(Table('drawings', metadata, autoload_with=engine).c.id == sim_row.drawing_id)
+        ).first()
+        if drawing_row is None:
+            return {'statusCode': 404, 'body': json.dumps({'error': 'Drawing not found'})}
+        
+
 
     # Mark running
     session.execute(
@@ -150,19 +169,20 @@ def handler(event, context):
     import math, platform, numpy as np
 
     entity_set = sim_row.entities if isinstance(sim_row.entities, dict) else json.loads(sim_row.entities)
+
     project = Project()
     model = Model()
     s = S(model, project)
-    project.addProjectNumber('!Ptest')
-    project.road = 'Hejvej 2'
-    project.city = '5600 Bynavn'
-    project.name = 'Lars Larsen' 
-    project.addCC('CC2')
-    project.selfweightTrueFalse(True)
+
+    # Project specific settings
+    project.projectNumber = project_row.title
+    project.address = project_row.address
+
+    # Model specific settings
+    project.CC = drawing_row.consequence_class if sim_row.drawing_id and drawing_row.consequence_class else 'CC2'
+    project.robustFactorOnOff = drawing_row.robustness_factor if sim_row.drawing_id and drawing_row.robustness_factor is not None else False
+
     project.addNumberOfLevelsAbove(1)
-    project.robustFactorTrueFalse(False)
-    project.addDeformationCriteriaSteel(400)
-    project.addDeformationCriteriaWood(400, 250)
 
     # Members first, then supports
     model.addMembers(entity_set)
@@ -215,11 +235,11 @@ def handler(event, context):
             x = (moment_load.get('resolved') or {}).get('x'); y = (moment_load.get('resolved') or {}).get('y'); M0 = (moment_load.get('magnitude'))*1e3
             s.addMoment([x,y],[M0],moment_load.get('type'),id)
 
-    if project.selfweightOnOff:
-        s.addSelfweight()
+    s.addSelfweight()
 
     # Execution phase
     # Run and persist
+    s.run()
 
     try:
         s.run()

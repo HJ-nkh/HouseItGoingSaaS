@@ -17,7 +17,8 @@ const ModifyMemberCard: React.FC<{
   onSubmit: (length: number | undefined, member: Member) => void;
   onClose: () => void;
   onDelete?: () => void;
-}> = ({ member, onSubmit, onClose, onDelete }) => {
+  isVertical?: boolean;
+}> = ({ member, onSubmit, onClose, onDelete, isVertical }) => {
   const [name, setName] = useState<string>(member.memberprop?.name || "");
   const [length, _setLength] = useState<number | undefined>();
   const [selectedWoodSize, setSelectedWoodSize] = useState<string>(
@@ -32,8 +33,39 @@ const ModifyMemberCard: React.FC<{
   const [selectedSteelStrength, setSelectedSteelStrength] = useState<string>(
     (member.memberprop as any)?.steelStrength || ""
   );
+  const existingDeflectionRequirement = (member.memberprop as any)?.deflectionRequirement;
+  const [deflectionRequirement, setDeflectionRequirement] = useState<number | undefined>(
+    existingDeflectionRequirement === undefined
+      ? (isVertical ? 300 : 400)
+      : existingDeflectionRequirement
+  );
+  const existingDeflectionIsLocal = (member.memberprop as any)?.deflectionIsLocal;
+  const [deflectionIsLocal, setDeflectionIsLocal] = useState<boolean>(
+    existingDeflectionIsLocal === undefined
+      ? (isVertical ? false : true) // Default: Local (true), unless vertical -> Global (false)
+      : !!existingDeflectionIsLocal
+  );
+  // Wood specific deflection requirements
+  const [deflectionFinished, setDeflectionFinished] = useState<number | undefined>(
+    (member.memberprop as any)?.deflectionRequirementFinished ?? 400
+  );
+  const [deflectionInstantSnow, setDeflectionInstantSnow] = useState<number | undefined>(
+    (member.memberprop as any)?.deflectionRequirementInstantSnow ?? 400
+  );
+  const [deflectionInstantWind, setDeflectionInstantWind] = useState<number | undefined>(
+    (member.memberprop as any)?.deflectionRequirementInstantWind ?? 250
+  );
+  const [deflectionInstantLive, setDeflectionInstantLive] = useState<number | undefined>(
+    (member.memberprop as any)?.deflectionRequirementInstantLive ?? 400
+  );
   const [selectedWoodType, setSelectedWoodType] = useState<string>(
     member.memberprop?.woodType || ""
+  );
+  const [serviceClass, setServiceClass] = useState<string>(
+    (member.memberprop as any)?.serviceClass || ""
+  );
+  const [selfWeightEnabled, setSelfWeightEnabled] = useState<boolean>(
+    (member.memberprop as any)?.selfWeightEnabled ?? true
   );
   const [width, setWidth] = useState<number | null>(
     member.memberprop?.woodSize?.width || null
@@ -302,6 +334,91 @@ const ModifyMemberCard: React.FC<{
               />
             </div>
           </div>
+          <div className="my-2 h-px bg-gray-200" />
+          <div className="flex gap-3 mb-2 items-center">
+            <div className="w-32 text-left flex-shrink-0">Udbøjningskrav:</div>
+            <div className="flex-1 min-w-0">
+              <NumberInput
+                value={deflectionRequirement}
+                onChange={(v) => setDeflectionRequirement(v)}
+                min={1}
+                unit="L/x"
+                className="whitespace-nowrap"
+              />
+            </div>
+          </div>
+          <div className="flex gap-3 mb-2 items-center">
+            <div className="w-32 text-left flex-shrink-0">Udbøjningstype:</div>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!deflectionIsLocal}
+                onClick={() => setDeflectionIsLocal((v) => !v)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  !deflectionIsLocal ? "bg-sky-500" : "bg-gray-300"
+                }`}
+                title="Skift mellem global og lokal udbøjning"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                    !deflectionIsLocal ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+              <span className="text-xs text-gray-500 select-none min-w-10">
+                {!deflectionIsLocal ? "Global" : "Lokal"}
+              </span>
+              <div className="relative group">
+                <button
+                  type="button"
+                  className="ml-1 inline-flex items-center justify-center h-4 w-4 rounded-full border border-gray-300 text-gray-600 text-[10px] bg-white hover:bg-gray-50"
+                  aria-label="Hjælp til udbøjningstype"
+                  tabIndex={0}
+                >
+                  i
+                </button>
+                <div className="hidden group-hover:block absolute left-5 top-0 ml-2 z-50 w-72 max-w-[18rem] p-2 rounded border bg-white shadow-lg text-[12px] leading-snug text-gray-700 whitespace-normal">
+                  <p className="mb-1 font-medium">Udbøjningstype</p>
+                  <p className="mb-2">Vælg <strong>Global</strong> for eftervisning af samlet udbøjning og flytning af hele konstruktionsdelen, eller <strong>Lokal</strong> for lokal udbøjning af konstruktionsdelen efter flytning.</p>
+                  <p className="mb-2">Anbefaling: Brug lokal udbøjning for bjælker og global udbøjning for fastindspændte søjler og fastindspændte udkragede bjælker.</p>
+                  <p className="mb-1 font-medium">DKNA:</p>
+                  <p className="mb-1 underline">Lodret udbøjning (lokalt):</p>
+                  <p className="mb-1">Etageadskillelser: L/400</p>
+                  <p className="mb-2">Tage og ydervægge: L/200</p>
+                  <p className="mb-1 underline">Vandret udbøjning:</p>
+                  <p className="mb-1">Rammer i bygninger uden kraner: L/150</p>
+                  <p className="mb-1">Søjler i énetages skeletbygninger: L/300</p>
+                  <p>Søjler i fleretages skeletbygninger for hver etage: L/300, for bygningens totale højde: L/500</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="my-2 h-px bg-gray-200" />
+          <div className="flex gap-3 mb-2 items-center">
+            <div className="w-32 text-left flex-shrink-0">Egenvægt:</div>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={selfWeightEnabled}
+                onClick={() => setSelfWeightEnabled(v => !v)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  selfWeightEnabled ? "bg-sky-500" : "bg-gray-300"
+                }`}
+                title="Aktiver/deaktiver egenvægt"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                    selfWeightEnabled ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+              <span className="text-xs text-gray-500 select-none min-w-8">
+                {selfWeightEnabled ? "til" : "fra"}
+              </span>
+            </div>
+          </div>
           </>
         )}        {selectedType === MaterialType.Wood && (
           <>
@@ -339,7 +456,7 @@ const ModifyMemberCard: React.FC<{
             </div>
             <div className="flex gap-3 mb-2 items-center">
               <div className="w-32 text-left flex-shrink-0">Bredde:</div>
-              <div className="w-24">
+              <div className="flex-1 min-w-0">
                 <NumberInput
                   value={width ?? undefined}
                   onChange={(value) => {
@@ -351,7 +468,7 @@ const ModifyMemberCard: React.FC<{
             </div>
             <div className="flex gap-3 mb-2 items-center">
               <div className="w-32 text-left flex-shrink-0">Højde:</div>
-              <div className="w-24">
+              <div className="flex-1 min-w-0">
                 <NumberInput
                   value={height ?? undefined}
                   onChange={(value) => {
@@ -359,6 +476,144 @@ const ModifyMemberCard: React.FC<{
                   }}
                   unit="mm"
                 />
+              </div>
+            </div>
+            <div className="my-2 h-px bg-gray-200" />
+            <div className="flex gap-3 mb-2 items-start">
+              <div className="w-32 text-left flex-shrink-0 mt-1">Anvendelseskl.:</div>
+              <div className="flex-1 min-w-0">
+                <Select
+                  className="w-full min-w-0"
+                  value={serviceClass}
+                  placeholder="Vælg klasse"
+                  onChange={(val) => {
+                    if (typeof val === 'string') setServiceClass(val);
+                  }}
+                  options={[
+                    { value: '1', label: (
+                      <span>
+                        1 - Konstruktioner i opvarmede bygninger, hvor der ikke sker opfugtning af luften, for eksempel boliger, kontorer og forretninger.
+                      </span>
+                    ) },
+                    { value: '2', label: (
+                      <span>
+                        2 - Konstruktioner i ventilerede, ikke-permanent opvarmede bygninger, for eksempel fritidshuse, uopvarmede garager og lagerbygninger. Ventilerede konstruktioner beskyttet mod nedbør, for eksempel ventilerede tagkonstruktioner.
+                      </span>
+                    ) },
+                    { value: '3', label: (
+                      <span>
+                        3 - Konstruktioner i fugtige rum konstruktioner udsat for nedbør eller vand i øvrigt, herunder betonforme og udendørsstilladser underlag for tagpaptage, hvis disse ikke udformes, så de kan henføres til anvendelses klasse 2.
+                      </span>
+                    ) },
+                  ]}
+                />
+              </div>
+            </div>
+            <div className="my-2 h-px bg-gray-200" />
+            <div className="flex gap-3 mb-2 items-start">
+              <div className="w-32 text-left flex-shrink-0 mt-1">Udbøjningskrav:</div>
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <NumberInput
+                  value={deflectionFinished}
+                  onChange={(v) => setDeflectionFinished(v)}
+                  min={1}
+                  unit={<span className="flex items-center gap-1"><span><span className="italic">w</span><sub>fin</sub></span> egen, L/x</span>}
+                  className="whitespace-nowrap"
+                />
+                <NumberInput
+                  value={deflectionInstantSnow}
+                  onChange={(v) => setDeflectionInstantSnow(v)}
+                  min={1}
+                  unit={<span className="flex items-center gap-1"><span><span className="italic">w</span><sub>inst</sub></span> sne, L/x</span>}
+                  className="whitespace-nowrap"
+                />
+                <NumberInput
+                  value={deflectionInstantWind}
+                  onChange={(v) => setDeflectionInstantWind(v)}
+                  min={1}
+                  unit={<span className="flex items-center gap-1"><span><span className="italic">w</span><sub>inst</sub></span> vind, L/x</span>}
+                  className="whitespace-nowrap"
+                />
+                <NumberInput
+                  value={deflectionInstantLive}
+                  onChange={(v) => setDeflectionInstantLive(v)}
+                  min={1}
+                  unit={<span className="flex items-center gap-1"><span><span className="italic">w</span><sub>inst</sub></span> nytte, L/x</span>}
+                  className="whitespace-nowrap"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mb-2 items-center">
+              <div className="w-32 text-left flex-shrink-0">Udbøjningstype:</div>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!deflectionIsLocal}
+                  onClick={() => setDeflectionIsLocal((v) => !v)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    !deflectionIsLocal ? "bg-sky-500" : "bg-gray-300"
+                  }`}
+                  title="Skift mellem global og lokal udbøjning"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                      !deflectionIsLocal ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span className="text-xs text-gray-500 select-none min-w-10">
+                  {!deflectionIsLocal ? "Global" : "Lokal"}
+                </span>
+                <div className="relative group">
+                  <button
+                    type="button"
+                    className="ml-1 inline-flex items-center justify-center h-4 w-4 rounded-full border border-gray-300 text-gray-600 text-[10px] bg-white hover:bg-gray-50"
+                    aria-label="Hjælp til udbøjningstype"
+                    tabIndex={0}
+                  >
+                    i
+                  </button>
+                  <div className="hidden group-hover:block absolute left-5 top-0 ml-2 z-50 w-72 max-w-[18rem] p-2 rounded border bg-white shadow-lg text-[12px] leading-snug text-gray-700 whitespace-normal">
+                    <p className="mb-1 font-medium">Udbøjningstype</p>
+                    <p className="mb-2">Vælg <strong>Global</strong> for eftervisning af samlet udbøjning og flytning af hele konstruktionsdelen, eller <strong>Lokal</strong> for lokal udbøjning af konstruktionsdelen efter flytning.</p>
+                    <p className="mb-2">Anbefaling: Brug lokal udbøjning for bjælker og global udbøjning for fastindspændte søjler og fastindspændte udkragede bjælker.</p>
+                    <p className="mb-1 font-medium"><strong>DKNA:</strong></p>
+                    <p className="mb-1"><span className="underline">Tagkonstruktioner</span></p>
+                    <p className="mb-1">Konstruktioner uden pilhøjde<span className="italic">w</span><sub>fin</sub>, egenlast: L/400</p>
+                    <p className="mb-1">Konstruktioner med pilhøjde<span className="italic">w</span><sub>fin</sub>, egenlast: L/250</p>
+                    <p className="mb-1"><span className="italic">w</span><sub>inst</sub>, snelast: L/400</p>
+                    <p className="mb-1"><span className="italic">w</span><sub>inst</sub>, vindlast: L/250</p>
+                    <p className="mb-1 underline">Bjælkelag</p>
+                    <p className="mb-1"><span className="italic">w</span><sub>fin</sub>, egenlast: L/400</p>
+                    <p className="mb-1"><span className="italic">w</span><sub>inst</sub>, nyttelast: L/400</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="my-2 h-px bg-gray-200" />
+            <div className="flex gap-3 mb-2 items-center">
+              <div className="w-32 text-left flex-shrink-0">Egenvægt:</div>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={selfWeightEnabled}
+                  onClick={() => setSelfWeightEnabled(v => !v)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    selfWeightEnabled ? "bg-sky-500" : "bg-gray-300"
+                  }`}
+                  title="Aktiver/deaktiver egenvægt"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                      selfWeightEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span className="text-xs text-gray-500 select-none min-w-8">
+                  {selfWeightEnabled ? "til" : "fra"}
+                </span>
               </div>
             </div>
           </>
@@ -384,6 +639,14 @@ const ModifyMemberCard: React.FC<{
                   width: width === undefined ? null : width,
                   height: height === undefined ? null : height,
                 },
+                deflectionRequirement: deflectionRequirement,
+                deflectionIsLocal: deflectionIsLocal,
+                deflectionRequirementFinished: deflectionFinished,
+                deflectionRequirementInstantSnow: deflectionInstantSnow,
+                deflectionRequirementInstantWind: deflectionInstantWind,
+                deflectionRequirementInstantLive: deflectionInstantLive,
+                serviceClass: serviceClass,
+                selfWeightEnabled: selfWeightEnabled,
               },
             };
             onSubmit(length, updatedMember);

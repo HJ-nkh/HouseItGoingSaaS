@@ -134,9 +134,16 @@ const ModifyEntityCard: React.FC<ModifyEntityCardProps> = ({
       if (!member) {
         return null;
       }
+      // Determine if the member is vertical (søjle): |x1 - x2| < epsilon on resolved line
+      const resolved = entitySet.members[member.id]?.resolved;
+      const EPS = 1e-6;
+      const isVertical = resolved
+        ? Math.abs(resolved.point1.x - resolved.point2.x) < EPS
+        : false;
       return (
         <ModifyMemberCard
           member={member}
+          isVertical={isVertical}
           onChange={(m) =>
             setState((s) => ({
               ...s,

@@ -120,6 +120,10 @@ export const drawings = pgTable('drawings', {
   history: jsonb('history').notNull(),
   hasChanges: boolean('has_changes').notNull().default(false),
   isTemplate: boolean('is_template').notNull().default(false),
+  // EN 1990 consequence class for the drawing (CC1/CC2/CC3)
+  consequenceClass: varchar('consequence_class', { length: 10 }).notNull().default('CC2'),
+  // Robusthedsfaktor toggle (γ_M * 1,2) applied or not
+  robustnessFactor: boolean('robustness_factor').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),

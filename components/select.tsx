@@ -5,11 +5,12 @@ import {
   SelectContent,
   SelectItem,
 } from "./ui/select";
+import type { ReactNode } from "react";
 
 type SelectOption = {
-  label: string;
+  label: ReactNode;
   value: string;
-  selectedLabel?: string;
+  selectedLabel?: ReactNode;
 };
 
 type SelectProps = {

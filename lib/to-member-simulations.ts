@@ -41,6 +41,8 @@ export const toMemberSimulations = (
     ALS: result?.UR?.[0]?.LoadCombnames_ALS || [],
   };
 
+  console.log('result?.UR', result?.UR);
+
   const loadCombinationsFactorMat: Record<string, Record<string, number[]>> = {
     ULS: result?.UR?.[0]?.loadcombMatDict_ULS || [],
     SLS: result?.UR?.[0]?.loadcombMatDict_SLS || [],

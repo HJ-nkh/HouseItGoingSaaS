@@ -1,0 +1,1 @@
+ALTER TABLE "drawings" ADD COLUMN IF NOT EXISTS "consequence_class" varchar(10) DEFAULT 'CC2' NOT NULL;

@@ -275,6 +275,19 @@ export type MemberProp = {
   type?: MaterialType;
   steelProfile?: SteelProfile;
   steelStrength?: string;
+  // Deflection requirement (Udbøjningskrav), integer value (e.g., denominator for L/x)
+  deflectionRequirement?: number;
+  // Deflection type: false => Global, true => Lokal
+  deflectionIsLocal?: boolean;
+  // Wood specific deflection requirements (L/x denominators)
+  deflectionRequirementFinished?: number; // w_fin
+  deflectionRequirementInstantSnow?: number; // w_inst snelast
+  deflectionRequirementInstantWind?: number; // w_inst vindlast
+  deflectionRequirementInstantLive?: number; // w_inst nyttelast
+  // Wood service (anvendelses) class 1,2,3
+  serviceClass?: string;
+  // Include self weight (egenvægt) in analysis
+  selfWeightEnabled?: boolean;
   woodType?: string;
   woodSizeString?: string;
   woodSize?: WoodSize;
@@ -291,6 +304,8 @@ export type Member = {
 export type PointLoad = {
   id: string;
   type: LoadType;
+  // For Live loads: number of floors above (n etager over)
+  floorsAbove?: number;
   onNode?: { id: string };
   onMember?: {
     id: string;
@@ -308,6 +323,8 @@ export type PointLoad = {
 export type DistributedLoad = {
   id: string;
   type: LoadType;
+  // For Live loads: number of floors above (n etager over)
+  floorsAbove?: number;
   angle?: {
     value: number;
     relativeTo: "member" | "x";
@@ -326,6 +343,8 @@ export type DistributedLoad = {
 export type MomentLoad = {
   id: string;
   type: LoadType;
+  // For Live loads: number of floors above (n etager over)
+  floorsAbove?: number;
   onNode?: { id: string };
   onMember?: {
     id: string;

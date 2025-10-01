@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Drawing } from "@/lib/types";
 import { DrawingState } from "./lib/types";
 import Input from "../input";
+import { Select } from "../select";
 import { EntitySet } from "./lib/reduce-history";
 import { Button } from "../ui/button";
 import WithConfirmation from "../with-confirmation";
@@ -46,6 +47,22 @@ const TopBar: React.FC<TopBarProps> = ({
   const params = useParams();
   const projectId = params.projectId as string;
   const [title, setTitle] = useState(drawing?.title ?? "Min fusion-model");
+  const [consequenceClass, setConsequenceClass] = useState<'CC1'|'CC2'|'CC3'>(
+    (drawing?.consequenceClass as any) ?? 'CC2'
+  );
+  const [robustnessFactor, setRobustnessFactor] = useState<boolean>(
+    !!drawing?.robustnessFactor
+  );
+
+  useEffect(() => {
+    if (drawing?.consequenceClass) {
+      setConsequenceClass(drawing.consequenceClass as any);
+    }
+    if (drawing?.title) {
+      setTitle(drawing.title);
+    }
+    setRobustnessFactor(!!drawing?.robustnessFactor);
+  }, [drawing?.consequenceClass, drawing?.title]);
 
   const router = useRouter();
 
@@ -77,6 +94,73 @@ const TopBar: React.FC<TopBarProps> = ({
         </div>
         <div>
           <Input value={title} onChange={setTitle} />
+        </div>
+        <div className="ml-2">
+          <Select
+            value={consequenceClass}
+            onChange={(v) => setConsequenceClass((v as any) ?? 'CC2')}
+            options={[
+              { label: (
+                <span>
+                  CC1 (
+                  <span>
+                    <span className="italic">K</span>
+                    <sub>FI</sub> = 0,9
+                  </span>
+                  )
+                </span>
+              ), value: 'CC1' },
+              { label: (
+                <span>
+                  CC2 (
+                  <span>
+                    <span className="italic">K</span>
+                    <sub>FI</sub> = 1,0
+                  </span>
+                  )
+                </span>
+              ), value: 'CC2' },
+              { label: (
+                <span>
+                  CC3 (
+                  <span>
+                    <span className="italic">K</span>
+                    <sub>FI</sub> = 1,1
+                  </span>
+                  )
+                </span>
+              ), value: 'CC3' },
+            ]}
+            placeholder="Konsekvensklasse"
+            className="w-fit"
+          />
+        </div>
+  <div className="ml-2 flex items-center gap-2">
+          <span className="text-sm text-gray-700 hidden sm:inline" title="Robusthedsfaktor (γ_M · 1,2)">
+            Robusthed
+            <span className="ml-1 text-gray-500">(
+              <span className="italic">γ</span><sub>M</sub> · 1,2)
+            </span>
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={robustnessFactor}
+            onClick={() => setRobustnessFactor((v) => !v)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              robustnessFactor ? "bg-sky-500" : "bg-gray-300"
+            }`}
+            title="Robusthedsfaktor (γ_M · 1,2)"
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                robustnessFactor ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+          <span className="text-xs text-gray-500 select-none min-w-6">
+            {robustnessFactor ? "til" : "fra"}
+          </span>
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -128,7 +212,7 @@ const TopBar: React.FC<TopBarProps> = ({
                 // Inform parent to hide result UI instantly
                 onRunStart?.();
 
-                onSave({ title, history: state.history, projectId, hasChanges: false });
+                onSave({ title, history: state.history, projectId, hasChanges: false, consequenceClass, robustnessFactor });
 
                 const created = await simulationMutations.createSimulation({
                   projectId,
@@ -159,6 +243,8 @@ const TopBar: React.FC<TopBarProps> = ({
               history: state.history,
               projectId,
               hasChanges: state.hasChanges,
+              consequenceClass,
+              robustnessFactor,
             })
           }
         >
