@@ -239,7 +239,7 @@ def handler(event, context):
 
     # Execution phase
     # Run and persist
-    s.run()
+    #s.run()
 
     try:
         s.run()

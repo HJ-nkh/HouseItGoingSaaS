@@ -379,20 +379,25 @@ def create_report(s, team_id, project_id, title: str | None = None):
                             'R' : num2deci(m.R*10**-3),
                             'UR_lokaleTvaergaaendeKraefter617' : num2percent(m.UR_lokaleTvaergaaendeKraefter617)})
 
-                # ------------------------------------ Deformation ----------------------------------------------#            
-                critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb_SLS']['Deformation']
-                ECmembers = s.loadCombinations['SLS'][critLoadComb]
-                m = ECmembers[i]
+                # ------------------------------------ Deformation ----------------------------------------------#
+                # for key in s.sectionResults[i]['UR_CriticalLoadComb_SLS'].keys():
+                #     if 'Deformation' in key:
+                #         critLoadCombKey = key
+                #         break
+
+                # critLoadComb = s.sectionResults[i]['UR_CriticalLoadComb_SLS'][critLoadCombKey]
+                # ECmembers = s.loadCombinations['SLS'][critLoadComb]
+                # m = ECmembers[i]
                 
-                UR_deformation = m.UR_deformation
+                # UR_deformation = m.UR_deformation
                 
-                context.update({'critLoadCombDef' : critLoadComb,     
-                            'def_criteria' : itanum(m.def_criteria),
-                            'maxAllowable' : num2deci(m.maxAllowable*1000),
-                            'max_def' : num2deci(m.max_def*1000),
-                            'UR_deformation' : num2percent(m.UR_deformation),
-                            'ULS_max' : num2percent(max(UR_boejningsmoment625, UR_forskydning626, UR_Tryk631)), #UR_kipning632
-                            'SLS_max' : num2percent(UR_deformation)})
+                # context.update({'critLoadCombDef' : critLoadComb,     
+                #             'def_criteria' : itanum(m.def_criteria),
+                #             'maxAllowable' : num2deci(m.maxAllowable*1000),
+                #             'max_def' : num2deci(m.max_def*1000),
+                #             'UR_deformation' : num2percent(m.UR_deformation),
+                #             'ULS_max' : num2percent(max(UR_boejningsmoment625, UR_forskydning626, UR_Tryk631)), #UR_kipning632
+                #             'SLS_max' : num2percent(UR_deformation)})
                 
 # --------------------------------------------------- brand -------------------------------------------------------------------------------
                 # ------------------------------------ Bøjning ----------------------------------------------#

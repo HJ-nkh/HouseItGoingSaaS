@@ -964,8 +964,13 @@ def plotSectionForcesMember(s, member, ls, loadcomb, team_id, project_id, report
 
     for ax, xlabel, title in zip(axs, xlabels, titles):
         ax.set_aspect('equal', adjustable='box')
-        ax.set_xlim([global_min_x, global_max_x])
-        ax.set_ylim([global_min_y, global_max_y])
+
+        valid_x = (np.isfinite(global_min_x) and np.isfinite(global_max_x) and global_min_x < global_max_x)
+        valid_y = (np.isfinite(global_min_y) and np.isfinite(global_max_y) and global_min_y < global_max_y)
+        if valid_x and valid_y:
+            ax.set_xlim([global_min_x, global_max_x])
+            ax.set_ylim([global_min_y, global_max_y])
+            
         ax.set_xlabel(xlabel)
         ax.set_title(title)
         ax.legend(handles=[red_patch, blue_patch], loc='best')  # `loc='best'` finds the best location for the legend not to overlap data

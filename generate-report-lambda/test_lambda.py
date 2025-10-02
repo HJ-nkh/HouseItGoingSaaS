@@ -38,7 +38,7 @@ def main():
         'headers': {'X-API-Key': os.environ.get('API_KEY')},
         'body': json.dumps({
             'team_id': 1,
-            'simulation_id': 25,
+            'simulation_id': 43,
             'title': args.title
         })
     }
